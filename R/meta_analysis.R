@@ -1,4 +1,4 @@
-#' Title
+#' Wrapper for differential abundance anlysis using metagenomeSeq
 #'
 #' @param physeq
 #' @param outcome_var
@@ -11,7 +11,7 @@
 #' @importFrom metagenomeSeq newMRexperiment
 #' @importFrom metagenomeSeq newMRexperiment calcPosComponent
 #' @examples
-DA_single <- function(physeq, model) {
+DA_single_metagenomeSeq <- function(physeq, model) {
   df_meta <- sample_data(physeq)
   class(df_meta) <- 'data.frame'
 
@@ -34,6 +34,3 @@ DA_single <- function(physeq, model) {
 
   return(df_return)
 }
-
-
-
