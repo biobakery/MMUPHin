@@ -5,10 +5,9 @@
 #' @param batch batch variable
 #' @param adj_model formula for covariates to adjust for
 #'
-#' @return
+#' @return a phyloseq object, with batch-corrected abundance data
 #' @export
 #' @import phyloseq magrittr
-#' @examples
 batch_adj <- function(physeq, batch, adj_model=NULL) {
   mat_otu <- otu_table(physeq)@.Data
   batch <- as.factor(batch)
@@ -43,16 +42,6 @@ batch_adj <- function(physeq, batch, adj_model=NULL) {
 }
 
 #' Running modified ComBat model
-#'
-#' @param dat
-#' @param batch
-#' @param mod
-#' @param mean.only
-#' @param BPPARAM
-#'
-#' @return
-#'
-#' @examples
 ComBat_mod <- function (dat, batch, mod = NULL, mean.only = FALSE,
                                BPPARAM = bpparam("SerialParam"))
 {
@@ -154,13 +143,13 @@ ComBat_mod <- function (dat, batch, mod = NULL, mean.only = FALSE,
   gamma.star <- delta.star <- matrix(NA, nrow = n.batch, ncol = nrow(s.data))
   message("Finding parametric adjustments")
   results <- bplapply(1:n.batch, function(i) {
-    # if (mean.only) {
-    #   # need to figure out why delta is not estimated in this case
-    #   # and why effective sample size is treated as 1
-    #   gamma.star <- postmean(gamma.hat[i, ], 0,
-    #            1, 1, t2[i])
-    #   delta.star <- rep(1, nrow(s.data))
-    # }
+    if (mean.only) {
+      # need to figure out why delta is not estimated in this case
+      # and why effective sample size is treated as 1
+      gamma.star <- postmean(gamma.hat[i, ], 0,
+               1, 1, t2[i])
+      delta.star <- rep(1, nrow(s.data))
+    }
     {
       temp <- it.sol_mod(s.data[, batches[[i]]],
                          gamma.hat[i, ],
