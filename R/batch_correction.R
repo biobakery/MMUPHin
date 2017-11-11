@@ -42,6 +42,8 @@ batch_adj <- function(physeq, batch, adj_model=NULL) {
 }
 
 #' Running modified ComBat model
+#' @import BiocParallel
+#' @importFrom genefilter rowVars
 ComBat_mod <- function (dat, batch, mod = NULL, mean.only = FALSE,
                                BPPARAM = bpparam("SerialParam"))
 {
