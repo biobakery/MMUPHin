@@ -58,7 +58,7 @@ clust_strength <- function(physeq, clust_method = "pam", dist_measure = "bray", 
   # Silhouette width
   result_sw <- data.frame(t(sapply( 2:kmax, function( k ) {
     clst_tmp <- clust_fun_gap(x=x_clust, k=k)$cluster
-    sw_tmp <- silhouette(clst_tmp, dist=dist_clust)[, 'sil_width']
+    sw_tmp <- cluster::silhouette(clst_tmp, dist=dist_clust)[, 'sil_width']
     return(c(mean(sw_tmp), sd(sw_tmp)))
   })))
   names(result_sw) <- c("stat", "se")
