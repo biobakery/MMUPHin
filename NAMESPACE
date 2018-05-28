@@ -2,6 +2,7 @@
 
 export(batch_adj)
 export(clust_strength)
+export(extract_sparseDOSSA)
 import(BiocParallel)
 import(cluster)
 import(fpc)
@@ -9,3 +10,4 @@ import(ggplot2)
 import(magrittr)
 import(phyloseq)
 importFrom(genefilter,rowVars)
+importFrom(magrittr,"%>%")
