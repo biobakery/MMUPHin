@@ -5,130 +5,197 @@ library(vegan)
 library(phyloseq)
 library(MMUPHin)
 
+
+# simulation setup -------------------------------------------------------
 nSubjects <- 100
 nPerSubject <- 1
 nSamples<- round(nSubjects*nPerSubject) # Number of Samples
-nMicrobes <- 200
+nMicrobes <- 50
 spikeMicrobes <- 0.2
-nMetadata <- 3
-noZeroInflate <- TRUE
-spikeCount <- 2
-Metadatafrozenidx <- 1:2
+nMetadata <- 2
+noZeroInflate <- FALSE
+spikeCount <- 1
+Metadatafrozenidx <- 1
+effectSize <- c(0.1, 0.5, 1, 5, 10, 50, 100)
+rep <- 1:20
 
-c(1, 10, 100, 1000, 10000) %>%
-  map(function(effectSize) {
+df_simSetup <- tidyr::crossing(
+  nSubjects,
+  nPerSubject,
+  nSamples,
+  nMicrobes,
+  spikeMicrobes,
+  nMetadata,
+  noZeroInflate,
+  spikeCount,
+  Metadatafrozenidx,
+  effectSize,
+  rep
+)
 
+
+# metadata ----------------------------------------------------------------
+l_metadata_null <- rep %>%
+  purrr::map(function(i_rep) {
+    rbind(rbinom(n = nSamples, size = 1, prob = 0.5),
+          rbinom(n = nSamples, size = 1, prob = 0.5))
+  })
+l_tb_metadata <- l_metadata_null %>%
+  purrr::map(function(metadata_null) {
+    metadata_null %>%
+      t() %>%
+      tibble::as_tibble() %>%
+      dplyr::mutate(Sample = paste0("Sample", 1:nSamples))
   })
 
-for (effectSize inc(1, 10, 100, 1000, 10000)) {
-  otu_count <- sparseDOSSA::sparseDOSSA(number_features = nMicrobes,
-                                   number_samples = nSamples,
-                                   UserMetadata = metadata_null,
-                                   Metadatafrozenidx = Metadatafrozenidx,
-                                   datasetCount = 1,
-                                   spikeCount = spikeCount %>% as.character,
-                                   spikeStrength = effectSize %>% as.character,
-                                   noZeroInflate = noZeroInflate,
-                                   percent_spiked = spikeMicrobes) %>%
-    extract_sparseDOSSA(add_libsize_var = T) %>%
-    `$`("features")
-  perc_zero <- mean(otu_count == 0)
-  distance <- otu %>%
-    otu_table(taxa_are_rows = T) %>%
-    phyloseq %>%
-    transform_sample_counts(function(x) x / sum(x)) %>%
-    phyloseq::distance(method = "bray")
-  adonis_fit <- adonis(distance ~ X1 + X2 + X3,
-                       data = metadata_null %>% t %>% data.frame,
-                       permutations = 2)
 
-}
+# simulation --------------------------------------------------------------
+l_simResults <- (1:nrow(df_simSetup)) %>%
+  purrr::map(function(i_iter) {
+    i_simSetup <- df_simSetup[i_iter, ]
+    otu_count <- sparseDOSSA::sparseDOSSA(number_features = i_simSetup$nMicrobes,
+                                          number_samples = i_simSetup$nSamples,
+                                          UserMetadata = l_metadata_null[[i_simSetup$rep]],
+                                          Metadatafrozenidx = i_simSetup$Metadatafrozenidx,
+                                          datasetCount = 1,
+                                          spikeCount = i_simSetup$spikeCount %>% as.character,
+                                          spikeStrength = i_simSetup$effectSize %>% as.character,
+                                          noZeroInflate = i_simSetup$noZeroInflate,
+                                          percent_spiked = i_simSetup$spikeMicrobes,
+                                          write_table = FALSE,
+                                          verbose = FALSE) %>%
+      MMUPHin::extract_sparseDOSSA(add_libsize_var = T) %>%
+      `$`("features")
+    return(list("otu_count" = otu_count,
+                "i_iter" = i_iter))
+  })
+save(l_simResults, file = "results/test_sparseDOSSA/simResults.RData")
 
+# Summarise differential abundance/variance -------------------------------
+tb_results <- l_simResults %>%
+  purrr::map(function(i_simResult) {
+    otu_count <- i_simResult$otu_count
+    i_iter <- i_simResult$i_iter
+    i_simSetup <- df_simSetup[i_iter, ]
+    effectSize <- i_simSetup$effectSize
+    rep <- i_simSetup$rep
+    tb_metadata <- l_tb_metadata[[rep]]
 
-metadata_null <- rbind(rbinom(n = nSamples, size = 1, prob = 0.5),
-                       rbinom(n = nSamples, size = 1, prob = 0.5),
-                       rbinom(n = nSamples, size = 1, prob = 0.5))
-metadata1 <- metadata_null
-metadata2 <- metadata_null
-metadata1[1, ] <- metadata1[1, ] * 10
-metadata2[2, ] <- metadata2[2, ] * 10
-# metadata2 <- metadata_null
-# metadata1 <- cbind(rbinom(n = nSamples, prob = 0.5, size = 1),
-#                    rbinom(n = nSamples, prob = 0.5, size = 1) * 5.5) %>% t
-# metadata2 <- cbind(rbinom(n = nSamples, prob = 0.5, size = 1) * 5.5,
-#                    rbinom(n = nSamples, prob = 0.5, size = 1) * 0.5) %>% t
-# metadata1 <- cbind(rnorm(n = nSamples),
-#                    rnorm(n = nSamples) * 10) %>% t
-# metadata2 <- cbind(rbinom(n = nSamples, prob = 0.5, size = 1) * 5.5,
-#                    rbinom(n = nSamples, prob = 0.5, size = 1) * 0.5) %>% t
+    otu_ra <- otu_count %>%
+      apply(2, function(x) x / sum(x))
+    tb_otu <- otu_ra %>%
+      t() %>%
+      as.data.frame() %>%
+      tibble::rownames_to_column("Sample") %>%
+      tidyr::gather(key = "feature",
+                    value = "relative abundance",
+                    -Sample)
+    tb_combined <- tb_otu %>%
+      dplyr::left_join(tb_metadata) %>%
+      dplyr::bind_cols(
+        i_simSetup %>%
+          slice(rep(1, nrow(tb_otu)))
+      ) %>%
+      mutate(`i Iteration` = i_iter)
+    return(tb_combined)
+  }) %>%
+  dplyr::bind_rows()
+df_plots <- tb_results %>%
+  dplyr::filter(feature %>% stringr::str_detect("_TP")) %>%
+  dplyr::group_by(feature, `effectSize`, V1, `i Iteration`, rep) %>%
+  dplyr::summarise(`Mean Abundance` = `relative abundance` %>% setdiff(0) %>% mean,
+                   `sd Abundance` = `relative abundance` %>% setdiff(0) %>% sd,
+                   `Mean Abundance with Zero` = `relative abundance` %>% mean,
+                   `Percent Zero` = mean(`relative abundance` == 0)) %>%
+  dplyr::ungroup() %>%
+  tidyr::gather(key = Statistic, value = Value,
+                `Mean Abundance`,
+                `sd Abundance`,
+                `Mean Abundance with Zero`,
+                `Percent Zero`) %>%
+  tidyr::unite("Group / Statistic", V1, Statistic) %>%
+  tidyr::spread(key = `Group / Statistic`, value = Value) %>%
+  dplyr::mutate(
+    `Mean Difference` = `1_Mean Abundance` - `0_Mean Abundance`,
+    `Overall Mean` = (`1_Mean Abundance` + `0_Mean Abundance`) / 2,
+    `sd ratio` = `1_sd Abundance` / `0_sd Abundance`,
+    `Overall sd` = sqrt((`1_sd Abundance`^2 + `0_sd Abundance`^2)/2),
+    `Mean Difference with Zero` = `1_Mean Abundance with Zero` - `0_Mean Abundance with Zero`,
+    `Overall Percent Zero` = (`1_Percent Zero` + `0_Percent Zero`) / 2
+    )
+plot1 <- df_plots %>%
+  tidyr::gather(key = `including zero?`, value = `Mean Difference`,
+         `Mean Difference`,
+         `Mean Difference with Zero`) %>%
+  dplyr::mutate(
+    `including zero?` = `including zero?` %>%
+      recode(
+        "Mean Difference" = "no",
+        "Mean Difference with Zero" = "yes"
+      )
+  ) %>%
+  ggplot2::ggplot(aes(x = `Overall Mean`, y = abs(`Mean Difference`))) +
+  ggplot2::geom_point(aes(color = `including zero?`, alpha = `including zero?`)) +
+  ggplot2::scale_color_manual(values = c("no" = "black",
+                                         "yes" = "grey")) +
+  ggplot2::scale_alpha_manual(values = c("no" = 1,
+                                         "yes" = 0.8)) +
+  ggplot2::facet_grid(. ~ `effectSize`) +
+  theme_bw() +
+  theme(legend.position=c(0,1),
+        legend.justification=c(0, 1))
+plot2 <- df_plots %>%
+  ggplot2::ggplot(aes(x = `Overall Mean`, y = log10(`sd ratio`))) +
+  ggplot2::geom_point() +
+  ggplot2::facet_grid(. ~ `effectSize`) +
+  theme_bw()
+plot3 <- df_plots %>%
+  ggplot2::ggplot(aes(x = `Overall Mean`, y = `Overall Percent Zero`)) +
+  ggplot2::geom_point() +
+  ggplot2::facet_grid(. ~ `effectSize`) +
+  theme_bw()
+library(cowplot)
+ggsave("results/test_sparseDOSSA/effectSize_vs_differentialAbundance.pdf",
+       cowplot::plot_grid(plot1, plot2, plot3, ncol = 1),
+       width = 20,
+       height = 12)
 
+# Summarise PERMANOVA R^2 statistic -------------------------------
+tb_results <- l_simResults %>%
+  purrr::map(function(i_simResult) {
+    otu_count <- i_simResult$otu_count
+    i_iter <- i_simResult$i_iter
+    i_simSetup <- df_simSetup[i_iter, ]
+    effectSize <- i_simSetup$effectSize
+    rep <- i_simSetup$rep
+    tb_metadata <- l_tb_metadata[[rep]]
 
-otu1 <- sparseDOSSA::sparseDOSSA(number_features = nMicrobes,
-                                 number_samples = nSamples,
-                                 UserMetadata = metadata1,
-                                 Metadatafrozenidx = 1:2,
-                                 datasetCount = 1,
-                                 spikeCount = spikeCount %>% as.character,
-                                 spikeStrength = effectSize %>% as.character,
-                                 noZeroInflate = noZeroInflate,
-                                 percent_spiked = spikeMicrobes) %>%
-  extract_sparseDOSSA(add_libsize_var = T) %>%
-  `$`("features")
-otu1_ra <- otu1 %>% apply(2, function(x) x / sum(x))
-median <- otu1_ra %>% apply(1, median)
-sd <- otu1_ra %>% apply(1, sd)
-zero <- apply(otu1 == 0, 1, mean)
-plot(median, sd)
-plot(median, zero)
-otu2 <- sparseDOSSA::sparseDOSSA(number_features = nMicrobes,
-                                 number_samples = nSamples,
-                                 UserMetadata = metadata2,
-                                 Metadatafrozenidx = 1,
-                                 datasetCount = 1,
-                                 spikeCount = spikeCount %>% as.character,
-                                 spikeStrength = effectSize %>% as.character,
-                                 noZeroInflate=noZeroInflate,
-                                 percent_spiked=0.2) %>%
-  extract_sparseDOSSA(add_libsize_var = T) %>%
-  `$`("features")
+    otu_ra <- otu_count %>%
+      apply(2, function(x) x / sum(x))
+    distance <- otu_ra %>%
+      phyloseq::otu_table(taxa_are_rows = T) %>%
+      phyloseq::phyloseq() %>%
+      phyloseq::distance(method = "bray")
+    adonis_fit <- vegan::adonis(distance ~ V1 + V2,
+                                data = tb_metadata,
+                                permutations = 2)
 
-library(phyloseq)
-library(vegan)
-distance1 <- otu1 %>%
-  otu_table(taxa_are_rows = T) %>%
-  phyloseq %>%
-  transform_sample_counts(function(x) x / sum(x)) %>%
-  phyloseq::distance(method = "bray")
-adonis(distance1 ~ X1 + X2 + X3,
-       data = metadata_null %>% t %>% data.frame,
-       permutations = 2)
-distance2 <- otu2 %>%
-  otu_table(taxa_are_rows = T) %>%
-  phyloseq %>%
-  transform_sample_counts(function(x) x / sum(x)) %>%
-  phyloseq::distance(method = "bray")
-adonis(distance2 ~ X1 + X2, data = metadata2 %>% t %>% data.frame, permutations = 2)
-if (is.null(DD) | inherits(DD, "try-error")) {
-  tryAgain = TRUE
-  infiniteloopcounter = infiniteloopcounter + 1
-} else {
-  tryAgain = FALSE
-}
-}
-if (infiniteloopcounter >= 5) {
-  stop("Consistent error found during simulation. Need to investigate cause.")
-}
-
-# Gather sparseDOSSA outputs
-sparsedossa_results <- as.data.frame(DD$OTU_count)
-rownames(sparsedossa_results)<-sparsedossa_results$X1
-sparsedossa_results<-sparsedossa_results[-1,-1]
-colnames(sparsedossa_results)<-paste('Sample', 1:ncol(sparsedossa_results), sep='')
-data<-as.matrix(sparsedossa_results[-c((nMetadata+1):(2*nMicrobes+nMetadata)),])
-data<-data.matrix(data)
-class(data) <- "numeric"
-truth<-c(unlist(DD$truth))
-truth<-truth[!stri_detect_fixed(truth,":")]
-truth<-truth[(5+nMetadata):length(truth)]
-truth<-as.data.frame(truth)
-significant_features<-as.vector(truth[seq(1, (as.numeric(spikeCount)+1)*(nMicrobes*spikeMicrobes), (as.numeric(spikeCount)+1)),])
+    adonis_fit$aov.tab %>%
+      as.data.frame() %>%
+      tibble::rownames_to_column("Variable") %>%
+      dplyr::bind_cols(i_simSetup %>%
+                         slice(rep(1, nrow(adonis_fit$aov.tab))))
+  }) %>%
+  dplyr::bind_rows()
+df_plots <- tb_results %>%
+  filter(Variable %in% c("V1", "V2"))
+plot <- df_plots %>%
+  ggplot(aes(x = Variable, y = R2)) +
+  geom_boxplot(outlier.shape = NA) +
+  facet_grid(.~effectSize) +
+  geom_point(position = position_jitter()) +
+  theme_bw()
+ggsave("results/test_sparseDOSSA/effectSize_vs_R2.pdf",
+       plot,
+       width = 12,
+       height = 4)
