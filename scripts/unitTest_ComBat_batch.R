@@ -2,7 +2,6 @@ rm(list = ls())
 source("R/sparseDOSSA_helpers.R")
 source("R/adjust_batch.R")
 source("R/helpers.R")
-library(sva)
 library(sparseDOSSA)
 library(tidyverse)
 
