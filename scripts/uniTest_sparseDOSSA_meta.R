@@ -69,6 +69,7 @@ l_simResults <- (1:nrow(df_simSetup)) %>%
     return(list("otu_count" = otu_count,
                 "i_iter" = i_iter))
   })
+save(l_metadata_null)
 save(l_simResults, file = "results/test_sparseDOSSA/simResults.RData")
 
 # Summarise differential abundance/variance -------------------------------
