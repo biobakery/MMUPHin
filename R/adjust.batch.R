@@ -1,15 +1,22 @@
-##################################################
-## What about weighted least square?
-##################################################
-adjust_batch <- function (dat,
-                          batch,
-                          mod = NULL,
-                          noZeroInflate = TRUE,
-                          pseudoCount = 0.5) {
+adjust.batch <- function(feature.count,
+                         batch,
+                         formula.adj = NULL,
+                         data = NULL,
+                         zero.inflation = TRUE,
+                         pseudo.count = 0.5,
+                         filtering = TRUE,
+                         verbose = TRUE) {
 
-  ##################################################
-  ## Some code to ensure dat is a count table
-  ##################################################
+  ## Ensure feature.count is a count table
+  otu.count <- as.matrix(otu.count)
+  if(any(otu.count < 0, na.rm = TRUE))
+    stop("Found negative values in the feature count table!")
+
+  ## Filter features
+  features.count <- feature.count[, ]
+
+  ## Filter samples with missing values
+
 
   ## Check for missing values
   if(any(is.na(dat)))
@@ -18,11 +25,8 @@ adjust_batch <- function (dat,
     stop("Found missing values in the batch variable!")
   if(any(is.na(mod)))
     stop("Found missing values in the covariates!")
-  ## Check that the dimensions agree with each other
 
-  ## filter features that are always zero
 
-  ## Check for features that are present at least in two samples
 
   ## Transform data for ComBat fit
   dat <- as.matrix(dat)
