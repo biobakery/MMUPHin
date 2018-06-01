@@ -15,11 +15,17 @@ adjust.batch <- function(feature.count,
   ## Filter features
   features.count <- feature.count[, ]
 
+  ## Construct covariate adjustment model matrix
+  mod <- model.matrix(formula.adj, data)
+
   ## Filter samples with missing values
+  if(ncol(feature.count) != length(batch) |
+     ncol(feature.count) != nrow(mod)
+     )
 
 
   ## Check for missing values
-  if(any(is.na(dat)))
+  if(any(is.na(feature.count)))
     stop("Found missing values in the feature table!")
   if(any(is.na(batch)))
     stop("Found missing values in the batch variable!")
@@ -29,8 +35,10 @@ adjust.batch <- function(feature.count,
 
 
   ## Transform data for ComBat fit
-  dat <- as.matrix(dat)
-  log.data <- log(apply(dat + pseudoCount, 2, function(x) x / sum(x)))
+  feature.count <- as.matrix(feature.count)
+  log.data <- log(apply(feature.count + pseudo.count,
+                        2,
+                        function(x) x / sum(x, na.rm - TRUE)))
 
   ## Summarise batch variable
   batch <- as.factor(batch)
@@ -68,13 +76,13 @@ adjust.batch <- function(feature.count,
   }
 
   ## Identify data features to adjust for
-  ind_data <- matrix(TRUE, nrow(dat), ncol(dat)) # which feature table values are zero
-  ind_gamma <- matrix(TRUE, nrow(dat), n.batch) # which batch X bug pairs are present
-  ind_feature <- rep(TRUE, length = nrow(dat)) # which features have enough information for adjustment
+  ind_data <- matrix(TRUE, nrow(feature.count), ncol(feature.count)) # which feature table values are zero
+  ind_gamma <- matrix(TRUE, nrow(feature.count), n.batch) # which batch X bug pairs are present
+  ind_feature <- rep(TRUE, length = nrow(feature.count)) # which features have enough information for adjustment
   ind_mod <- rep(TRUE, length = ncol(design) - n.batch) # All covariates are included
-  if(!noZeroInflate) {
-    for(i_feature in 1:nrow(dat)) {
-      ind_data[i_feature, ] <- dat[i_feature, ] != 0
+  if(!zero.inflation) {
+    for(i_feature in 1:nrow(feature.count)) {
+      ind_data[i_feature, ] <- feature.count[i_feature, ] != 0
       ind_gamma[i_feature, ] <- apply(batchmod[ind_data[i_feature, ], , drop = FALSE] == 1, 2, any)
       ind_feature[i_feature] <- {
         sum(ind_data[i_feature, ]) > ncol(design) - sum(!ind_gamma[i_feature, ]) && # should have at least one more sample than covariate
@@ -211,8 +219,8 @@ adjust.batch <- function(feature.count,
 
   adj.data <- exp(adj.data)
   adj.data.ra <- apply(adj.data, 2, function(x) x / sum(x))
-  adj.data.ra[dat == 0] <- 0
-  adj.data.count <- t(t(adj.data.ra) * apply(dat, 2, sum))
+  adj.data.ra[feature.count == 0] <- 0
+  adj.data.count <- t(t(adj.data.ra) * apply(feature.count, 2, sum))
 
   return(adj.data.count)
 }
