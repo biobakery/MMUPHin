@@ -75,6 +75,11 @@ adjust.batch <- function(feature.count,
 
   ## Transform data for ComBat fit
   lib.size <- apply(feature.count, 2, sum)
+  if(all(lib.size <= 1)) {
+    warning("Feature table appears to be on the relative abundance scale. ",
+            "Setting pseudo.count to be min(feature.count)/2! ")
+    pseudo.count <- min(setdiff(feature.count, 0)) / 2
+  }
   log.data <- log(apply(feature.count + pseudo.count,
                         2,
                         function(x) x / sum(x)))
