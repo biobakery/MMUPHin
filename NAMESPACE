@@ -2,4 +2,5 @@
 
 export(adjust.batch)
 export(extract_sparseDOSSA)
+export(lm.meta)
 importFrom(magrittr,"%>%")
