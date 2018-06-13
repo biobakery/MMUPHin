@@ -19,6 +19,7 @@
 #' @return a long-format data.frame of main exposure's individual and aggregated effect sizes
 #' @importFrom magrittr %>%
 #' @export
+#'
 lm.meta <- function(feature.count,
                     batch,
                     exposure,
@@ -64,7 +65,7 @@ lm.meta <- function(feature.count,
   }
 
   ## Construct exposure model
-  expomod <- model.matrix(~ exposure)[, -1]
+  expomod <- model.matrix(~ exposure)[, -1, drop = FALSE]
   nlvl.expo <- ncol(expomod)
   names.expo <- colnames(expomod)
 
@@ -186,36 +187,36 @@ lm.meta <- function(feature.count,
   if(verbose) message("After correction, found ", sum(results$p.adj, na.rm = TRUE),
                       " significant feature ~ exposure associations.")
 
-  if(forestplots & sum(results$p.adj, na.rm = TRUE) > 0) {
-    pdf(paste0(directory, "forestplots.pdf", width = 8, height = 1.5*nlvl.expo))
-    meta.fit <- for(i.feature in unique(results$feature)) {
-      for(i.exposure in unique(results$exposure)) {
-        i.results <- results %>%
-          dplyr::filter(feature %in% i.feature,
-                        exposure %in% i.exposure)
-        if(any(i.results$p.adj < 0.05))
-          i.results <- i.results %>%
-            dplyr::mutate(batch = factor(batch,
-                                         levels = c("Meta-Analysis Model",
-                                                    setdiff(batch, "Meta-Analysis Model"))
-            )
-            )
-          i.plot <- i.results %>%
-            ggplot2::ggplot(ggplot2::aes(x = beta,
-                                         y = batch,
-                                         xmin = beta - 1.96*sd,
-                                         xmax = beta + 1.96*sd)) +
-            ggplot2::geom_errorbarh(alpha=0.5, color="black", height = 0.3) +
-            ggplot2::geom_point() +
-            ggplot2::theme_bw() +
-            ggplot2::xlab("Effect Size") +
-            ggplot2::ylab("Study") +
-            ggplot2::ggtitle(paste0(i.feature, " ~ ", i.exposure))
-          print(i.plot)
-      }
-    }
-    dev.off()
-  }
+  # if(forestplots & sum(results$p.adj, na.rm = TRUE) > 0) {
+  #   pdf(paste0(directory, "forestplots.pdf", width = 8, height = 1.5*nlvl.expo))
+  #   meta.fit <- for(i.feature in unique(results$feature)) {
+  #     for(i.exposure in unique(results$exposure)) {
+  #       i.results <- results %>%
+  #         dplyr::filter(feature %in% i.feature,
+  #                       exposure %in% i.exposure)
+  #       if(any(i.results$p.adj < 0.05, na.rm = TRUE))
+  #         i.results <- i.results %>%
+  #           dplyr::mutate(batch = factor(batch,
+  #                                        levels = c("Meta-Analysis Model",
+  #                                                   setdiff(batch, "Meta-Analysis Model"))
+  #           )
+  #           )
+  #         i.plot <- i.results %>%
+  #           ggplot2::ggplot(ggplot2::aes(x = beta,
+  #                                        y = batch,
+  #                                        xmin = beta - 1.96*sd,
+  #                                        xmax = beta + 1.96*sd)) +
+  #           ggplot2::geom_errorbarh(alpha=0.5, color="black", height = 0.3) +
+  #           ggplot2::geom_point() +
+  #           ggplot2::theme_bw() +
+  #           ggplot2::xlab("Effect Size") +
+  #           ggplot2::ylab("Study") +
+  #           ggplot2::ggtitle(paste0(i.feature, " ~ ", i.exposure))
+  #         print(i.plot)
+  #     }
+  #   }
+  #   dev.off()
+  # }
 
   return(results)
 }
