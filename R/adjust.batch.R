@@ -5,7 +5,7 @@
 #' @param batch Variable indicating batch membership
 #' @param formula.adj Formula indicating additional covariate to adjust for
 #' in the batch correction model
-#' @param data.adj Data frame for covarites to adjust for.
+#' @param data Data frame for covarites to adjust for.
 #' @param zero.inflation Flag for whether or not a zero-inflated model should be run.
 #' Default to TRUE (zero-inflated model). If set to FALSE then vanilla ComBat
 #' (with parametric adjustment) will be performed.
@@ -24,7 +24,7 @@
 adjust.batch <- function(feature.count,
                          batch,
                          formula.adj = NULL,
-                         data.adj = NULL,
+                         data = NULL,
                          zero.inflation = TRUE,
                          pseudo.count = 0.5,
                          diagnostics = TRUE,
@@ -38,13 +38,13 @@ adjust.batch <- function(feature.count,
     stop("Found missing values in the feature table!")
   batch <- as.factor(batch)
   if(any(is.na(batch))) stop("Found missing values in the batch variable!")
-  data.adj <- as.data.frame(data.adj)
+  data <- as.data.frame(data)
 
   ## Data dimensions need to agree with each other
   if(ncol(feature.count) != length(batch)) {
     stop("Dimensions of feature table and batch variable do not agree!")
      } else if(!is.null(formula.adj)) {
-    if(ncol(feature.count) != nrow(data.adj))
+    if(ncol(feature.count) != nrow(data))
       stop("Dimensions of feature table and covariate table do not agree!")
      }
 
@@ -53,7 +53,7 @@ adjust.batch <- function(feature.count,
   ind.sample <- rep(TRUE, ncol(feature.count))
   if(!is.null(formula.adj)) {
     mod <- model.matrix(formula.adj,
-                        model.frame(~., data.adj, na.action = na.pass))
+                        model.frame(~., data, na.action = na.pass))
     if(any(is.na(mod))) warning("Found missing values in the covariate table; only fully observed records will be adjusted.")
     ind.sample <- !apply(is.na(mod), 1, any)
   }

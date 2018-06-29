@@ -14,4 +14,5 @@ Imports:
     phyloseq,
     stringi,
     magrittr,
-    stringr
+    stringr,
+    igraph

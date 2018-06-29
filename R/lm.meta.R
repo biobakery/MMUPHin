@@ -5,7 +5,7 @@
 #' @param exposure Primary exposure of interest
 #' @param formula.adj Formula indicating additional covariate to adjust for
 #' in the batch correction model
-#' @param data.adj Data frame for covarites to adjust for.
+#' @param data Data frame for covarites to adjust for.
 #' @param zero.inflation Flag for whether or not a zero-inflated model should be run.
 #' Default to TRUE (zero-inflated model). If set to FALSE then vanilla ComBat
 #' (with parametric adjustment) will be performed.
@@ -15,18 +15,17 @@
 #' Deafault to TRUE.
 #' @param directory Directory for generated forest plots
 #' @param verbose Flag for whether or not verbose modelling information should be printed.
-#' Default to yes.#'
+#' Default to yes.
 #' @return a long-format data.frame of main exposure's individual and aggregated effect sizes
 #' @importFrom magrittr %>%
 #' @export
 #'
 lm.meta <- function(feature.count,
                     batch,
-                    exposure,
+                    formula.exposure,
                     formula.adj = NULL,
-                    data.adj = NULL,
-                    method = "REML",
-                    zero.inflation = TRUE,
+                    data = NULL,
+                    zero.inflation = TRUE, # for Maaslin
                     pseudo.count = 0.5,
                     forestplots = TRUE,
                     directory = "./",
@@ -42,23 +41,23 @@ lm.meta <- function(feature.count,
     stop("Found missing values in the feature table!")
   batch <- as.factor(batch)
   if(any(is.na(batch))) stop("Found missing values in the batch variable!")
-  data.adj <- as.data.frame(data.adj)
+  data <- as.data.frame(data)
 
   ## Data dimensions need to agree with each other
   if(ncol(feature.count) != length(batch)) {
     stop("Dimensions of feature table and batch variable do not agree!")
   } else if(ncol(feature.count) != length(exposure)) {
     stop("Dimensions of feature table and exposure variable do not agree!")
-  }else if(!is.null(formula.adj)) {
-    if(ncol(feature.count) != nrow(data.adj))
+  }else if(ncol(feature.count) != nrow(data))
       stop("Dimensions of feature table and covariate table do not agree!")
-  }
+
+  ## Check for RE components in the formulae
 
   ## If specified, construct covariate adjustment table
   mod <- NULL
   if(!is.null(formula.adj)) {
     mod <- model.matrix(formula.adj,
-                        model.frame(~., data.adj, na.action = na.pass))
+                        model.frame(~., data, na.action = na.pass))
     check <- apply(mod, 2, function(x) all(x == 1, na.rm = TRUE) |
                      all(x == 0, na.rm = TRUE))
     mod <- mod[, !check]
@@ -74,7 +73,7 @@ lm.meta <- function(feature.count,
   ind.sample <- rep(TRUE, ncol(feature.count))
   if(any(is.na(design))) warning("Found missing values in the covariate table; only fully observed records will be included.")
   ind.sample <- !apply(is.na(design), 1, any)
-  if(qr(design[ind.sample, ])$rank < ncol(design[ind.sample, ]))
+  if(qr(design[ind.sample, , drop = FALSE])$rank < ncol(design[ind.sample, , drop = FALSE]))
     stop("The covariates are confounded!")
 
   ## Identify batch variables
@@ -220,3 +219,21 @@ lm.meta <- function(feature.count,
 
   return(results)
 }
+
+
+
+# model formula testing ---------------------------------------------------
+library(lme4)
+df.test <- data.frame(y = rnorm(100),
+                      x = rnorm(100),
+                      subj = sample.int(n = 4, size = 100, replace = TRUE))
+debugonce(lFormula)
+formula <- y ~ x + (1|subj)
+test <- model.frame(formula = y ~ x + (1 + x | subj),
+                       data = df.test)
+debugonce(lFormula)
+debugonce(subbars)
+test2 <- lme4::lFormula(formula = y ~ x + (1 + x | subj),
+                        data = df.test)
+
+
