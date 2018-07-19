@@ -4,7 +4,7 @@
 \alias{adjust.batch}
 \title{Zero-inflated Empirical Bayes Adjustment of Batch Effect in Feature Abundance Data}
 \usage{
-adjust.batch(feature.count, batch, formula.adj = NULL, data.adj = NULL,
+adjust.batch(feature.count, batch, formula.adj = NULL, data = NULL,
   zero.inflation = TRUE, pseudo.count = 0.5, diagnostics = TRUE,
   verbose = TRUE)
 }
@@ -16,7 +16,7 @@ adjust.batch(feature.count, batch, formula.adj = NULL, data.adj = NULL,
 \item{formula.adj}{Formula indicating additional covariate to adjust for
 in the batch correction model}
 
-\item{data.adj}{Data frame for covarites to adjust for.}
+\item{data}{Data frame for covarites to adjust for.}
 
 \item{zero.inflation}{Flag for whether or not a zero-inflated model should be run.
 Default to TRUE (zero-inflated model). If set to FALSE then vanilla ComBat

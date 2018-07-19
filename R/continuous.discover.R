@@ -1,4 +1,4 @@
-#' Main function for batch effect adjustment
+#' Main function for continuous structure discovery
 #'
 #' @param feature.count Feature x sample matrix of feature abundance
 #' @param batch Variable indicating batch membership
@@ -7,19 +7,15 @@
 #' @return A list of MMUPHin continuous score discovery training object
 #' @importFrom magrittr %>%
 #' @export
-#'
-#'
-feature.count <- otu_table(qe_biom_genus)@.Data
-batch <- sample_data(qe_biom_genus)$Project
-continuous.train <- function(feature.count,
-                    batch,
-                    pseudo.count = 0.5,
-                    var.perc.cutoff = 0.3,
-                    cor.cutoff = NULL,
-                    directory = "./",
-                    diagnostics = TRUE,
-                    verbose = TRUE,
-                    ...) {
+continuous.discover <- function(feature.count,
+                             batch,
+                             pseudo.count = 0.5,
+                             var.perc.cutoff = 0.3,
+                             cor.cutoff = NULL,
+                             directory = "./",
+                             diagnostics = TRUE,
+                             verbose = TRUE,
+                             ...) {
   ## Ensure data formatts are as expected
   feature.count <- as.matrix(feature.count)
   if(is.null(rownames(feature.count)))
@@ -97,9 +93,9 @@ continuous.train <- function(feature.count,
 
   # Calculate correlation matrix of loadings across datasets
   if(verbose) message("Calculating correlation between PCs across datasets...")
-  cor.matrix <- abs(cor(mat.data.loading, method = "pearson"))
+  cor.matrix <- abs(t(mat.data.loading) %*% mat.data.loading)
   if(!is.null(cor.cutoff)) {
-    cor.matrix <- (cor.matrix > cor.cutoff) * 1
+    cor.matrix[cor.matrix < cor.cutoff] <- 0
   }
 
   # Create igraph graph object
@@ -111,7 +107,7 @@ continuous.train <- function(feature.count,
   if(verbose) message("Performing network clustering...")
   pc.cluster <- igraph::cluster_fast_greedy(pc.graph)
   size.communities <- igraph::sizes(pc.cluster)
-  if(all(size.communities) < 2) {
+  if(all(size.communities < 2)) {
     warning("No clusters found in the PC network!\n",
             "Consider lowering the value of cor.cutoff.")
     return(NULL)
@@ -125,7 +121,7 @@ continuous.train <- function(feature.count,
                              function(i) {
                                loading.tmp <- mat.data.loading[, membership.loading == i]
                                for(j in (2:ncol(loading.tmp))) {
-                                 if (cor(loading.tmp[, 1], loading.tmp[, j]) < 0)
+                                 if (loading.tmp[, 1] %*% loading.tmp[, j] < 0)
                                    loading.tmp[, j] <- -loading.tmp[, j]
                                }
                                apply(loading.tmp,
@@ -137,6 +133,19 @@ continuous.train <- function(feature.count,
     apply(abs(cor(mat.cons.loading, loadings)), 1, max)
   })
 
+  pc.graph.tmp <- pc.graph %>%
+    delete.vertices(
+      V(pc.graph)[membership(pc.cluster) %in%
+                    (names(sizes(pc.cluster))[sizes(pc.cluster) == 1] %>% as.numeric)]
+    )
+  list.membership.tmp <- membership(pc.cluster)[names(V(pc.graph.tmp))]
+  list.membership.tmp <- unique(list.membership.tmp) %>%
+    lapply(function(x) names(list.membership.tmp)[list.membership.tmp == x])
+  plot.igraph(pc.graph.tmp, mark.groups = list.membership.tmp,
+              vertex.size = degree(pc.graph.tmp) / max(degree(pc.graph.tmp)) * 15,
+              edge.width = E(pc.graph.tmp)$weight * 10)
+  pc.cluster.tmp <- igraph::cluster_fast_greedy(pc.graph.tmp)
+  plot(pc.cluster.tmp, pc.graph.tmp)
   # Visualization
   pdf(paste0(directory, "network_communities.pdf"),
       width = 10,
@@ -169,7 +178,7 @@ continuous.train <- function(feature.count,
   }
 
   list(
-    consensus.loading = mat.cons.loading[, size.communities > 1],
+    consensus.loading = mat.cons.loading,
     membership = lapply((1:length(size.communities))[size.communities > 1],
                         function(i) colnames(mat.data.loading)[igraph::membership(pc.cluster) == i]),
     mat.cor = mat.cor.vali

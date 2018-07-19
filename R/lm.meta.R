@@ -22,8 +22,9 @@
 #'
 lm.meta <- function(feature.count,
                     batch,
-                    formula.exposure,
+                    exposure,
                     formula.adj = NULL,
+                    re.exposure = FALSE,
                     data = NULL,
                     zero.inflation = TRUE, # for Maaslin
                     pseudo.count = 0.5,
@@ -219,21 +220,3 @@ lm.meta <- function(feature.count,
 
   return(results)
 }
-
-
-
-# model formula testing ---------------------------------------------------
-library(lme4)
-df.test <- data.frame(y = rnorm(100),
-                      x = rnorm(100),
-                      subj = sample.int(n = 4, size = 100, replace = TRUE))
-debugonce(lFormula)
-formula <- y ~ x + (1|subj)
-test <- model.frame(formula = y ~ x + (1 + x | subj),
-                       data = df.test)
-debugonce(lFormula)
-debugonce(subbars)
-test2 <- lme4::lFormula(formula = y ~ x + (1 + x | subj),
-                        data = df.test)
-
-
