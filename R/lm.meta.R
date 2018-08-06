@@ -127,6 +127,7 @@ lm.meta <- function(feature.count,
   # Fit fixed/random effects models
   if(verbose) message("Fitting meta-analysis model.")
   exposure.values <- unique(l.Maaslin.fit[[1]]$Value)
+  results <- list()
   for(exposure.value in exposure.values) {
     i.result <- data.frame(Feature = rownames(feature.count),
                            Exposure = exposure.value,
@@ -150,7 +151,6 @@ lm.meta <- function(feature.count,
     })
     rownames(betas) <- rownames(sds) <- rownames(feature.count)
     ind.feature <- apply(!is.na(betas) & !is.na(sds), 1, sum) >= 2
-    results <- list()
     for(feature in rownames(feature.count)) {
       if(ind.feature[feature]) {
         tmp.rma.fit <- metafor::rma.uni(yi = betas[feature, ],
