@@ -4,19 +4,19 @@
 \alias{adjust.batch}
 \title{Zero-inflated Empirical Bayes Adjustment of Batch Effect in Feature Abundance Data}
 \usage{
-adjust.batch(feature.count, batch, formula.adj = NULL, data = NULL,
+adjust.batch(feature.count, batch, covariates = NULL, data,
   zero.inflation = TRUE, pseudo.count = 0.5, diagnostics = TRUE,
   verbose = TRUE)
 }
 \arguments{
 \item{feature.count}{Feature x sample matrix of feature abundance (counts)}
 
-\item{batch}{Variable indicating batch membership}
+\item{batch}{Name of batch variable}
 
-\item{formula.adj}{Formula indicating additional covariate to adjust for
+\item{covariates}{Character variables for additional covariates for adjustment
 in the batch correction model}
 
-\item{data}{Data frame for covarites to adjust for.}
+\item{data}{Data frame for metadata.}
 
 \item{zero.inflation}{Flag for whether or not a zero-inflated model should be run.
 Default to TRUE (zero-inflated model). If set to FALSE then vanilla ComBat

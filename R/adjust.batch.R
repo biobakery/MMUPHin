@@ -2,10 +2,10 @@
 #' Zero-inflated Empirical Bayes Adjustment of Batch Effect in Feature Abundance Data
 #'
 #' @param feature.count Feature x sample matrix of feature abundance (counts)
-#' @param batch Variable indicating batch membership
-#' @param formula.adj Formula indicating additional covariate to adjust for
+#' @param batch Name of batch variable
+#' @param covariates Character variables for additional covariates for adjustment
 #' in the batch correction model
-#' @param data Data frame for covarites to adjust for.
+#' @param data Data frame for metadata.
 #' @param zero.inflation Flag for whether or not a zero-inflated model should be run.
 #' Default to TRUE (zero-inflated model). If set to FALSE then vanilla ComBat
 #' (with parametric adjustment) will be performed.
@@ -17,14 +17,13 @@
 #' Default to yes.
 #'
 #' @return A feature x sample matrix of adjusted feature abundance.
-#' @importFrom magrittr %>%
 #' @export
 #'
 #' @examples
 adjust.batch <- function(feature.count,
                          batch,
-                         formula.adj = NULL,
-                         data = NULL,
+                         covariates = NULL,
+                         data,
                          zero.inflation = TRUE,
                          pseudo.count = 0.5,
                          diagnostics = TRUE,
@@ -36,24 +35,38 @@ adjust.batch <- function(feature.count,
     stop("Found negative values in the feature table!")
   if(any(is.na(feature.count)))
     stop("Found missing values in the feature table!")
+  data <- as.data.frame(data)
+  if(!all(c(batch, covariates) %in% names(data)))
+    stop("Batch/covariate variable not found in data.")
+  batch <- data[, batch]
   batch <- as.factor(batch)
   if(any(is.na(batch))) stop("Found missing values in the batch variable!")
-  data <- as.data.frame(data)
 
   ## Data dimensions need to agree with each other
-  if(ncol(feature.count) != length(batch)) {
-    stop("Dimensions of feature table and batch variable do not agree!")
-     } else if(!is.null(formula.adj)) {
-    if(ncol(feature.count) != nrow(data))
-      stop("Dimensions of feature table and covariate table do not agree!")
-     }
+  if(ncol(feature.count) != nrow(data))
+    stop("Dimensions of feature table and metadata table do not agree!")
+
+  ## Check that sample names agree between the feature and metadata table
+  ## And assign row and column names if emppty
+  ## Shouldn't happen if the data is imported through interface
+  if(is.null(colnames(feature.count))) colnames(feature.count) <-
+    paste0("Sample",
+           1:ncol(feature.count))
+  if(is.null(rownames(feature.count))) rownames(feature.count) <-
+    paste0("Feature",
+           1:nrow(feature.count))
+  if(is.null(rownames(data))) rownames(data) <-
+    paste0("Sample",
+           1:ncol(feature.count))
+  if(any(colnames(feature.count) != rownames(data)))
+    stop("Sample names in feature.count and data don't agree!")
 
   ## If specified, construct covariate adjustment table
   mod <- NULL
   ind.sample <- rep(TRUE, ncol(feature.count))
-  if(!is.null(formula.adj)) {
-    mod <- model.matrix(formula.adj,
-                        model.frame(~., data, na.action = na.pass))
+  if(!is.null(covariates)) {
+    mod <- model.matrix(~.,
+                        model.frame(~., data[, covariates, drop = FALSE], na.action = na.pass))
     if(any(is.na(mod))) warning("Found missing values in the covariate table; only fully observed records will be adjusted.")
     ind.sample <- !apply(is.na(mod), 1, any)
   }
@@ -235,51 +248,41 @@ adjust.batch <- function(feature.count,
 
   ## If required, generate diagnostic plots
   if(diagnostics) {
-    df.plot <- data.frame(gamma.hat = gamma.hat %>% as.vector,
-                          gamma.star = gamma.star %>%  as.vector)
-    plot1 <- ggplot2::ggplot(df.plot, aes(x = gamma.hat, y = gamma.star)) +
+    df.plot <- data.frame(gamma.hat = as.vector(gamma.hat),
+                          gamma.star = as.vector(gamma.star))
+    plot1 <- ggplot2::ggplot(df.plot, ggplot2::aes(x = gamma.hat, y = gamma.star)) +
       ggplot2::geom_point() +
       ggplot2::geom_abline(intercept = 0, slope = 1) +
       ggplot2::theme_bw() +
-      ggtitle("Shrinkage of batch mean parameters")
+      ggplot2::ggtitle("Shrinkage of batch mean parameters")
 
-    df.ra <- map2_df(
-      list(feature.count, adj.feature.count),
-      c("Original", "Adjusted"),
-      function(i.count.table, i.normalization) {
-        i.count.table %>%
-          apply(2, function(x) x / sum(x)) %>%
-          t() %>%
-          as.data.frame() %>%
-          tibble::rownames_to_column("Sample") %>%
-          tidyr::gather(key = "feature",
-                        value = "relative abundance",
-                        -Sample) %>%
-          dplyr::mutate(Adjustment = i.normalization)
-      }
-    ) %>%
-      dplyr::bind_rows() %>%
-      dplyr::mutate(Adjustment = Adjustment %>%
-                      factor(levels = c("Original", "Adjusted")))
-    df.batch <- data.frame(batch = batch, Sample = colnames(feature.count),
+    df.ra <- as.data.frame(t(apply(feature.count, 2, function(x) x / sum(x))))
+    df.ra$Sample <- rownames(df.ra)
+    df.ra$Adjustment <- "Original"
+    df.ra.norm <- as.data.frame(t(apply(adj.feature.count, 2, function(x) x / sum(x))))
+    df.ra.norm$Sample <- rownames(df.ra.norm)
+    df.ra.norm$Adjustment <- "Adjusted"
+    df.plot <- tidyr::gather(rbind(df.ra, df.ra.norm),
+                             key = "feature",
+                             value = "relative abundance",
+                             -Sample, -Adjustment)
+    df.batch <- data.frame(batch = batch,
+                           Sample = df.ra$Sample,
                            stringsAsFactors = FALSE)
-    df.plot <- df.ra %>%
-      dplyr::left_join(df.batch, by = "Sample") %>%
-      dplyr::group_by(feature) %>%
-      dplyr::mutate(`Overall Mean` = mean(`relative abundance`[Adjustment == "Original"])) %>%
-      dplyr::ungroup() %>%
-      dplyr::group_by(Adjustment, feature, batch, `Overall Mean`) %>%
-      dplyr::summarise(`Batch Mean` = mean(`relative abundance`)) %>%
-      dplyr::ungroup()
-    plot2 <- df.plot %>%
-      ggplot2::ggplot(aes(x = `Overall Mean`,
-                          y = `Batch Mean`)) +
-      ggplot2::geom_point(aes(group = paste0(Adjustment, feature),
-                              color = Adjustment),
-                          position = position_dodge(width = max(df.plot$`Overall Mean`) / 100)) +
-      ggplot2::geom_line(aes(group = paste0(Adjustment, feature),
-                             color = Adjustment),
-                         position = position_dodge(width = max(df.plot$`Overall Mean`) / 100)) +
+    df.plot <- dplyr::left_join(df.plot, df.batch, by = "Sample")
+    df.plot <- dplyr::ungroup(dplyr::mutate(dplyr::group_by(df.plot, feature),
+                                            `Overall Mean` = mean(`relative abundance`[Adjustment == "Original"])))
+    df.plot <- dplyr::ungroup(dplyr::summarise(dplyr::group_by(df.plot, Adjustment, feature, batch, `Overall Mean`),
+                                               `Batch Mean` = mean(`relative abundance`)))
+    df.plot$Adjustment <- factor(df.plot$Adjustment, levels = c("Original", "Adjusted"))
+    plot2 <- ggplot2::ggplot(df.plot, ggplot2::aes(x = `Overall Mean`,
+                                                   y = `Batch Mean`)) +
+      ggplot2::geom_point(ggplot2::aes(group = paste0(Adjustment, feature),
+                                       color = Adjustment),
+                          position = ggplot2::position_dodge(width = max(df.plot$`Overall Mean`) / 100)) +
+      ggplot2::geom_line(ggplot2::aes(group = paste0(Adjustment, feature),
+                                      color = Adjustment),
+                         position = ggplot2::position_dodge(width = max(df.plot$`Overall Mean`) / 100)) +
       ggplot2::geom_abline(intercept = 0, slope = 1) +
       ggplot2::scale_color_manual(values = c("Original" = "black", "Adjusted" = "red")) +
       ggplot2::theme_bw() +

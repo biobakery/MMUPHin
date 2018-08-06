@@ -12,7 +12,9 @@ LazyData: true
 RoxygenNote: 6.0.1
 Imports:
     phyloseq,
-    stringi,
-    magrittr,
-    stringr,
-    igraph
+    Maaslin,
+    igraph,
+    tidyr,
+    dplyr,
+    stringr
+    

@@ -4,36 +4,34 @@
 \alias{lm.meta}
 \title{Main function for batch effect adjustment}
 \usage{
-lm.meta(feature.count, batch, formula.exposure, formula.adj = NULL,
-  data = NULL, zero.inflation = TRUE, pseudo.count = 0.5,
-  forestplots = TRUE, directory = "./", verbose = TRUE, ...)
+lm.meta(feature.count, batch, exposure, covariates = NULL,
+  covariates.random = NULL, data, zero.inflation = FALSE,
+  forest.plots = TRUE, directory = "./MMUPHin_lm.meta/", verbose = TRUE,
+  ...)
 }
 \arguments{
 \item{feature.count}{Feature x sample matrix of feature abundance}
 
-\item{batch}{Variable indicating batch membership}
+\item{batch}{Name of the batch variable}
 
-\item{formula.adj}{Formula indicating additional covariate to adjust for
-in the batch correction model}
+\item{exposure}{Name of the primary exposure of interest variable}
 
-\item{data}{Data frame for covarites to adjust for.}
+\item{covariates}{Additional covariates for adjustment in individual regressions}
 
-\item{zero.inflation}{Flag for whether or not a zero-inflated model should be run.
-Default to TRUE (zero-inflated model). If set to FALSE then vanilla ComBat
-(with parametric adjustment) will be performed.}
+\item{covariates.random}{Group indicator for random effects}
 
-\item{pseudo.count}{Pseudo count to add to the count table before log-transformation. Default
-to 0.5.}
+\item{data}{Data frame for metadata.}
 
-\item{directory}{Directory for generated forest plots}
+\item{zero.inflation}{Flag for whether or not a zero-inflated regression model should be run.
+Default to TRUE (zero-inflated model).}
+
+\item{forest.plots}{Flag for whether or not forest plots figures should be generated.
+Deafault to TRUE.}
+
+\item{directory}{Directory for Maaslin output/generated forest plots}
 
 \item{verbose}{Flag for whether or not verbose modelling information should be printed.
 Default to yes.}
-
-\item{exposure}{Primary exposure of interest}
-
-\item{forest}{Flag for whether or not forest plots figures should be generated.
-Deafault to TRUE.}
 }
 \value{
 a long-format data.frame of main exposure's individual and aggregated effect sizes

@@ -66,3 +66,143 @@ postvar <- function(sum2,n,a,b){
   (.5*sum2 + b) / (n/2 + a - 1)
 }
 
+Maaslin.wrapper <- function(taxa,
+                            metadata,
+                            variables,
+                            covariates.random = NULL,
+                            directory = "./",
+                            ...) {
+  # Specify files
+  conf.file <- file.path(directory, "data.conf")
+  data.file.tsv <- file.path(directory, "data.tsv")
+  output.file <- file.path(directory, "output.txt")
+
+  # Create temporary feature/sample/covariate names to avoid
+  # Weird scenarios
+  taxa.rename <- taxa
+  metadata.rename <- metadata[, c(variables, covariates.random), drop = FALSE]
+  taxa.names.rename <- rename.Maaslin(rownames(taxa), prefix = "T")
+  sample.names.rename <- rename.Maaslin(colnames(taxa), prefix = "S")
+  variables.rename <- rename.Maaslin(variables, prefix = "X")
+  covariates.random.rename <- rename.Maaslin(covariates.random, prefix = "RX")
+  dimnames(taxa.rename) <- list(taxa.names.rename, sample.names.rename)
+  dimnames(metadata.rename) <- list(sample.names.rename,
+                                    c(variables.rename,
+                                      covariates.random.rename))
+  # Write Maaslin files
+  write.config(t(taxa.rename),
+               c(variables.rename,
+                 covariates.random.rename),
+               conf.file)
+  write.data(t(taxa.rename), metadata.rename,
+             c(variables.rename, covariates.random.rename),
+             data.file.tsv)
+
+  # Run the Maaslin command
+  Maaslin::Maaslin(strInputTSV = data.file.tsv,
+                   strInputConfig = conf.file,
+                   strOutputDIR = directory,
+                   strRandomCovariates = covariates.random.rename,
+                   dMinAbd=0,
+                   dMinSamp=0,
+                   dSignificanceLevel=1,
+                   ...)
+
+  # Read Maaslin results
+  table.taxa.rename <-
+    data.frame(Feature = names(taxa.names.rename),
+               Feature.rename = taxa.names.rename,
+               stringsAsFactors = FALSE)
+  res.rename <- read.Maaslin(directory)
+  res <- list()
+  for(variable in variables) {
+    if(variables.rename[variable] %in% names(res.rename)) {
+      i.result.rename <- res.rename[[variables.rename[variable]]]
+      i.lvls <- unique(gsub(variables.rename[variable], "", i.result.rename$Value, fixed = TRUE))
+      i.table.taxa.rename <- expand.grid(Feature.rename = taxa.names.rename,
+                                         Value = paste0(variables.rename[variable],
+                                                        i.lvls),
+                                         stringsAsFactors = FALSE)
+      i.table.taxa.rename <- dplyr::left_join(i.table.taxa.rename, table.taxa.rename,
+                                              by = "Feature.rename")
+      i.result <- dplyr::left_join(i.table.taxa.rename,
+                                   i.result.rename,
+                                   by = c("Feature.rename" = "Feature",
+                                          "Value" = "Value"))
+      i.result$Value <- gsub(paste0("^", variables.rename[variable]),
+                             variable,
+                             i.result$Value)
+      i.result$Variable <- variable
+      i.result <- i.result[, c("Variable",
+                               "Feature",
+                               "Value",
+                               "Coefficient",
+                               "N",
+                               "N.not.0",
+                               "P.value",
+                               "Q.value")]
+
+    } else {
+      i.result <- data.frame(
+        Variable = variable,
+        Feature = names(taxa.names.rename),
+        Value = NA,
+        Coefficient = NA,
+        N = NA,
+        N.not.0 = NA,
+        P.value = NA,
+        Q.value = NA
+      )
+    }
+    i.result$Standard.error <- get.se.Maaslin(i.result$Coefficient, i.result$P.value)
+    res[[variable]] <- i.result
+  }
+
+  return(res)
+}
+
+write.config <- function(taxa, variables, filename){
+  template <-
+    "Matrix: Metadata
+  Read_PCL_Rows: %s-%s
+
+  Matrix: Abundance
+  Read_PCL_Rows: %s-"
+
+  cat(sprintf(template,
+              variables[1],
+              variables[length(variables)],
+              colnames(taxa)[1]),
+      file = filename)
+}
+
+write.data <- function(taxa, metadata, variables, filename){
+  meta <- as.matrix(metadata[, variables, drop = FALSE])
+  otu <- as.matrix(taxa)
+  header <- matrix(rownames(taxa), ncol = 1, dimnames = list(NULL, "ID"))
+
+  mat <- cbind(header, meta, otu)
+
+  write.table(mat, sep = "\t", row.names = F, col.names = T, quote = F, file = filename)
+}
+
+read.Maaslin <- function(dir){
+  files <- dir(dir, pattern = "-[A-Za-z0-9_]+.txt$", full.names = T)
+  res <- list()
+  for(file in files){
+    variable <- stringr::str_match(file, "-([A-Za-z0-9_]+).txt$")[2]
+    res[[variable]] <- read.table(file, sep = "\t", header = T, stringsAsFactors = FALSE)
+  }
+  return(res)
+}
+
+rename.Maaslin <- function(old.names, prefix) {
+  if(is.null(old.names)) return(NULL)
+  new.names <- paste0(prefix, seq_along(old.names))
+  names(new.names) <- old.names
+  return(new.names)
+}
+
+get.se.Maaslin <- function(coefficient, p) {
+  abs(coefficient / qnorm(p/2))
+}
