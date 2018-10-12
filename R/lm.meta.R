@@ -103,6 +103,7 @@ lm.meta <- function(feature.count,
   l.Maaslin.fit <- list()
   for(i in 1:n.batch) {
     i.batch <- lvl.batch[i]
+    if(verbose) message("Fitting Maaslin on batch ", i.batch, "...")
     i.feature.count <- feature.count[, batch == i.batch]
     i.data <- data[batch == i.batch, ]
     i.covariates.random <- covariates.random

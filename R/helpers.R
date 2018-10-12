@@ -99,15 +99,16 @@ Maaslin.wrapper <- function(taxa,
              data.file.tsv)
 
   # Run the Maaslin command
-  Maaslin::Maaslin(strInputTSV = data.file.tsv,
-                   strInputConfig = conf.file,
-                   strOutputDIR = directory,
-                   strRandomCovariates = covariates.random.rename,
-                   dMinAbd=0,
-                   dMinSamp=0,
-                   dSignificanceLevel=1,
-                   ...)
-
+  log.Maaslin <- suppressWarnings(capture.output(Maaslin::Maaslin(strInputTSV = data.file.tsv,
+                                                   strInputConfig = conf.file,
+                                                   strOutputDIR = directory,
+                                                   strRandomCovariates = covariates.random.rename,
+                                                   dMinAbd=0,
+                                                   dMinSamp=0,
+                                                   dSignificanceLevel=1,
+                                                   ...)))
+  cat(paste(log.Maaslin, collapse = "\n"),
+      file = file.path(directory, "Maaslin.log"))
   # Read Maaslin results
   table.taxa.rename <-
     data.frame(Feature = names(taxa.names.rename),
@@ -204,5 +205,7 @@ rename.Maaslin <- function(old.names, prefix) {
 }
 
 get.se.Maaslin <- function(coefficient, p) {
-  abs(coefficient / qnorm(p/2))
+  ifelse(p != 1,
+         abs(coefficient / qnorm(p/2)),
+         NA)
 }
