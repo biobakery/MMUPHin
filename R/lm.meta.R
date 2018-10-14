@@ -23,7 +23,9 @@ lm.meta <- function(feature.count,
                     covariates = NULL,
                     covariates.random = NULL,
                     data,
-                    zero.inflation = FALSE, # for Maaslin
+                    normalization = "TSS",
+                    transform = "AST",
+                    analysis_method = "LM",
                     forest.plots = TRUE,
                     directory = "./MMUPHin_lm.meta/",
                     verbose = TRUE,
@@ -112,14 +114,15 @@ lm.meta <- function(feature.count,
         i.covariates.random <- covariates.random[ind.random[lvl.batch == i.batch, ]]
     i.directory.Maaslin <- paste0(directory.Maaslin, i.batch)
     dir.create(i.directory.Maaslin)
-    Maaslin.fit <- Maaslin.wrapper(
+    Maaslin.fit <- Maaslin2.wrapper(
       taxa = i.feature.count,
       metadata = i.data,
       variables = c(exposure, covariates),
       covariates.random = i.covariates.random,
       directory = i.directory.Maaslin,
-      strModelSelection = "none",
-      fZeroInflated = zero.inflation,
+      normalization = normalization,
+      analysis_method = analysis_method,
+      verbose = verbose,
       ...
     )
     l.Maaslin.fit[[i]] <- Maaslin.fit[[exposure]]

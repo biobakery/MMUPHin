@@ -13,6 +13,7 @@ RoxygenNote: 6.0.1
 Imports:
     phyloseq,
     Maaslin,
+    Maaslin2,
     igraph,
     tidyr,
     dplyr,
