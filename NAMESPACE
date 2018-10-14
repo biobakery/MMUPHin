@@ -2,4 +2,3 @@
 
 export(adjust.batch)
 export(lm.meta)
-import(Maaslin)

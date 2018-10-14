@@ -12,10 +12,11 @@ LazyData: true
 RoxygenNote: 6.0.1
 Imports:
     phyloseq,
-    Maaslin,
-    Maaslin2,
     igraph,
     tidyr,
     dplyr,
-    stringr
+    stringr,
+    ggplot2
+Depends:
+    Maaslin2
     

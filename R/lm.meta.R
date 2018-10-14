@@ -6,15 +6,15 @@
 #' @param covariates Additional covariates for adjustment in individual regressions
 #' @param covariates.random Group indicator for random effects
 #' @param data Data frame for metadata.
-#' @param zero.inflation Flag for whether or not a zero-inflated regression model should be run.
-#' Default to TRUE (zero-inflated model).
+#' @param normalization Normalization parameter for Maaslin2
+#' @param transform Transformation parameter for Maaslin2
+#' @param analysis_method Model parameter for Maaslin2
 #' @param forest.plots Flag for whether or not forest plots figures should be generated.
 #' Deafault to TRUE.
 #' @param directory Directory for Maaslin output/generated forest plots
 #' @param verbose Flag for whether or not verbose modelling information should be printed.
 #' Default to yes.
-#' @return a long-format data.frame of main exposure's individual and aggregated effect sizes
-#' @import Maaslin
+#' @return a list
 #' @export
 #'
 lm.meta <- function(feature.count,
@@ -28,8 +28,7 @@ lm.meta <- function(feature.count,
                     analysis_method = "LM",
                     forest.plots = TRUE,
                     directory = "./MMUPHin_lm.meta/",
-                    verbose = TRUE,
-                    ...) {
+                    verbose = TRUE) {
   ### Ensure data formatts are as expected
   feature.count <- as.matrix(feature.count)
   if(any(feature.count < 0, na.rm = TRUE))
@@ -105,7 +104,7 @@ lm.meta <- function(feature.count,
   l.Maaslin.fit <- list()
   for(i in 1:n.batch) {
     i.batch <- lvl.batch[i]
-    if(verbose) message("Fitting Maaslin on batch ", i.batch, "...")
+    if(verbose) message("Fitting Maaslin2 on batch ", i.batch, "...")
     i.feature.count <- feature.count[, batch == i.batch]
     i.data <- data[batch == i.batch, ]
     i.covariates.random <- covariates.random
@@ -121,17 +120,20 @@ lm.meta <- function(feature.count,
       covariates.random = i.covariates.random,
       directory = i.directory.Maaslin,
       normalization = normalization,
-      analysis_method = analysis_method,
-      verbose = verbose,
-      ...
+      analysis_method = analysis_method
     )
     l.Maaslin.fit[[i]] <- Maaslin.fit[[exposure]]
+    l.Maaslin.fit[[i]]$batch <- i.batch
   }
+  ind.results <- Reduce("rbind", l.Maaslin.fit)
+  ind.results <- dplyr::arrange(ind.results, Feature, Value, batch)
 
   # Fit fixed/random effects models
   if(verbose) message("Fitting meta-analysis model.")
-  exposure.values <- unique(l.Maaslin.fit[[1]]$Value)
-  results <- list()
+  exposure.values <- unique(unlist(
+    lapply(l.Maaslin.fit, function(i.fit) i.fit$Value)
+    ))
+  meta.results <- list()
   for(exposure.value in exposure.values) {
     i.result <- data.frame(Feature = rownames(feature.count),
                            Exposure = exposure.value,
@@ -178,8 +180,9 @@ lm.meta <- function(feature.count,
     dev.off()
     i.result$P.bonf <- p.adjust(i.result$P.val, method = "bonf")
     i.result$Q.fdr <- p.adjust(i.result$P.val, method = "fdr")
-    results[[exposure.value]] <- i.result
+
+    meta.results[[exposure.value]] <- i.result
   }
 
-  return(results)
+  return(list(meta.results = meta.results, ind.results = ind.results))
 }

@@ -5,9 +5,9 @@
 \title{Main function for batch effect adjustment}
 \usage{
 lm.meta(feature.count, batch, exposure, covariates = NULL,
-  covariates.random = NULL, data, zero.inflation = FALSE,
-  forest.plots = TRUE, directory = "./MMUPHin_lm.meta/", verbose = TRUE,
-  ...)
+  covariates.random = NULL, data, normalization = "TSS",
+  transform = "AST", analysis_method = "LM", forest.plots = TRUE,
+  directory = "./MMUPHin_lm.meta/", verbose = TRUE)
 }
 \arguments{
 \item{feature.count}{Feature x sample matrix of feature abundance}
@@ -22,8 +22,11 @@ lm.meta(feature.count, batch, exposure, covariates = NULL,
 
 \item{data}{Data frame for metadata.}
 
-\item{zero.inflation}{Flag for whether or not a zero-inflated regression model should be run.
-Default to TRUE (zero-inflated model).}
+\item{normalization}{Normalization parameter for Maaslin2}
+
+\item{transform}{Transformation parameter for Maaslin2}
+
+\item{analysis_method}{Model parameter for Maaslin2}
 
 \item{forest.plots}{Flag for whether or not forest plots figures should be generated.
 Deafault to TRUE.}
@@ -34,7 +37,7 @@ Deafault to TRUE.}
 Default to yes.}
 }
 \value{
-a long-format data.frame of main exposure's individual and aggregated effect sizes
+a list
 }
 \description{
 Main function for batch effect adjustment
