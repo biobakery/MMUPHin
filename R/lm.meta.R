@@ -153,7 +153,7 @@ lm.meta <- function(feature.count,
       Maaslin.fit[Maaslin.fit$Value == exposure.value, "Coefficient"]
     })
     sds <- sapply(l.Maaslin.fit, function(Maaslin.fit) {
-      Maaslin.fit[Maaslin.fit$Value == exposure.value, "Standard.error"]
+      Maaslin.fit[Maaslin.fit$Value == exposure.value, "stderr"]
     })
     rownames(betas) <- rownames(sds) <- rownames(feature.count)
     ind.feature <- apply(!is.na(betas) & !is.na(sds), 1, sum) >= 2

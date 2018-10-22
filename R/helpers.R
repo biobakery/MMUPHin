@@ -106,8 +106,7 @@ Maaslin2.wrapper <- function(taxa,
                                        max_significance = 1,
                                        random_effects = covariates.random.rename,
                                        fixed_effects = variables.rename,
-                                       standardize = FALSE,
-                                       ...)$results
+                                       standardize = FALSE)$results
     ))
 
   cat(paste(log.Maaslin, collapse = "\n"),
@@ -129,11 +128,11 @@ Maaslin2.wrapper <- function(taxa,
                               Feature = Feature,
                               Value = value,
                               Coefficient = coef,
+                              stderr = stderr,
                               N = N,
                               N.not.0 = N.not.zero,
                               P.value = pval,
                               Q.value = qval)
-    i.result$Standard.error <- get.se.Maaslin(i.result$Coefficient, i.result$P.value)
     res[[variable]] <- i.result
   }
 
@@ -147,11 +146,11 @@ rename.Maaslin <- function(old.names, prefix) {
   return(new.names)
 }
 
-get.se.Maaslin <- function(coefficient, p) {
-  ifelse(p != 1,
-         abs(coefficient / qnorm(p/2)),
-         NA)
-}
+# get.se.Maaslin <- function(coefficient, p) {
+#   ifelse(p != 1,
+#          abs(coefficient / qnorm(p/2)),
+#          NA)
+# }
 
 # Maaslin.wrapper <- function(taxa,
 #                             metadata,
