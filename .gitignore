@@ -3,6 +3,4 @@
 .Rbuildignore
 .Rhistory
 .DS_Store
-/results/*
-/scripts/*
 debugging
