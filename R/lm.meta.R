@@ -28,7 +28,8 @@ lm.meta <- function(feature.count,
                     analysis_method = "LM",
                     forest.plots = TRUE,
                     directory = "./MMUPHin_lm.meta/",
-                    verbose = TRUE) {
+                    verbose = TRUE,
+                    ...) {
   ### Ensure data formatts are as expected
   feature.count <- as.matrix(feature.count)
   if(any(feature.count < 0, na.rm = TRUE))
@@ -107,7 +108,7 @@ lm.meta <- function(feature.count,
     if(verbose) message("Fitting Maaslin2 on batch ", i.batch, "...")
     i.feature.count <- feature.count[, batch == i.batch]
     i.data <- data[batch == i.batch, ]
-    i.covariates.random <- covariates.random
+    i.covariates.random <- NULL
     if(!is.null(ind.random))
       if(any(ind.random[lvl.batch == i.batch, ]))
         i.covariates.random <- covariates.random[ind.random[lvl.batch == i.batch, ]]
@@ -132,7 +133,7 @@ lm.meta <- function(feature.count,
   if(verbose) message("Fitting meta-analysis model.")
   exposure.values <- unique(unlist(
     lapply(l.Maaslin.fit, function(i.fit) i.fit$Value)
-    ))
+  ))
   meta.results <- list()
   for(exposure.value in exposure.values) {
     i.result <- data.frame(Feature = rownames(feature.count),
@@ -142,7 +143,9 @@ lm.meta <- function(feature.count,
                            P.val = NA,
                            tau2 = NA,
                            I2 = NA,
-                           H2 = NA)
+                           H2 = NA,
+                           QEp = NA,
+                           QMp = NA)
     rownames(i.result) <- i.result$Feature
     if(forest.plots) pdf(paste0(directory, exposure.value, ".pdf"),
                          width = 4,
@@ -161,18 +164,23 @@ lm.meta <- function(feature.count,
       if(ind.feature[feature]) {
         tmp.rma.fit <- metafor::rma.uni(yi = betas[feature, ],
                                         sei = sds[feature, ],
-                                        slab = lvl.batch)
+                                        slab = lvl.batch,
+                                        ...)
         i.result[feature, c("Coefficient",
                             "Standard.error",
                             "P.val",
                             "tau2",
                             "I2",
-                            "H2")] <- unlist(tmp.rma.fit[c("beta",
-                                                           "se",
-                                                           "pval",
-                                                           "tau2",
-                                                           "I2",
-                                                           "H2")])
+                            "H2",
+                            "QEp",
+                            "QMp")] <- unlist(tmp.rma.fit[c("beta",
+                                                            "se",
+                                                            "pval",
+                                                            "tau2",
+                                                            "I2",
+                                                            "H2",
+                                                            "QEp",
+                                                            "QMp")])
         if(tmp.rma.fit$pval < 0.05 & forest.plots)
           metafor::forest(tmp.rma.fit, xlab = feature)
       }

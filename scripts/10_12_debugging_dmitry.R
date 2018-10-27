@@ -1,12 +1,15 @@
+rm(list = ls())
 library(MMUPHin)
 load("debugging/10_12_Dmitry/sample.fffff.RData")
-load("debugging/10_12_Dmitry/data.RData")
+load("debugging/10_12_Dmitry/data_old2.RData")
+names(data.list)
 feature.count <- data.list$feature.count
-sum(sample.fffff$Cohort %in% c("RISK", "LSS"))
-nrow(sample.fffff)
-taxa.test <- c(runif(157), rep(0, 1666 - 157))
-feature.count <- rbind(feature.count, taxa.test)
-
+data <- data.list$data
+# sum(sample.fffff$Cohort %in% c("RISK", "LSS"))
+# nrow(sample.fffff)
+# taxa.test <- c(runif(157), rep(0, 1666 - 157))
+# feature.count <- rbind(feature.count, taxa.test)
+debugonce(MMUPHin::lm.meta)
 meta.fit <- MMUPHin::lm.meta(feature.count = feature.count,
                              batch = "Cohort",
                              exposure = "disease",
