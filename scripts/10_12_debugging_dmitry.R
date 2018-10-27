@@ -1,6 +1,7 @@
 library(MMUPHin)
 load("debugging/10_12_Dmitry/sample.fffff.RData")
 load("debugging/10_12_Dmitry/data.RData")
+names(data.list)
 feature.count <- data.list$feature.count
 sum(sample.fffff$Cohort %in% c("RISK", "LSS"))
 nrow(sample.fffff)
