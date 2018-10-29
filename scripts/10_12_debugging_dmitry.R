@@ -10,12 +10,12 @@ data <- data.list$data
 # taxa.test <- c(runif(157), rep(0, 1666 - 157))
 # feature.count <- rbind(feature.count, taxa.test)
 debugonce(MMUPHin::lm.meta)
-meta.fit <- MMUPHin::lm.meta(feature.count = feature.count[, sample.fffff$Cohort %in% c("HMP2", "LSS")],
+meta.fit <- MMUPHin::lm.meta(feature.count = feature.count[, ],
                              batch = "Cohort",
                              exposure = "disease",
                              # covariates = "Antibiotics",
                              covariates.random = "subject_new",
-                             data = sample.fffff[sample.fffff$Cohort %in% c("HMP2", "LSS"), ],
+                             data = sample.fffff[, ],
                              directory = "debugging/10_12_Dmitry/")
 test <- Maaslin2::Maaslin2(
   input_data = feature.count[, sample.fffff$Cohort == "LSS"],

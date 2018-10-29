@@ -151,6 +151,7 @@ lm.meta <- function(feature.count,
                             "QMp",
                             paste0("weight_", lvl.batch))
     i.result$Feature <- rownames(feature.count)
+    i.result$Exposure <- exposure.value
     rownames(i.result) <- i.result$Feature
     if(forest.plots) pdf(paste0(directory, exposure.value, ".pdf"),
                          width = 4,

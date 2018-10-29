@@ -106,7 +106,9 @@ Maaslin2.wrapper <- function(taxa,
                                        max_significance = 1,
                                        random_effects = covariates.random.rename,
                                        fixed_effects = variables.rename,
-                                       standardize = FALSE)$results
+                                       standardize = FALSE,
+                                       plot_heatmap = FALSE,
+                                       plot_scatter = FALSE)$results
     ))
 
   cat(paste(log.Maaslin, collapse = "\n"),
