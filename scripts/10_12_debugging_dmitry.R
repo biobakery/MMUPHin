@@ -1,7 +1,7 @@
 rm(list = ls())
 library(MMUPHin)
 load("debugging/10_12_Dmitry/sample.fffff.RData")
-load("debugging/10_12_Dmitry/data_old2.RData")
+load("debugging/10_12_Dmitry/data.RData")
 names(data.list)
 feature.count <- data.list$feature.count
 data <- data.list$data
