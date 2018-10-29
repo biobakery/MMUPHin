@@ -17,6 +17,16 @@ meta.fit <- MMUPHin::lm.meta(feature.count = feature.count,
                              covariates.random = "subject_new",
                              data = sample.fffff,
                              directory = "debugging/10_12_Dmitry/")
+Maaslin2::Maaslin2(
+  input_data = feature.count[, sample.fffff$Cohort == "PRISM"],
+  input_metadata = sample.fffff %>% subset(Cohort == "PRISM"),
+  output = "debugging/10_12_Dmitry/",
+  min_abundance = 0,
+  min_prevalence = 0,
+  random_effects = NULL,
+  fixed_effects = "disease",
+  standardize = FALSE
+)
 set.seed(1)
 nsamples <- 50
 test <- rbind(runif(nsamples), runif(nsamples), rep(0, nsamples))
