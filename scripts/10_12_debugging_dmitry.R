@@ -9,14 +9,14 @@ data <- data.list$data
 # nrow(sample.fffff)
 # taxa.test <- c(runif(157), rep(0, 1666 - 157))
 # feature.count <- rbind(feature.count, taxa.test)
-debugonce(MMUPHin::lm.meta)
-meta.fit <- MMUPHin::lm.meta(feature.count = feature.count[, ],
-                             batch = "Cohort",
-                             exposure = "disease",
-                             # covariates = "Antibiotics",
-                             covariates.random = "subject_new",
-                             data = sample.fffff[, ],
-                             directory = "debugging/10_12_Dmitry/")
+meta.fit.tmp <- lm.meta(feature.count = feature.count,
+                        batch = "Cohort",
+                        exposure = "disease",
+                        #covariates = “Antibiotics”,
+                        covariates.random = "subjectID",
+                        data = data,
+                        method= "REML", # method=“FE” change for fixed effects
+                        directory = "debugging/10_12_Dmitry/")
 test <- Maaslin2::Maaslin2(
   input_data = feature.count[, sample.fffff$Cohort == "LSS"],
   input_metadata = sample.fffff %>% subset(Cohort == "LSS"),
@@ -29,24 +29,24 @@ test <- Maaslin2::Maaslin2(
 )
 set.seed(1)
 nsamples <- 50
-test <- rbind(runif(nsamples), runif(nsamples), rep(0, nsamples))
+test <- rbind(runif(nsamples), runif(nsamples), runif(nsamples), rep(0, nsamples))
 rownames(test) <- paste0("taxa", 1:nrow(test))
 metadata <- data.frame(
   fixed.cont = rnorm(nsamples),
-  fixed.cat = c("Class1", "Class2")[rbinom(nsamples, size = 1, prob = 0.5) + 1],
+  fixed.cat = c("Class1", "Class2", "Class3")[rbinom(nsamples, size = 2, prob = 0.5) + 1],
   random = rep(1:5, each = 10)
 )
 rownames(metadata) <- colnames(test) <- paste0("sample", 1:nsamples)
 tmp <- Maaslin2::Maaslin2(input_data = test[, , drop = FALSE],
                    input_metadata = metadata,
                    output = "debugging/10_12_Dmitry/",
-                   min_abundance = 0, min_prevalence = 0,
-                   max_significance = 1, random_effects = NULL,
-                   fixed_effects = "fixed.cat", standardize = FALSE)
-debugonce(MMUPHin:::Maaslin2.wrapper)
+                   min_abundance = 0, min_prevalence = 0.1,
+                   max_significance = 1, random_effects = "random",
+                   fixed_effects = "fixed.cat", standardize = FALSE,
+                   plot_heatmap = FALSE, plot_scatter = FALSE)
+# debugonce(MMUPHin:::Maaslin2.wrapper)
 tmp <- MMUPHin:::Maaslin2.wrapper(taxa = test[, , drop = FALSE],
                                   metadata = metadata,
                                   directory = "debugging/10_12_Dmitry/",
-                                  min_abundance = 0, min_prevalence = 0,
-                                  max_significance = 1, covariates.random = NULL,
-                                  variables = "fixed.cat", standardize = FALSE)
+                                  covariates.random = "random",
+                                  variables = c("fixed.cat", "fixed.cont"))

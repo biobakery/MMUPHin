@@ -73,8 +73,7 @@ Maaslin2.wrapper <- function(taxa,
                              directory = "./",
                              normalization = "TSS",
                              transform = "AST",
-                             analysis_method = "LM",
-                             ...) {
+                             analysis_method = "LM") {
   # Specify files
   output.file <- file.path(directory, "output.txt")
 
@@ -92,14 +91,19 @@ Maaslin2.wrapper <- function(taxa,
                                       covariates.random.rename))
   # covariates.random.rename <- rename.Maaslin(NULL, prefix = "RX")
 
+  # Setup filtering for all-zero taxa
+  # This won't be necessary once Maaslin2 is fixed for the issue
+  min_abd <- min(setdiff(taxa.rename, 0)) / 2
+  min_prev <- 0.5/ncol(taxa.rename)
+
   # Run Maaslin2
   log.Maaslin <- suppressWarnings(
     capture.output(
       res.rename <- Maaslin2::Maaslin2(input_data = taxa.rename,
                                        input_metadata = metadata.rename,
                                        output = directory,
-                                       min_abundance = 0,
-                                       min_prevalence = 0,
+                                       min_abundance = min_abd,
+                                       min_prevalence = min_prev,
                                        normalization = normalization,
                                        transform = transform,
                                        analysis_method = analysis_method,
@@ -113,6 +117,7 @@ Maaslin2.wrapper <- function(taxa,
 
   cat(paste(log.Maaslin, collapse = "\n"),
       file = file.path(directory, "Maaslin.log"))
+
   # Read Maaslin results
   table.taxa.rename <-
     data.frame(Feature = names(taxa.names.rename),
@@ -121,9 +126,19 @@ Maaslin2.wrapper <- function(taxa,
   res <- list()
   for(variable in variables) {
     i.result <- dplyr::filter(res.rename, metadata == variables.rename[variable])
-    i.result <- dplyr::left_join(table.taxa.rename,
+    i.value <- unique(setdiff(i.result$value, NA))
+    i.taxa.value <- expand.grid(Feature.rename = taxa.names.rename,
+                                value = i.value,
+                                KEEP.OUT.ATTRS = FALSE,
+                                stringsAsFactors = FALSE)
+    suppressWarnings(
+      i.taxa.value <- dplyr::right_join(table.taxa.rename,
+                                        i.taxa.value,
+                                        by = c("Feature.rename" = "Feature.rename")))
+    i.result <- dplyr::left_join(i.taxa.value,
                                  i.result,
-                                 by = c("Feature.rename" = "feature"))
+                                 by = c("Feature.rename" = "feature",
+                                        "value" = "value"))
     i.result$Variable <- variable
     i.result <- dplyr::select(i.result,
                               Variable,
