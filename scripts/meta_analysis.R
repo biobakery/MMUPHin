@@ -2,7 +2,7 @@ rm(list = ls())
 library(MMUPHin)
 library(tidyverse)
 
-load("results/quick_and_easy/qe_biom.RData")
+load("debugging/quick_and_easy/qe_biom.RData")
 metadata <- phyloseq::sample_data(qe_biom_genus) %>% data.frame
 metadata <- metadata %>%
   rownames_to_column("Sample.tmp") %>%

@@ -10,20 +10,20 @@ data <- data.list$data
 # taxa.test <- c(runif(157), rep(0, 1666 - 157))
 # feature.count <- rbind(feature.count, taxa.test)
 debugonce(MMUPHin::lm.meta)
-meta.fit <- MMUPHin::lm.meta(feature.count = feature.count,
+meta.fit <- MMUPHin::lm.meta(feature.count = feature.count[, sample.fffff$Cohort %in% c("HMP2", "LSS")],
                              batch = "Cohort",
                              exposure = "disease",
-                             #covariates = “Antibiotics”,
+                             # covariates = "Antibiotics",
                              covariates.random = "subject_new",
-                             data = sample.fffff,
+                             data = sample.fffff[sample.fffff$Cohort %in% c("HMP2", "LSS"), ],
                              directory = "debugging/10_12_Dmitry/")
-Maaslin2::Maaslin2(
-  input_data = feature.count[, sample.fffff$Cohort == "PRISM"],
-  input_metadata = sample.fffff %>% subset(Cohort == "PRISM"),
+test <- Maaslin2::Maaslin2(
+  input_data = feature.count[, sample.fffff$Cohort == "LSS"],
+  input_metadata = sample.fffff %>% subset(Cohort == "LSS"),
   output = "debugging/10_12_Dmitry/",
   min_abundance = 0,
   min_prevalence = 0,
-  random_effects = NULL,
+  random_effects = "subject_new",
   fixed_effects = "disease",
   standardize = FALSE
 )
@@ -41,12 +41,12 @@ tmp <- Maaslin2::Maaslin2(input_data = test[, , drop = FALSE],
                    input_metadata = metadata,
                    output = "debugging/10_12_Dmitry/",
                    min_abundance = 0, min_prevalence = 0,
-                   max_significance = 1, random_effects = "random",
-                   fixed_effects = "fixed.disc", standardize = FALSE)
+                   max_significance = 1, random_effects = NULL,
+                   fixed_effects = "fixed.cat", standardize = FALSE)
 debugonce(MMUPHin:::Maaslin2.wrapper)
 tmp <- MMUPHin:::Maaslin2.wrapper(taxa = test[, , drop = FALSE],
                                   metadata = metadata,
                                   directory = "debugging/10_12_Dmitry/",
                                   min_abundance = 0, min_prevalence = 0,
-                                  max_significance = 1, covariates.random = "random",
+                                  max_significance = 1, covariates.random = NULL,
                                   variables = "fixed.cat", standardize = FALSE)

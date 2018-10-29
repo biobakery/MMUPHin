@@ -136,16 +136,21 @@ lm.meta <- function(feature.count,
   ))
   meta.results <- list()
   for(exposure.value in exposure.values) {
-    i.result <- data.frame(Feature = rownames(feature.count),
-                           Exposure = exposure.value,
-                           Coefficient = NA,
-                           Standard.error = NA,
-                           P.val = NA,
-                           tau2 = NA,
-                           I2 = NA,
-                           H2 = NA,
-                           QEp = NA,
-                           QMp = NA)
+    i.result <- data.frame(matrix(NA,
+                                  nrow = nrow(feature.count),
+                                  ncol = 10 + n.batch))
+    colnames(i.result) <- c("Feature",
+                            "Exposure",
+                            "Coefficient",
+                            "Standard.error",
+                            "P.val",
+                            "tau2",
+                            "I2",
+                            "H2",
+                            "QEp",
+                            "QMp",
+                            paste0("weight_", lvl.batch))
+    i.result$Feature <- rownames(feature.count)
     rownames(i.result) <- i.result$Feature
     if(forest.plots) pdf(paste0(directory, exposure.value, ".pdf"),
                          width = 4,
@@ -158,14 +163,18 @@ lm.meta <- function(feature.count,
     sds <- sapply(l.Maaslin.fit, function(Maaslin.fit) {
       Maaslin.fit[Maaslin.fit$Value == exposure.value, "stderr"]
     })
-    rownames(betas) <- rownames(sds) <- rownames(feature.count)
-    ind.feature <- apply(!is.na(betas) & !is.na(sds), 1, sum) >= 2
+    pvals <- sapply(l.Maaslin.fit, function(Maaslin.fit) {
+      Maaslin.fit[Maaslin.fit$Value == exposure.value, "P.value"]
+    })
+    rownames(betas) <- rownames(sds) <- rownames(pvals) <- rownames(feature.count)
+    count.feature <- apply(!is.na(betas) & !is.na(sds), 1, sum)
     for(feature in rownames(feature.count)) {
-      if(ind.feature[feature]) {
+      if(count.feature[feature] >= 2) {
         tmp.rma.fit <- metafor::rma.uni(yi = betas[feature, ],
                                         sei = sds[feature, ],
                                         slab = lvl.batch,
                                         ...)
+        wts <- metafor::weights.rma.uni(tmp.rma.fit)
         i.result[feature, c("Coefficient",
                             "Standard.error",
                             "P.val",
@@ -173,16 +182,33 @@ lm.meta <- function(feature.count,
                             "I2",
                             "H2",
                             "QEp",
-                            "QMp")] <- unlist(tmp.rma.fit[c("beta",
-                                                            "se",
-                                                            "pval",
-                                                            "tau2",
-                                                            "I2",
-                                                            "H2",
-                                                            "QEp",
-                                                            "QMp")])
+                            "QMp",
+                            paste0("weight_",
+                                   names(wts))
+        )] <- c(unlist(tmp.rma.fit[c("beta",
+                                     "se",
+                                     "pval",
+                                     "tau2",
+                                     "I2",
+                                     "H2",
+                                     "QEp",
+                                     "QMp")]),
+                wts)
         if(tmp.rma.fit$pval < 0.05 & forest.plots)
           metafor::forest(tmp.rma.fit, xlab = feature)
+      }
+      if(count.feature[feature] == 1) {
+        tmp.ind.feature <- !is.na(betas[feature, ]) & !is.na(sds[feature, ])
+        tmp.batch <- lvl.batch[tmp.ind.feature]
+        i.result[feature, c("Coefficient",
+                            "Standard.error",
+                            "P.val",
+                            paste0("weight_",
+                                   tmp.batch)
+        )] <- c(betas[feature, tmp.ind.feature],
+                sds[feature, tmp.ind.feature],
+                pvals[feature, tmp.ind.feature],
+                100)
       }
     }
     dev.off()
