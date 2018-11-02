@@ -290,7 +290,7 @@ adjust.batch <- function(feature.count,
                      legend.justification=c(0, 1),
                      legend.direction="horizontal") +
       ggplot2::ggtitle("Batch mean relative abundance for all features")
-    plot <- cowplot::plot_grid(plot1, plot2, nrow = 1)
+    suppressWarnings(plot <- cowplot::plot_grid(plot1, plot2, nrow = 1)) # Because missing values
     print(plot)
   }
 
