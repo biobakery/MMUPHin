@@ -20,6 +20,7 @@
 lm.meta <- function(feature.count,
                     batch,
                     exposure,
+                    exposure.values,
                     covariates = NULL,
                     covariates.random = NULL,
                     data,
@@ -131,9 +132,9 @@ lm.meta <- function(feature.count,
 
   # Fit fixed/random effects models
   if(verbose) message("Fitting meta-analysis model.")
-  exposure.values <- unique(unlist(
-    lapply(l.Maaslin.fit, function(i.fit) i.fit$Value)
-  ))
+  # exposure.values <- unique(unlist(
+  #   lapply(l.Maaslin.fit, function(i.fit) i.fit$Value)
+  # ))
   meta.results <- list()
   for(exposure.value in exposure.values) {
     i.result <- data.frame(matrix(NA,
@@ -171,10 +172,13 @@ lm.meta <- function(feature.count,
     count.feature <- apply(!is.na(betas) & !is.na(sds), 1, sum)
     for(feature in rownames(feature.count)) {
       if(count.feature[feature] >= 2) {
-        tmp.rma.fit <- metafor::rma.uni(yi = betas[feature, ],
-                                        sei = sds[feature, ],
-                                        slab = lvl.batch,
-                                        ...)
+        tmp.rma.fit <- try(metafor::rma.uni(yi = betas[feature, ],
+                                            sei = sds[feature, ],
+                                            slab = lvl.batch,
+                                            ...),
+                           silent = TRUE) # FIXME
+        if("try-error" %in% class(tmp.rma.fit))
+          next
         wts <- metafor::weights.rma.uni(tmp.rma.fit)
         i.result[feature, c("Coefficient",
                             "Standard.error",
