@@ -20,7 +20,6 @@
 lm.meta <- function(feature.count,
                     batch,
                     exposure,
-                    exposure.values,
                     covariates = NULL,
                     covariates.random = NULL,
                     data,
@@ -31,18 +30,19 @@ lm.meta <- function(feature.count,
                     directory = "./MMUPHin_lm.meta/",
                     verbose = TRUE,
                     ...) {
-  ### Ensure data formatts are as expected
+  ## Ensure data formatts are as expected
   feature.count <- as.matrix(feature.count)
-  if(any(feature.count < 0, na.rm = TRUE))
-    stop("Found negative values in the feature table!")
   if(any(is.na(feature.count)))
     stop("Found missing values in the feature table!")
-  data <- as.data.frame(data)
+  if(any(feature.count < 0))
+    stop("Found negative values in the feature table!")
+  data <- as.data.frame(data, stringsAsFactors = FALSE)
   if(!all(c(batch, exposure, covariates, covariates.random) %in% names(data)))
     stop("Batch/covariate variable not found in data.")
-  batch <- data[, batch]
-  batch <- as.factor(batch)
-  if(any(is.na(batch))) stop("Found missing values in the batch variable!")
+  if(!all(apply(data[, c(batch, exposure, covariates, covariates.random),
+                     drop = FALSE],
+           2, class) %in% c("character", "numeric")))
+    stop("Covariates must be of either character or numeric class!")
 
   ## Data dimensions need to agree with each other
   if(ncol(feature.count) != nrow(data))
@@ -50,7 +50,6 @@ lm.meta <- function(feature.count,
 
   ## Check that sample names agree between the feature and metadata table
   ## And assign row and column names if emppty
-  ## Shouldn't happen if the data is imported through interface
   if(is.null(colnames(feature.count))) colnames(feature.count) <-
     paste0("Sample",
            1:ncol(feature.count))
@@ -63,17 +62,43 @@ lm.meta <- function(feature.count,
   if(any(colnames(feature.count) != rownames(data)))
     stop("Sample names in feature.count and data don't agree!")
 
-  ## Identify batch variables
+  # Check batch variable and identify groups
+  batch <- data[, batch]
+  if(any(is.na(batch))) stop("Found missing values in the batch variable!")
+  batch <- as.factor(batch)
   n.batch <- length(unique(batch))
   if(n.batch < 2) stop("Batch variable has only one level!")
   if(verbose) message("Found ", n.batch, " batches")
   lvl.batch <- levels(batch)
 
-  ## Check that factor exposures have common levels across studies
-  if(is.character(data[, exposure]) || is.factor(data[, exposure])) {
-    if(any(table(batch, data[, exposure]) == 0))
-      stop("Exposure is factor and does not have common levels ",
-           "across batches!")
+  ## Check for exposure variables
+  ind.exposure <- tapply(data[, exposure, drop = TRUE], batch,
+                      function(x) length(setdiff(unique(x), NA)) > 1)
+  if(any(!ind.exposure) & verbose)
+    message("Exposure variable is missing or has only one non-missing value",
+            " in the following batches; Maaslin2 won't be fitted on them.\n",
+            paste(lvl.batch[!ind.exposure], collapse = ", "))
+
+  ## Factor exposures must have common levels across batches
+  if(is.character(data[, exposure, drop = TRUE])) {
+    lvl.exposure <- setdiff(unique(data[, exposure, drop = TRUE]), NA)
+    values.exposure <- sort(lvl.exposure)[-1]
+    ind.exposure.cat <- tapply(data[, exposure, drop = TRUE], batch,
+                               function(x) all(lvl.exposure %in% x))
+    if(any(ind.exposure & !ind.exposure.cat))
+      stop("Exposure is categorical and does not have common levels ",
+           "in the following batches!\n",
+           paste(lvl.batch[ind.exposure & !ind.exposure.cat], collapse = ", "))
+  }
+
+  ## Determine which covariates can be fit on which datasets.
+  ind.covariate <- sapply(c(exposure, covariates), function(name.variable) {
+    tapply(data[, name.variable, drop = TRUE], batch, function(x) {
+      length(unique(x[!is.na(x)])) > 1
+    })
+  })
+  for(name.variable in c(exposure, covariates)) {
+    if(any(!ind.covariate[, name.variable]))
   }
 
   ## Check for random covariates
