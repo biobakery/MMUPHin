@@ -9,14 +9,14 @@ data <- data.list$data
 # nrow(sample.fffff)
 # taxa.test <- c(runif(157), rep(0, 1666 - 157))
 # feature.count <- rbind(feature.count, taxa.test)
-meta.fit.tmp <- lm.meta(feature.count = feature.count,
-                        batch = "Cohort",
-                        exposure = "disease",
-                        #covariates = “Antibiotics”,
-                        covariates.random = "subjectID",
-                        data = data,
-                        method= "REML", # method=“FE” change for fixed effects
-                        directory = "debugging/10_12_Dmitry/")
+meta.fit.tmp2 <- MMUPHin::lm.meta(feature.count = feature.count,
+                                  batch = "Cohort",
+                                  exposure = "disease",
+                                  #covariates = “Antibiotics”,
+                                  covariates.random = "subjectID",
+                                  data = data,
+                                  rma_method= "REML", # method=“FE” change for fixed effects
+                                  directory = "debugging/10_12_Dmitry/")
 test <- Maaslin2::Maaslin2(
   input_data = feature.count[, data$Cohort == "HMP2"],
   input_metadata = data %>% subset(Cohort == "HMP2"),
