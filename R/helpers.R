@@ -299,8 +299,9 @@ rma.mod.wrapper <- function(l.Maaslin.fit, data.moderator,
       suppressWarnings(tmp.rma.fit <-
                          try(metafor::rma.uni(yi = betas[feature, ind.feature[feature, ]],
                                               sei = sds[feature, ind.feature[feature, ]],
-                                              mod = data.moderator[ind.feature[feature, ], ,
-                                                                   drop = FALSE],
+                                              mod = ~.,
+                                              data = data.moderator[ind.feature[feature, ], ,
+                                                                    drop = FALSE],
                                               method = method),
                              silent = TRUE)) # FIXME
       if("try-error" %in% class(tmp.rma.fit))
