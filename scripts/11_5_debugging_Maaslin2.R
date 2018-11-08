@@ -63,7 +63,7 @@ test <- MMUPHin::lm.meta(
   batch = "study_site",
   exposure = "test_variable",
   covariates = c("gender_fill", "race_fill", "age.cat_fill"),
-  # covariates.random = "subject_accession_lgtdn",
+  covariates.random = "subject_accession_lgtdn",
   data = metadata_tmp,
   directory = dir_output.tmp
 )
