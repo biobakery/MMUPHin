@@ -26,10 +26,10 @@ lm.meta <- function(feature.count,
                     normalization = "TSS",
                     transform = "AST",
                     analysis_method = "LM",
+                    rma_method = "REML",
                     forest.plots = TRUE,
                     directory = "./MMUPHin_lm.meta/",
-                    verbose = TRUE,
-                    ...) {
+                    verbose = TRUE) {
   ## Ensure data formatts are as expected
   feature.count <- as.matrix(feature.count)
   if(any(is.na(feature.count)))
@@ -41,7 +41,7 @@ lm.meta <- function(feature.count,
     stop("Batch/covariate variable not found in data.")
   if(!all(apply(data[, c(batch, exposure, covariates, covariates.random),
                      drop = FALSE],
-           2, class) %in% c("character", "numeric")))
+                2, class) %in% c("character", "numeric")))
     stop("Covariates must be of either character or numeric class!")
 
   ## Data dimensions need to agree with each other
@@ -73,48 +73,59 @@ lm.meta <- function(feature.count,
 
   ## Check for exposure variables
   ind.exposure <- tapply(data[, exposure, drop = TRUE], batch,
-                      function(x) length(setdiff(unique(x), NA)) > 1)
+                         function(x) length(setdiff(unique(x), NA)) > 1)
   if(any(!ind.exposure) & verbose)
     message("Exposure variable is missing or has only one non-missing value",
-            " in the following batches; Maaslin2 won't be fitted on them.\n",
+            " in the following batches; Maaslin2 won't be fitted on them:\n",
             paste(lvl.batch[!ind.exposure], collapse = ", "))
 
   ## Factor exposures must have common levels across batches
+  lvl.exposure <- NULL
   if(is.character(data[, exposure, drop = TRUE])) {
     lvl.exposure <- setdiff(unique(data[, exposure, drop = TRUE]), NA)
-    values.exposure <- sort(lvl.exposure)[-1]
     ind.exposure.cat <- tapply(data[, exposure, drop = TRUE], batch,
                                function(x) all(lvl.exposure %in% x))
     if(any(ind.exposure & !ind.exposure.cat))
       stop("Exposure is categorical and does not have common levels ",
-           "in the following batches!\n",
+           "in the following batches.\n",
            paste(lvl.batch[ind.exposure & !ind.exposure.cat], collapse = ", "))
   }
 
   ## Determine which covariates can be fit on which datasets.
-  ind.covariate <- sapply(c(exposure, covariates), function(name.variable) {
-    tapply(data[, name.variable, drop = TRUE], batch, function(x) {
-      length(unique(x[!is.na(x)])) > 1
+  ind.covariate <- NULL
+  if(!is.null(covariates)) {
+    ind.covariate <- sapply(covariates, function(covariate) {
+      tapply(data[, covariate, drop = TRUE], batch, function(x) {
+        length(unique(x[!is.na(x)])) > 1
+      })
     })
-  })
-  for(name.variable in c(exposure, covariates)) {
-    if(any(!ind.covariate[, name.variable]))
+    for(covariate in covariates) {
+      if(any(ind.exposure & !ind.covariate[, covariate]))
+        message("Covariate ", covariate,
+                " is missing or has only one non-missing value",
+                " in the following batches; will be excluded from model for these",
+                " batches:\n",
+                paste(lvl.batch[ind.exposure & !ind.covariate[, covariate]],
+                      collapse = ", "))
+    }
   }
 
   ## Check for random covariates
   ind.random <- NULL
   if(!is.null(covariates.random)) {
+    if(length(covariates.random) > 1)
+      stop("Multiple random covariates currently not supported.\n")
     ind.random <- sapply(covariates.random,
                          function(covariate.random) {
-                           sapply(lvl.batch, function(i.batch) {
-                             anyDuplicated(data[batch == i.batch, covariate.random]) > 0
-                           })
-                         })
+                           tapply(data[, covariate.random, drop = TRUE],
+                                  batch, function(x) {
+                                    length(unique(x[!is.na(x)])) > 1 }) })
     if(!any(ind.random)) stop("Random covariates are provided ",
                               "but no batch has clustered observations!")
     message("Random covariates are provided, and will be fitted for ",
-            "the following batches: ",
-            paste(lvl.batch[apply(ind.random, 1, any)], collapse = ", "))
+            "the following batches:\n",
+            paste(lvl.batch[ind.exposure & apply(ind.random, 1, any)],
+                  collapse = ", "))
   }
 
   ## Create temporary directory for Maaslin output files
@@ -122,131 +133,44 @@ lm.meta <- function(feature.count,
   dir.create(directory.Maaslin, recursive = TRUE)
 
   ## Fit individual models
-  if(verbose) message("Fitting individual regressions.")
-  if(is.character(data[, exposure]) || is.factor(data[, exposure])) {
-    if(any(table(batch, data[, exposure]) == 0))
-      stop("Exposure is factor and does not have common levels ",
-           "across batches!")
-  }
   l.Maaslin.fit <- list()
   for(i in 1:n.batch) {
     i.batch <- lvl.batch[i]
+    if(!ind.exposure[i.batch]) next
     if(verbose) message("Fitting Maaslin2 on batch ", i.batch, "...")
     i.feature.count <- feature.count[, batch == i.batch]
     i.data <- data[batch == i.batch, ]
-    i.covariates.random <- NULL
-    if(!is.null(ind.random))
-      if(any(ind.random[lvl.batch == i.batch, ]))
-        i.covariates.random <- covariates.random[ind.random[lvl.batch == i.batch, ]]
+    i.covariates <- covariates[ind.covariate[i.batch, , drop = TRUE]]
+    i.covariates.random <- covariates.random[ind.random[i.batch, , drop = TRUE]]
     i.directory.Maaslin <- paste0(directory.Maaslin, i.batch)
     dir.create(i.directory.Maaslin)
-    Maaslin.fit <- Maaslin2.wrapper(
-      taxa = i.feature.count,
-      metadata = i.data,
-      variables = c(exposure, covariates),
+    i.Maaslin.fit <- Maaslin2.wrapper(
+      feature.count = i.feature.count,
+      data = i.data,
+      exposure = exposure,
+      lvl.exposure = lvl.exposure,
+      covariates = i.covariates,
       covariates.random = i.covariates.random,
       directory = i.directory.Maaslin,
       normalization = normalization,
+      transform = transform,
       analysis_method = analysis_method
     )
-    l.Maaslin.fit[[i]] <- Maaslin.fit[[exposure]]
-    l.Maaslin.fit[[i]]$batch <- i.batch
+    l.Maaslin.fit[[i.batch]] <- i.Maaslin.fit
+    l.Maaslin.fit[[i.batch]]$batch <- i.batch
   }
-  ind.results <- Reduce("rbind", l.Maaslin.fit)
-  ind.results <- dplyr::arrange(ind.results, Feature, Value, batch)
 
   # Fit fixed/random effects models
   if(verbose) message("Fitting meta-analysis model.")
-  # exposure.values <- unique(unlist(
-  #   lapply(l.Maaslin.fit, function(i.fit) i.fit$Value)
-  # ))
-  meta.results <- list()
-  for(exposure.value in exposure.values) {
-    i.result <- data.frame(matrix(NA,
-                                  nrow = nrow(feature.count),
-                                  ncol = 10 + n.batch))
-    colnames(i.result) <- c("Feature",
-                            "Exposure",
-                            "Coefficient",
-                            "Standard.error",
-                            "P.val",
-                            "tau2",
-                            "I2",
-                            "H2",
-                            "QEp",
-                            "QMp",
-                            paste0("weight_", lvl.batch))
-    i.result$Feature <- rownames(feature.count)
-    i.result$Exposure <- exposure.value
-    rownames(i.result) <- i.result$Feature
-    if(forest.plots) pdf(paste0(directory, exposure.value, ".pdf"),
-                         width = 4,
-                         height = 4 + ifelse(n.batch > 4,
-                                             (n.batch - 4) * 0.5,
-                                             0))
-    betas <- sapply(l.Maaslin.fit, function(Maaslin.fit) {
-      Maaslin.fit[Maaslin.fit$Value == exposure.value, "Coefficient"]
-    })
-    sds <- sapply(l.Maaslin.fit, function(Maaslin.fit) {
-      Maaslin.fit[Maaslin.fit$Value == exposure.value, "stderr"]
-    })
-    pvals <- sapply(l.Maaslin.fit, function(Maaslin.fit) {
-      Maaslin.fit[Maaslin.fit$Value == exposure.value, "P.value"]
-    })
-    rownames(betas) <- rownames(sds) <- rownames(pvals) <- rownames(feature.count)
-    count.feature <- apply(!is.na(betas) & !is.na(sds), 1, sum)
-    for(feature in rownames(feature.count)) {
-      if(count.feature[feature] >= 2) {
-        tmp.rma.fit <- try(metafor::rma.uni(yi = betas[feature, ],
-                                            sei = sds[feature, ],
-                                            slab = lvl.batch,
-                                            ...),
-                           silent = TRUE) # FIXME
-        if("try-error" %in% class(tmp.rma.fit))
-          next
-        wts <- metafor::weights.rma.uni(tmp.rma.fit)
-        i.result[feature, c("Coefficient",
-                            "Standard.error",
-                            "P.val",
-                            "tau2",
-                            "I2",
-                            "H2",
-                            "QEp",
-                            "QMp",
-                            paste0("weight_",
-                                   names(wts))
-        )] <- c(unlist(tmp.rma.fit[c("beta",
-                                     "se",
-                                     "pval",
-                                     "tau2",
-                                     "I2",
-                                     "H2",
-                                     "QEp",
-                                     "QMp")]),
-                wts)
-        if(tmp.rma.fit$pval < 0.05 & forest.plots)
-          metafor::forest(tmp.rma.fit, xlab = feature)
-      }
-      if(count.feature[feature] == 1) {
-        tmp.ind.feature <- !is.na(betas[feature, ]) & !is.na(sds[feature, ])
-        tmp.batch <- lvl.batch[tmp.ind.feature]
-        i.result[feature, c("Coefficient",
-                            "Standard.error",
-                            "P.val",
-                            paste0("weight_",
-                                   tmp.batch)
-        )] <- c(betas[feature, tmp.ind.feature],
-                sds[feature, tmp.ind.feature],
-                pvals[feature, tmp.ind.feature],
-                100)
-      }
-    }
-    dev.off()
-    i.result$P.bonf <- p.adjust(i.result$P.val, method = "bonf")
-    i.result$Q.fdr <- p.adjust(i.result$P.val, method = "fdr")
-
-    meta.results[[exposure.value]] <- i.result
+  meta.results <- rma.wrapper(l.Maaslin.fit, method = rma_method,
+                              forest.plots = forest.plots, directory = directory)
+  if(!is.null(cbind(ind.covariate, ind.random))) {
+    meta.results.mod <- rma.mod.wrapper(l.Maaslin.fit, method = rma_method,
+                                        data.moderator = cbind(ind.covariate, ind.random))
+    meta.results <- dplyr::left_join(meta.results,
+                                     meta.results.mod,
+                                     by = c("feature", "exposure"),
+                                     suffix = c("", "_moderator"))
   }
-
-  return(list(meta.results = meta.results, ind.results = ind.results))
+  return(list(meta.results = meta.results, ind.results = l.Maaslin.fit))
 }

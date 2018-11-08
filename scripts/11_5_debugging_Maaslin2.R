@@ -26,7 +26,14 @@ metadata_test <- metadata %>%
                 antibiotics_fill = fill_na(antibiotics),
                 immunosuppressants_fill = fill_na(immunosuppressants),
                 steroids_fill = fill_na(steroids),
-                mesalamine_5ASA_fill = fill_na(mesalamine_5ASA))
+                mesalamine_5ASA_fill = fill_na(mesalamine_5ASA),
+                subject_accession_lgtdn = ifelse(dataset_name %in% c("Herfarth_CCFA_Microbiome_3B_combined",
+                                                                    "HMP2",
+                                                                    "Jansson_Lamendella_Crohns",
+                                                                    "LSS-PRISM",
+                                                                    "PROTECT"),
+                                                 subject_accession,
+                                                 "not_longitudinal"))
 metadata_test <- metadata_test %>%
   dplyr::mutate(study_site = paste0(dataset_name, sample_type),
                 study_site_disease = paste0(dataset_name, sample_type, disease),
@@ -43,21 +50,19 @@ metadata_tmp <- metadata_test %>%
                   dplyr::recode("IBD" = "1",
                                 "control" = "0",
                                 .missing = NA_character_))
-# metadata_filter_tmp <-
-#   metadata_tmp %>%
-#   dplyr::group_by(study_site) %>%
-#   dplyr::summarise(available = dplyr::n_distinct(test_variable, na.rm = TRUE))
-# metadata_tmp <- metadata_tmp %>%
-#   dplyr::left_join(metadata_filter_tmp, by = "study_site") %>%
-#   dplyr::filter(available == 2)
+metadata_filter_tmp <-
+  metadata_tmp %>%
+  dplyr::group_by(study_site) %>%
+  dplyr::summarise(available = dplyr::n_distinct(test_variable, na.rm = TRUE))
+metadata_tmp <- metadata_tmp %>%
+  dplyr::left_join(metadata_filter_tmp, by = "study_site") %>%
+  dplyr::filter(available == 2)
 rownames(metadata_tmp) <- metadata_tmp$sample_accession_16S
 test <- MMUPHin::lm.meta(
   feature.count = mat_otu_adj[, metadata_tmp$sample_accession_16S],
   batch = "study_site",
   exposure = "test_variable",
-  exposure.values = "1",
   covariates = c("gender_fill", "race_fill", "age.cat_fill"),
-  covariates.random = "subject_accession",
   data = metadata_tmp,
   directory = dir_output.tmp
 )
@@ -99,5 +104,12 @@ test <- Maaslin2::Maaslin2(otu_test_tmp,
                            normalization = "TSS",
                            transform = "AST",
                            analysis_method = "LM",
-                           fixed_effects = c("x1", "x2"),
+                           fixed_effects = c("x1"),
+                           random_effects = character(0),
                            standardize = FALSE,plot_heatmap = FALSE, plot_scatter = FALSE)
+
+# test
+set.seed(1)
+yi.test <- rnorm(5)
+test1 <- metafor::rma.uni(yi = yi.test, sei = rep(1, 5))
+test2 <- metafor::rma.uni(yi = yi.test, sei = rep(1, 5), mods = c(1, 1, 2, 2, 2))
