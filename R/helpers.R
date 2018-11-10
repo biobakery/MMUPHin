@@ -204,7 +204,9 @@ rma.wrapper <- function(l.Maaslin.fit, method = "REML",
         tmp.rma.fit <- try(metafor::rma.uni(yi = betas[feature, ind.feature[feature, ]],
                                             sei = sds[feature, ind.feature[feature, ]],
                                             slab = lvl.batch[ind.feature[feature, ]],
-                                            method = method),
+                                            method = method,
+                                            control = list(threshold = 1e-10,
+                                                           maxiter = 500)),
                            silent = TRUE) # FIXME
         if("try-error" %in% class(tmp.rma.fit))
           next
@@ -302,7 +304,9 @@ rma.mod.wrapper <- function(l.Maaslin.fit, data.moderator,
                                               mod = ~.,
                                               data = data.moderator[ind.feature[feature, ], ,
                                                                     drop = FALSE],
-                                              method = method),
+                                              method = method,
+                                              control = list(threshold = 1e-10,
+                                                   maxiter = 500)),
                              silent = TRUE)) # FIXME
       if("try-error" %in% class(tmp.rma.fit))
         next
