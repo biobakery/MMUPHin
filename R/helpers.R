@@ -207,6 +207,7 @@ rma.wrapper <- function(l.Maaslin.fit, method = "REML",
                                             method = method,
                                             control = list(threshold = 1e-10,
                                                            maxiter = 1000)),
+
                            silent = TRUE) # FIXME
         if("try-error" %in% class(tmp.rma.fit))
           next
