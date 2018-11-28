@@ -76,7 +76,7 @@ discrete.discover <- function(feature.count,
     stop("distance must be either a dist object or dissimilarity measure!")
   if(class(distance) == "dist") {
     if(verbose) message("Distance matrix is provided...")
-    dist_all <- as.matrix(distance)
+    dist.all <- as.matrix(distance)
   }
   if(class(distance) == "character") {
     if(verbose) message("Calculating all vs. all dissimilarity matrix...")
@@ -180,6 +180,6 @@ discrete.discover <- function(feature.count,
   }
   return(list(internal = stats.internal,
               external = stats.external,
-              dist_all = as.dist(dist_all)))
+              dist.all = as.dist(dist.all)))
 }
 
