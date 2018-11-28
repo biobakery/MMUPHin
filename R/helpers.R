@@ -342,6 +342,13 @@ shorten.name <- function(x, cutoff) {
                    end = -(round(cutoff/2) + 1)) <- "..."
   return(x_sub)
 }
+
+# Helper function for getting relative abundance
+# Useful when possible samples are all zero
+tss <- function(x) {
+  if(all(x == 0)) return(x)
+  return(x / sum(x))
+}
 # get.se.Maaslin <- function(coefficient, p) {
 #   ifelse(p != 1,
 #          abs(coefficient / qnorm(p/2)),

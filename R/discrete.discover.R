@@ -81,7 +81,7 @@ discrete.discover <- function(feature.count,
   if(class(distance) == "character") {
     if(verbose) message("Calculating all vs. all dissimilarity matrix...")
     dist.all <- as.matrix(phyloseq::distance(
-      phyloseq::otu_table(apply(feature.count, 2, function(x) x / sum(x)),
+      phyloseq::otu_table(apply(feature.count, 2, tss),
                           taxa_are_rows = TRUE),
       method = distance))
   }
