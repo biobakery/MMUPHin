@@ -6,8 +6,9 @@
 \usage{
 lm.meta(feature.count, batch, exposure, covariates = NULL,
   covariates.random = NULL, data, normalization = "TSS",
-  transform = "AST", analysis_method = "LM", forest.plots = TRUE,
-  directory = "./MMUPHin_lm.meta/", verbose = TRUE)
+  transform = "AST", analysis_method = "LM", rma_method = "REML",
+  forest.plots = TRUE, directory = "./MMUPHin_lm.meta/",
+  verbose = TRUE)
 }
 \arguments{
 \item{feature.count}{Feature x sample matrix of feature abundance}
