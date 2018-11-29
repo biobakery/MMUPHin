@@ -35,7 +35,7 @@ discrete.discover(feature.count, batch, data, distance = "bray",
 \item{...}{additional parameters for clsutering. consistent with fpc}
 }
 \value{
-A list of MMUPHin continuous score discovery training object
+A list of MMUPHin continuous score discovery object
 }
 \description{
 Main function for discrete structure discovery

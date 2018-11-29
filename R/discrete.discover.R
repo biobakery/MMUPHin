@@ -12,7 +12,7 @@
 #' @param diagnostics logical. Should diagnostics be plotted?
 #' @param verbose logical. Verbose?
 #' @param ... additional parameters for clsutering. consistent with fpc
-#' @return A list of MMUPHin continuous score discovery training object
+#' @return A list of MMUPHin continuous score discovery object
 #' @export
 discrete.discover <- function(feature.count,
                               batch,
