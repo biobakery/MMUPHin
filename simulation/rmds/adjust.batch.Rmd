@@ -1,0 +1,97 @@
+---
+title: "Simulation for adjust.batch function"
+author: "Siyuan Ma"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+html_document:
+df_print: paged
+---
+# Overview
+Simulation study for batch adjustment function
+
+```{r setup, echo = FALSE}                                           
+knitr::opts_knit$set(root.dir = normalizePath("../../"))
+```
+```{r setup2, message=FALSE, warning=FALSE, echo = FALSE}
+rm(list = ls())
+for(i.function in list.files("functions/", full.names = TRUE)) {
+  source(i.function)
+}
+setup(getwd())
+dir_output <- "results/5.1-unsupervised_discrete_simulation/"
+dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
+```
+
+# k4 2d Guassian
+```{r k4 2d Guassian}
+dir_outputChunk <- paste0(dir_output, "k4d2Gaussian/")
+dir.create(dir_outputChunk, recursive = TRUE, showWarnings = TRUE)
+n <- 100
+n.batch <- 5
+k.true <- 4
+grand.mus <- matrix(c(0, 0,
+                       1, 0,
+                       0, 1,
+                       1, 1), 
+                     nrow = 4, byrow = TRUE)
+sd.mu <- 0.05
+sd.data <- 0.25
+set.seed(1)
+
+l.mus <- list()
+l.data <- list()
+for(i.batch in 1:n.batch) {
+  mus <- (1:k.true) %>% 
+    purrr::map(function(k) {
+      rnorm(n = 2, mean = grand.mus[k, ], sd = sd.mu)
+    }) %>% 
+    purrr::reduce(rbind)
+  l.mus[[i.batch]] <- mus
+  i.data <- (1:k.true) %>% 
+    purrr::map(function(k) {
+      rnorm(n = n*2, mean = mus[k, ], sd = sd.data) %>% 
+        matrix(ncol = 2, byrow = TRUE)
+    }) %>% 
+    purrr::reduce(rbind)
+  l.data[[i.batch]] <- i.data
+}
+
+tb_samples <- (1:n.batch) %>% 
+  purrr::map_dfr(function(i.batch) {
+    l.data[[i.batch]] %>% 
+      data.frame() %>% 
+      dplyr::mutate(k = factor(rep(1:k.true, each = n)),
+                    i.batch = i.batch,
+                    type = "sample") %>% 
+      dplyr::bind_rows(
+        l.mus[[i.batch]] %>% 
+          data.frame() %>% 
+          dplyr::mutate(k = factor(1:4),
+                        i.batch = i.batch,
+                        type = "centroid")
+      )
+  })
+p_samples <- tb_samples %>% 
+  dplyr::filter(type == "sample") %>% 
+  ggplot(aes(x = X1, y = X2, color = k)) +
+  geom_point() +
+  facet_grid(.~i.batch)
+ggsave(filename = paste0(dir_outputChunk, "samples.pdf"),
+       p_samples, width = 16, height = 4)
+distance <- dist(l.data %>% purrr::reduce(rbind), method = "eucl")
+feature.count.mock <- matrix(1, nrow = 1, ncol = n.batch*k.true*n)
+metadata.mock <- data.frame(k = rep(1:n.batch, each = n*k.true) %>% as.character,
+                    stringsAsFactors = FALSE)
+rownames(metadata.mock) <- colnames(feature.count.mock) <- (1:(n.batch*k.true*n)) %>% as.character()
+fit_discrete <- MMUPHin::discrete.discover(
+  feature.count = feature.count.mock,
+  batch = "k",
+  data = metadata.mock,
+  distance = distance,
+  M = 50,
+  verbose = FALSE
+)
+ggsave(filename = paste0(dir_outputChunk, "validation.pdf"),
+       width = 12,
+       height = 5)
+```
