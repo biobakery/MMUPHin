@@ -69,34 +69,47 @@ save(tb_sim, file = paste0(dir_output, "tb_sim.RData"))
 
 ```{r run sparseDOSSA}
 registerDoParallel(6)
-l_sparseDOSSA <- foreach(i = 1:nrow(tb_sim)) %dopar% {
+l_sparseDOSSA <- foreach(i = 1:20) %dopar% {
   i_simSetup <- tb_sim[i, ]
-  otu_count <- sparseDOSSA::sparseDOSSA(
-    number_features = i_simSetup$nMicrobe,
-    number_samples = i_simSetup$nSample,
-    UserMetadata = 
-      create_metadataMatrix(df_metadata = i_simSetup$df_metadata[[1]],
+  
+  # Error control using `try`,
+  tryAgain <-  TRUE
+  infiniteloopcounter <- 1
+  while (tryAgain & infiniteloopcounter < 5) {
+    otu_count <- try(sparseDOSSA::sparseDOSSA(
+      number_features = i_simSetup$nMicrobe,
+      number_samples = i_simSetup$nSample,
+      UserMetadata = 
+        create_metadataMatrix(df_metadata = i_simSetup$df_metadata[[1]],
+                              metadata_type = metadata_type,
+                              fDummyData = fDummyData),
+      Metadatafrozenidx = 
+        create_fronzenIndex(df_metadata = i_simSetup$df_metadata[[1]],
                             metadata_type = metadata_type,
                             fDummyData = fDummyData),
-    Metadatafrozenidx = 
-      create_fronzenIndex(df_metadata = i_simSetup$df_metadata[[1]],
+      datasetCount = 1,
+      spikeStrength =                                                                             
+        create_effectSize(effectSize = i_simSetup$effectSize[[1]],
+                          df_metadata = i_simSetup$df_metadata[[1]],
                           metadata_type = metadata_type,
-                          fDummyData = fDummyData),
-    datasetCount = 1,
-    spikeStrength =                                                                             
-      create_effectSize(effectSize = i_simSetup$effectSize[[1]],
-                        df_metadata = i_simSetup$df_metadata[[1]],
-                        metadata_type = metadata_type,
-                        fDummyData = fDummyData) %>% 
-      paste(collapse = ","),
-    noZeroInflate = i_simSetup$noZeroInflate,
-    percent_spiked = i_simSetup$spikeMicrobes,
-    seed = i_simSetup$rep,
-    minLevelPercent = 0,
-    write_table = FALSE,
-    verbose = FALSE) %>%
-    extract_sparseDOSSA() %>%
-    extract2("features")
+                          fDummyData = fDummyData) %>% 
+        paste(collapse = ","),
+      noZeroInflate = i_simSetup$noZeroInflate,
+      percent_spiked = i_simSetup$spikeMicrobes,
+      seed = i_simSetup$rep,
+      minLevelPercent = 0,
+      write_table = FALSE,
+      verbose = FALSE) %>%
+        extract_sparseDOSSA() %>%
+        extract2("features"),
+      silent = TRUE)
+    if (is.null(otu_count) | inherits(otu_count, "try-error")) {
+      tryAgain = TRUE
+      infiniteloopcounter = infiniteloopcounter + 1
+    } else {
+      tryAgain = FALSE
+    }
+  }
 }
 stopImplicitCluster()
 save(l_sparseDOSSA, file = paste0(dir_output, "sparseDOSSA.RData"))
