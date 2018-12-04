@@ -11,6 +11,7 @@ Simulation study for batch adjustment function
 
 ```{r setup, echo = FALSE}                                           
 knitr::opts_knit$set(root.dir = normalizePath("../"))
+# setwd("simulation/")
 ```
 ```{r setup2, message=FALSE, warning=FALSE, echo = FALSE}
 rm(list = ls())
@@ -69,7 +70,7 @@ save(tb_sim, file = paste0(dir_output, "tb_sim.RData"))
 
 ```{r run sparseDOSSA}
 registerDoParallel(6)
-l_sparseDOSSA <- foreach(i = 1:20) %dopar% {
+l_sparseDOSSA <- foreach(i = 1:nrow(tb_sim)) %dopar% {
   i_simSetup <- tb_sim[i, ]
   
   # Error control using `try`,
@@ -110,6 +111,7 @@ l_sparseDOSSA <- foreach(i = 1:20) %dopar% {
       tryAgain = FALSE
     }
   }
+  return(otu_count)
 }
 stopImplicitCluster()
 save(l_sparseDOSSA, file = paste0(dir_output, "sparseDOSSA.RData"))
