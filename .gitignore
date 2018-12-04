@@ -3,4 +3,5 @@
 .Rbuildignore
 .Rhistory
 .DS_Store
-/results/*
+debugging
+simulation/results

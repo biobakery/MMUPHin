@@ -1,7 +1,7 @@
 rm(list = ls())
 source("R/sparseDOSSA_helpers.R")
-library(sva)
-library(sparseDOSSA)
+source("R/adjust.batch.R")
+source("R/helpers.R")
 library(tidyverse)
 
 # simulation setup -------------------------------------------------------
@@ -38,14 +38,6 @@ l_metadata_null <- rep %>%
     rbind(rbinom(n = nSamples, size = 1, prob = 0.5),
           rbinom(n = nSamples, size = 1, prob = 0.5))
   })
-l_tb_metadata <- l_metadata_null %>%
-  purrr::map(function(metadata_null) {
-    metadata_null %>%
-      t() %>%
-      tibble::as_tibble() %>%
-      dplyr::mutate(Sample = paste0("Sample", 1:nSamples))
-  })
-
 
 # simulation --------------------------------------------------------------
 l_simResults <- (1:nrow(df_simSetup)) %>%
@@ -70,6 +62,18 @@ l_simResults <- (1:nrow(df_simSetup)) %>%
 save(l_metadata_null, file = "results/unitTest_ComBat_study/metadata.RData")
 save(l_simResults, file = "results/unitTest_ComBat_study/simResults.RData")
 
+load("results/unitTest_ComBat_study/metadata.RData")
+load("results/unitTest_ComBat_study/simResults.RData")
+l_tb_metadata <- l_metadata_null %>%
+  purrr::map(function(metadata_null) {
+    metadata_null %>%
+      t() %>%
+      tibble::as_tibble() %>%
+      dplyr::mutate(Sample = paste0("Sample", 1:nSamples))
+  })
+
+
+
 tb_results <- l_simResults %>%
   purrr::map(function(i_simResult) {
     otu_count <- i_simResult$otu_count
@@ -81,16 +85,22 @@ tb_results <- l_simResults %>%
 
     otu_ra <- otu_count %>%
       apply(2, function(x) x / sum(x))
-    otu_count_ComBat <- adjust_batch(dat = otu_count,
-                                     batch = tb_metadata$V1,
-                                     mod = cbind(tb_metadata$V2),
-                                     noZeroInflate = TRUE,
-                                     pseudoCount = 0.5)
-    otu_count_MMUPHin <- adjust_batch(dat = otu_count,
-                                      batch = tb_metadata$V1,
-                                      mod = cbind(tb_metadata$V2),
-                                      noZeroInflate = FALSE,
-                                      pseudoCount = 0.5)
+    otu_count_ComBat <- MMUPHin::adjust.batch(feature.count = otu_count,
+                                              batch = tb_metadata$V1,
+                                              formula.adj = ~ V2,
+                                              data.adj = tb_metadata,
+                                              zero.inflation = FALSE,
+                                              pseudo.count = 0.5,
+                                              diagnostics = TRUE,
+                                              verbose = FALSE)
+    otu_count_MMUPHin <- MMUPHin::adjust.batch(feature.count = otu_count,
+                                               batch = tb_metadata$V1,
+                                               formula.adj = ~ V2,
+                                               data.adj = tb_metadata,
+                                               zero.inflation = TRUE,
+                                               pseudo.count = 0.5,
+                                               diagnostics = TRUE,
+                                               verbose = FALSE)
     tb_otu <- otu_ra %>%
       t() %>%
       as.data.frame() %>%
@@ -128,6 +138,7 @@ tb_results <- l_simResults %>%
   }) %>%
   dplyr::bind_rows()
 save(tb_results, file = "results/unitTest_ComBat_study/tb_combinedAbundance.RData")
+load("results/unitTest_ComBat_study/tb_combinedAbundance.RData")
 df_plots <- tb_results %>%
   dplyr::filter(feature %>% stringr::str_detect("_TP")) %>%
   dplyr::group_by(feature, `effectSize`, `i Iteration`, rep) %>%
@@ -137,7 +148,7 @@ df_plots <- tb_results %>%
                   mean) %>%
   dplyr::ungroup() %>%
   dplyr::group_by(feature, `effectSize`, V1, `i Iteration`, rep, Normalization, `Mean Abundance Overall`) %>%
-  dplyr::summarise(`Mean Abundance` = `relative abundance` %>% setdiff(0) %>% mean) %>%
+  dplyr::summarise(`Mean Abundance` = `relative abundance` %>% setdiff(0) %>%  mean) %>%
   ungroup()
 plot <- df_plots %>%
   dplyr::mutate(difference = abs(`Mean Abundance` - `Mean Abundance Overall`)) %>%
@@ -168,18 +179,22 @@ tb_results <- l_simResults %>%
     rep <- i_simSetup$rep
     tb_metadata <- l_tb_metadata[[rep]]
 
-    otu_ra <- otu_count %>%
-      apply(2, function(x) x / sum(x))
-    otu_count_ComBat <- adjust_batch(dat = otu_count,
+    otu_count_ComBat <- adjust.batch(feature.count = otu_count,
                                      batch = tb_metadata$V1,
-                                     mod = cbind(tb_metadata$V2),
-                                     noZeroInflate = TRUE,
-                                     pseudoCount = 0.5)
-    otu_count_MMUPHin <- adjust_batch(dat = otu_count,
+                                     # formula.adj = ~ V2,
+                                     # data.adj = tb_metadata,
+                                     zero.inflation = FALSE,
+                                     pseudo.count = 0.5,
+                                     diagnostics = FALSE,
+                                     verbose = FALSE)
+    otu_count_MMUPHin <- adjust.batch(feature.count = otu_count,
                                       batch = tb_metadata$V1,
-                                      mod = cbind(tb_metadata$V2),
-                                      noZeroInflate = FALSE,
-                                      pseudoCount = 0.5)
+                                      # formula.adj = ~ V2,
+                                      # data.adj = tb_metadata,
+                                      zero.inflation = TRUE,
+                                      pseudo.count = 0.5,
+                                      diagnostics = FALSE,
+                                      verbose = FALSE)
     l_distance <- list(
       "Original" = otu_count,
       "ComBat" = otu_count_ComBat,
@@ -190,6 +205,7 @@ tb_results <- l_simResults %>%
           otu %>%
             phyloseq::otu_table(taxa_are_rows = TRUE) %>%
             phyloseq::phyloseq() %>%
+            phyloseq::transform_sample_counts(function(x) x / sum(x)) %>%
             phyloseq::distance(method = "bray")
         }
       )
@@ -225,7 +241,11 @@ tb_results <- l_simResults %>%
 plot <- tb_results %>%
   mutate(Normalization = Normalization %>%
            factor(levels = c("Original", "ComBat", "MMUPHin"))) %>%
-  filter(Variable %in% c("V1", "V2")) %>%
+  filter(Variable %in% c("V1", "V2"), effectSize %in% c(0.1, 0.5, 1, 5, 10)) %>%
+  mutate(Variable = Variable %>%
+           recode("V1" = "Study",
+                  "V2" = "Neg. Control") %>%
+           factor(levels = c("Study", "Neg. Control"))) %>%
   ggplot(aes(x = Variable, y = R2)) +
   geom_boxplot(aes(color = Normalization)) +
   facet_grid(.~effectSize) +
@@ -237,3 +257,111 @@ ggsave(file = "results/unitTest_ComBat_study/compare_R2.pdf",
        plot,
        width = 10,
        height = 4)
+
+
+# one example of R2 -------------------------------------------------------
+df_simSetup %>%
+  mutate(i_iter = 1:nrow(df_simSetup)) %>%
+  filter(effectSize == 5, rep == 1) %>%
+  select(i_iter)
+i_iter <- 61
+i_simResult <- l_simResults[[i_iter]]
+otu_count <- i_simResult$otu_count
+i_simSetup <- df_simSetup[i_iter, ]
+effectSize <- i_simSetup$effectSize
+rep <- i_simSetup$rep
+tb_metadata <- l_tb_metadata[[rep]]
+
+otu_ra <- otu_count %>%
+  apply(2, function(x) x / sum(x))
+otu_count_ComBat <- adjust.batch(feature.count = otu_count,
+                                 batch = tb_metadata$V1,
+                                 # formula.adj = ~ V2,
+                                 # data.adj = tb_metadata,
+                                 zero.inflation = FALSE,
+                                 pseudo.count = 0.5,
+                                 diagnostics = TRUE,
+                                 verbose = FALSE) %>%
+  apply(2, function(x) x / sum(x))
+otu_count_MMUPHin <- adjust.batch(feature.count = otu_count,
+                                  batch = tb_metadata$V1,
+                                  # formula.adj = ~ V2,
+                                  # data.adj = tb_metadata,
+                                  zero.inflation = TRUE,
+                                  pseudo.count = 0.5,
+                                  diagnostics = TRUE,
+                                  verbose = FALSE)
+l_distance <- list(
+  "Original" = otu_count,
+  "ComBat" = otu_count_ComBat,
+  "MMUPHin" = otu_count_MMUPHin
+) %>%
+  purrr::map(
+    function(otu) {
+      otu %>%
+        phyloseq::otu_table(taxa_are_rows = TRUE) %>%
+        phyloseq::phyloseq() %>%
+        phyloseq::distance(method = "bray")
+    }
+  )
+
+tb_metadata <- tb_metadata %>%
+  mutate(Study = paste0("Study ", V1 + 1),
+         `Neg Control` = V2) %>%
+  data.frame(check.names = FALSE) %>%
+  column_to_rownames("Sample")
+
+
+physeq1 <- phyloseq(otu_count %>% otu_table(taxa_are_rows = TRUE),
+         sample_data(tb_metadata)) %>%
+  transform_sample_counts(function(x) x / sum(x))
+
+physeq2 <- phyloseq(otu_count_MMUPHin %>% otu_table(taxa_are_rows = TRUE),
+                    sample_data(tb_metadata)) %>%
+  transform_sample_counts(function(x) x / sum(x))
+
+(plot_ordination(physeq1,
+                ordination = ordinate(physeq1, method = "MDS", distance = "bray"),
+                color = "Study") +
+  theme_bw()) %>%
+  ggsave(file = "results/unitTest_ComBat_study/oneStudyBefore.pdf",
+         width = 5, height = 4)
+vegan::adonis(distance(physeq1, "bray") ~ V1,
+              data = tb_metadata,
+              permutations = 2)
+(plot_ordination(physeq2,
+                 ordination = ordinate(physeq2, method = "MDS", distance = "bray"),
+                 color = "Study") +
+    theme_bw()) %>%
+  ggsave(file = "results/unitTest_ComBat_study/oneStudyAfter.pdf",
+         width = 5, height = 4)
+vegan::adonis(distance(physeq1, "bray") ~ V1,
+              data = tb_metadata,
+              permutations = 2)
+
+tb_R2 <- names(l_distance) %>%
+  purrr::map_df(
+    function(i_normalization) {
+      distance <- l_distance[[i_normalization]]
+      adonis_fit1 <- vegan::adonis(distance ~ V1,
+                                   data = tb_metadata,
+                                   permutations = 2)
+      adonis_fit2 <- vegan::adonis(distance ~ V2,
+                                   data = tb_metadata,
+                                   permutations = 2)
+      rbind(adonis_fit1$aov.tab[1, ],
+            adonis_fit2$aov.tab[1, ]) %>%
+        as.data.frame() %>%
+        tibble::rownames_to_column("Variable") %>%
+        dplyr::mutate(Normalization = i_normalization)
+    }
+  ) %>%
+  dplyr::bind_rows()
+
+tb_combined <- tb_R2 %>%
+  dplyr::bind_cols(
+    i_simSetup %>%
+      slice(rep(1, nrow(tb_R2)))
+  ) %>%
+  mutate(`i Iteration` = i_iter)
+# return(tb_combined)

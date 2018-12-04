@@ -110,19 +110,7 @@ sparseDOSSA_Wrapper <- function(simparams, simparamslabels,
           }
 }
 
-
-#' Title
-#'
-#' @param sparseDOSSA_fit
-#' @param add_libsize_var
-#'
-#' @return
-#'
-#' @importFrom magrittr %>%
-#' @export
-#'
-#' @examples
-extract_sparseDOSSA <- function(sparseDOSSA_fit, add_libsize_var = FALSE) {
+extract_sparseDOSSA <- function(sparseDOSSA_fit) {
 
   # metadata + feature data
   sparsedossa_results <- as.data.frame(sparseDOSSA_fit$OTU_count)
@@ -162,14 +150,9 @@ extract_sparseDOSSA <- function(sparseDOSSA_fit, add_libsize_var = FALSE) {
   newname <- paste0(colnames(features)[wh.TP], "_TP")
   colnames(features)[wh.TP] <- newname
 
-  # If specified, further randomize library size
-  if(add_libsize_var) {
-    features <- features * exp(rnorm(n = nSamples, mean = 0.5, sd = 0.5))
-  }
   # feature table has rows as features
   features <- t(features)
-  libSize <- colSums(features)
 
   # Return as list
-  return(list(metadata=metadata, features=features, libSize=libSize))
+  return(list(metadata=metadata, features=features))
 }

@@ -1,17 +1,18 @@
-standardize_feature <- function(y,
-                                i_design,
+standardize.feature <- function(y,
+                                i.design,
                                 n.batch) {
-  beta.hat <- solve(crossprod(i_design), crossprod(i_design, t(y)))
-  grand.mean <- tcrossprod(t(beta.hat[1:n.batch, , drop = FALSE]), i_design[, 1:n.batch, drop = FALSE]) %>%
-    mean()
+  beta.hat <- solve(crossprod(i.design),
+                    crossprod(i.design, y))
+  grand.mean <- mean(i.design[, 1:n.batch] %*%
+                       beta.hat[1:n.batch, ])
 
   ## change var.pooled for ref batch
-  var.pooled <- var((y - t(i_design %*% beta.hat))[1, ])
-  stand.mean <- rep(grand.mean, ncol(y))
-  if(ncol(i_design) > n.batch){
+  var.pooled <- var(y - (i.design %*% beta.hat)[, 1])
+  stand.mean <- rep(grand.mean, length(y))
+  if(ncol(i.design) > n.batch){
     stand.mean <- stand.mean +
-      tcrossprod(beta.hat[-(1:n.batch), , drop = FALSE],
-                 i_design[, -(1:n.batch), drop = FALSE])
+      (i.design[, -(1:n.batch), drop = FALSE] %*%
+         beta.hat[-(1:n.batch), ])[, 1]
   }
   y.stand <- (y - stand.mean) / sqrt(var.pooled)
   return(list(y.stand = y.stand, stand.mean = stand.mean, var.pooled = var.pooled))
@@ -44,6 +45,7 @@ it.sol  <- function(sdat,
   while(change>conv){
     g.new <- postmean(g.hat, g.bar, n, d.old, t2)
     sum2 <- rowSums((sdat - g.new %*% t(rep(1,ncol(sdat))))^2, na.rm=TRUE)
+    sum2[sum2 == 0] <- NA
     d.new <- postvar(sum2, n, a, b)
     change <- max(abs(g.new-g.old) / g.old, abs(d.new-d.old) / d.old, na.rm=TRUE)
     g.old <- g.new
@@ -63,4 +65,415 @@ postmean <- function(g.hat,g.bar,n,d.star,t2){
 postvar <- function(sum2,n,a,b){
   (.5*sum2 + b) / (n/2 + a - 1)
 }
+
+Maaslin2.wrapper <- function(feature.count = i.feature.count,
+                             data = i.data,
+                             exposure = exposure,
+                             lvl.exposure = NULL,
+                             covariates = i.covariates,
+                             covariates.random = NULL,
+                             directory = "./",
+                             normalization = "TSS",
+                             transform = "AST",
+                             analysis_method = "LM") {
+  # Create temporary feature/sample/covariate names to avoid
+  # Weird scenarios
+  feature.count.rename <- feature.count
+  data.rename <- data[, c(exposure, covariates, covariates.random), drop = FALSE]
+  features.rename <- rename.Maaslin(rownames(feature.count.rename), prefix = "T")
+  samples.rename <- rename.Maaslin(colnames(feature.count.rename), prefix = "S")
+  exposure.rename <- rename.Maaslin(exposure, prefix = "E")
+  covariates.rename <- rename.Maaslin(covariates, prefix = "X")
+  covariates.random.rename <- rename.Maaslin(covariates.random, prefix = "RX")
+  dimnames(feature.count.rename) <- list(features.rename, samples.rename)
+  dimnames(data.rename) <- list(samples.rename,
+                                c(exposure.rename,
+                                  covariates.rename,
+                                  covariates.random.rename))
+  # subset so that don't run into issues with all-zero features
+  ind.feature <- apply(feature.count.rename > 0, 1, any)
+
+  # Run Maaslin2
+  log.Maaslin <- suppressWarnings(
+    capture.output(
+      res.rename <- Maaslin2::Maaslin2(input_data = feature.count.rename[ind.feature, , drop = FALSE],
+                                       input_metadata = data.rename,
+                                       output = directory,
+                                       min_abundance = 0,
+                                       min_prevalence = 0,
+                                       normalization = normalization,
+                                       transform = transform,
+                                       analysis_method = analysis_method,
+                                       max_significance = 1,
+                                       random_effects = covariates.random.rename,
+                                       fixed_effects = c(exposure.rename, covariates.rename),
+                                       standardize = FALSE,
+                                       plot_heatmap = FALSE,
+                                       plot_scatter = FALSE)$results
+    ))
+  # cat(paste(log.Maaslin, collapse = "\n"),
+  #     file = file.path(directory, "Maaslin2_warnings.log"))
+
+  # Read Maaslin results
+  suppressWarnings(table.Maaslin <-
+                     dplyr::left_join(data.frame(feature = names(features.rename),
+                                                 feature.rename = features.rename,
+                                                 stringsAsFactors = FALSE),
+                                      create.table.Maaslin(features.rename,
+                                                           exposure.rename,
+                                                           lvl.exposure),
+                                      by = c("feature.rename" = "feature")))
+
+  res <- dplyr::left_join(table.Maaslin, res.rename,
+                          by = c("feature.rename" = "feature",
+                                 "metadata",
+                                 "value"))
+  res <- dplyr::select(res, -feature.rename, -name)
+  res$metadata <- exposure
+  if(all(res$value == exposure.rename)) res$value <- exposure
+
+  return(res)
+}
+
+rename.Maaslin <- function(old.names, prefix) {
+  if(is.null(old.names) | length(old.names) == 0) return(NULL)
+  new.names <- paste0(prefix, seq_along(old.names))
+  names(new.names) <- old.names
+  return(new.names)
+}
+
+create.table.Maaslin <- function(features, exposure, lvl.exposure) {
+  if(is.null(lvl.exposure))
+    values.exposure <- exposure
+  else
+    values.exposure <- sort(lvl.exposure)[-1]
+  table.Maaslin <- expand.grid(features, exposure, values.exposure, stringsAsFactors = FALSE)
+  names(table.Maaslin) <- c("feature", "metadata", "value")
+  return(table.Maaslin)
+}
+
+rma.wrapper <- function(l.Maaslin.fit, method = "REML",
+                        forest.plots = TRUE, directory) {
+  lvl.batch <- names(l.Maaslin.fit)
+  n.batch <- length(lvl.batch)
+  exposure <- unique(l.Maaslin.fit[[1]]$metadata)
+  values.exposure <- unique(l.Maaslin.fit[[1]]$value)
+  features <- unique(l.Maaslin.fit[[1]]$feature)
+  l.results <- list()
+  for(value.exposure in values.exposure) {
+    i.result <- data.frame(matrix(NA,
+                                  nrow = length(features),
+                                  ncol = 11 + length(lvl.batch)))
+    colnames(i.result) <- c("feature",
+                            "exposure",
+                            "beta",
+                            "se",
+                            "pval",
+                            "k",
+                            "tau2",
+                            "se.tau2",
+                            "p.tau2",
+                            "I2",
+                            "H2",
+                            paste0("weight_", lvl.batch))
+    i.result$feature <- features
+    i.result$exposure <- value.exposure
+    rownames(i.result) <- i.result$feature
+    if(forest.plots) pdf(paste0(directory, exposure, "_", value.exposure, ".pdf"),
+                         width = 6,
+                         height = 4 + ifelse(n.batch > 4,
+                                             (n.batch - 4) * 0.5,
+                                             0))
+    # sanity check
+    if(any(features != l.Maaslin.fit[[2]][l.Maaslin.fit[[2]]$value == value.exposure, "feature"]))
+      stop("Feature names don't match between l.Maaslin.fit components!")
+    betas <- sapply(l.Maaslin.fit, function(i.Maaslin.fit) {
+      i.Maaslin.fit[i.Maaslin.fit$value == value.exposure, "coef"]
+    })
+    sds <- sapply(l.Maaslin.fit, function(i.Maaslin.fit) {
+      i.Maaslin.fit[i.Maaslin.fit$value == value.exposure, "stderr"]
+    })
+    pvals <- sapply(l.Maaslin.fit, function(i.Maaslin.fit) {
+      i.Maaslin.fit[i.Maaslin.fit$value == value.exposure, "pval"]
+    })
+    rownames(betas) <- rownames(sds) <- rownames(pvals) <- features
+    ind.feature <- !is.na(betas) & !is.na(sds) & (sds != 0)
+    count.feature <- apply(ind.feature, 1, sum)
+    for(feature in features) {
+      if(count.feature[feature] >= 2) {
+        tmp.rma.fit <- try(metafor::rma.uni(yi = betas[feature, ind.feature[feature, ]],
+                                            sei = sds[feature, ind.feature[feature, ]],
+                                            slab = lvl.batch[ind.feature[feature, ]],
+                                            method = method,
+                                            control = list(threshold = 1e-10,
+                                                           maxiter = 1000)),
+
+                           silent = TRUE) # FIXME
+        if("try-error" %in% class(tmp.rma.fit))
+          next
+        wts <- metafor::weights.rma.uni(tmp.rma.fit)
+        i.result[feature, c("beta",
+                            "se",
+                            "pval",
+                            "k",
+                            "tau2",
+                            "se.tau2",
+                            "p.tau2",
+                            "I2",
+                            "H2",
+                            paste0("weight_",
+                                   names(wts))
+        )] <- c(unlist(tmp.rma.fit[c("beta",
+                                     "se",
+                                     "pval",
+                                     "k",
+                                     "tau2",
+                                     "se.tau2",
+                                     "QEp",
+                                     "I2",
+                                     "H2")]),
+                wts)
+        if(tmp.rma.fit$pval < 0.05 & forest.plots)
+          metafor::forest(tmp.rma.fit,
+                          xlab = shorten.name(feature, cutoff = 10),
+                          slab = shorten.name(lvl.batch[ind.feature[feature, ]], cutoff = 6))
+      }
+      if(count.feature[feature] == 1) {
+        tmp.ind.feature <- ind.feature[feature, ]
+        tmp.batch <- lvl.batch[tmp.ind.feature]
+        i.result[feature, c("beta",
+                            "se",
+                            "pval",
+                            "k",
+                            paste0("weight_",
+                                   tmp.batch)
+        )] <- c(betas[feature, tmp.ind.feature],
+                sds[feature, tmp.ind.feature],
+                pvals[feature, tmp.ind.feature],
+                1,
+                100)
+      }
+    }
+    dev.off()
+    i.result$pval.bonf <- p.adjust(i.result$pval, method = "bonf")
+    i.result$qval.fdr <- p.adjust(i.result$pval, method = "fdr")
+
+    l.results[[value.exposure]] <- i.result
+  }
+  results <- Reduce("rbind", l.results)
+  return(results)
+}
+
+rma.mod.wrapper <- function(l.Maaslin.fit, data.moderator,
+                            method = "REML"){
+  lvl.batch <- names(l.Maaslin.fit)
+  if(!all(lvl.batch %in% rownames(data.moderator)))
+    stop("data.moderator must have all the batches fitted in Maaslin!")
+  data.moderator <- data.moderator[lvl.batch, , drop = FALSE]
+  exposure <- unique(l.Maaslin.fit[[1]]$metadata)
+  values.exposure <- unique(l.Maaslin.fit[[1]]$value)
+  features <- unique(l.Maaslin.fit[[1]]$feature)
+  l.results <- list()
+  for(value.exposure in values.exposure) {
+    i.result <- data.frame(feature = features,
+                           exposure = value.exposure,
+                           tau2 = NA,
+                           se.tau2 = NA,
+                           p.tau2 = NA,
+                           p.moderator = NA,
+                           I2 = NA,
+                           H2 = NA,
+                           R2 = NA, stringsAsFactors = FALSE)
+    rownames(i.result) <- i.result$feature
+    # sanity check
+    if(any(features != l.Maaslin.fit[[2]][l.Maaslin.fit[[2]]$value == value.exposure, "feature"]))
+      stop("Feature names don't match between l.Maaslin.fit components!")
+    betas <- sapply(l.Maaslin.fit, function(i.Maaslin.fit) {
+      i.Maaslin.fit[i.Maaslin.fit$value == value.exposure, "coef"]
+    })
+    sds <- sapply(l.Maaslin.fit, function(i.Maaslin.fit) {
+      i.Maaslin.fit[i.Maaslin.fit$value == value.exposure, "stderr"]
+    })
+    rownames(betas) <- rownames(sds) <- features
+    ind.feature <- !is.na(betas) & !is.na(sds) & (sds != 0)
+    count.feature <- apply(ind.feature, 1, sum)
+    for(feature in features) {
+      if(count.feature[feature] <= 1) next
+      suppressWarnings(tmp.rma.fit <-
+                         try(metafor::rma.uni(yi = betas[feature, ind.feature[feature, ]],
+                                              sei = sds[feature, ind.feature[feature, ]],
+                                              mod = ~.,
+                                              data = data.moderator[ind.feature[feature, ], ,
+                                                                    drop = FALSE],
+                                              method = method,
+                                              control = list(threshold = 1e-10,
+                                                   maxiter = 1000)),
+                             silent = TRUE)) # FIXME
+      if("try-error" %in% class(tmp.rma.fit))
+        next
+      if(is.null(tmp.rma.fit$R2))
+        next
+      i.result[feature, c("tau2",
+                          "se.tau2",
+                          "p.tau2",
+                          "p.moderator",
+                          "I2",
+                          "H2",
+                          "R2")] <-
+        unlist(tmp.rma.fit[c("tau2",
+                             "se.tau2",
+                             "QEp",
+                             "QMp",
+                             "I2",
+                             "H2",
+                             "R2")])
+    }
+    l.results[[value.exposure]] <- i.result
+  }
+  results <- Reduce("rbind", l.results)
+  results$R2[is.na(results$R2) & !is.na(results$tau2)] <- 0
+  return(results)
+}
+
+shorten.name <- function(x, cutoff) {
+  x_sub <- x
+  stringr::str_sub(x_sub[stringr::str_length(x) > cutoff],
+                   start = round(cutoff/2) + 1,
+                   end = -(round(cutoff/2) + 1)) <- "..."
+  return(x_sub)
+}
+
+# Helper function for getting relative abundance
+# Useful when possible samples are all zero
+tss <- function(x) {
+  if(all(x == 0)) return(x)
+  return(x / sum(x))
+}
+# get.se.Maaslin <- function(coefficient, p) {
+#   ifelse(p != 1,
+#          abs(coefficient / qnorm(p/2)),
+#          NA)
+# }
+
+# Maaslin.wrapper <- function(taxa,
+#                             metadata,
+#                             variables,
+#                             covariates.random = NULL,
+#                             directory = "./",
+#                             ...) {
+#   # Specify files
+#   conf.file <- file.path(directory, "data.conf")
+#   data.file.tsv <- file.path(directory, "data.tsv")
+#   output.file <- file.path(directory, "output.txt")
+#
+#   # Create temporary feature/sample/covariate names to avoid
+#   # Weird scenarios
+#   taxa.rename <- taxa
+#   metadata.rename <- metadata[, c(variables, covariates.random), drop = FALSE]
+#   taxa.names.rename <- rename.Maaslin(rownames(taxa), prefix = "T")
+#   sample.names.rename <- rename.Maaslin(colnames(taxa), prefix = "S")
+#   variables.rename <- rename.Maaslin(variables, prefix = "X")
+#   covariates.random.rename <- rename.Maaslin(covariates.random, prefix = "RX")
+#   dimnames(taxa.rename) <- list(taxa.names.rename, sample.names.rename)
+#   dimnames(metadata.rename) <- list(sample.names.rename,
+#                                     c(variables.rename,
+#                                       covariates.random.rename))
+#   # Write Maaslin files
+#   write.config(t(taxa.rename),
+#                c(variables.rename,
+#                  covariates.random.rename),
+#                conf.file)
+#   write.data(t(taxa.rename), metadata.rename,
+#              c(variables.rename, covariates.random.rename),
+#              data.file.tsv)
+#
+#   # Run the Maaslin command
+#   log.Maaslin <- suppressWarnings(capture.output(Maaslin::Maaslin(strInputTSV = data.file.tsv,
+#                                                                   strInputConfig = conf.file,
+#                                                                   strOutputDIR = directory,
+#                                                                   strRandomCovariates = covariates.random.rename,
+#                                                                   dMinAbd=0,
+#                                                                   dMinSamp=0,
+#                                                                   dSignificanceLevel=1,
+#                                                                   ...)))
+#   cat(paste(log.Maaslin, collapse = "\n"),
+#       file = file.path(directory, "Maaslin.log"))
+#   # Read Maaslin results
+#   table.taxa.rename <-
+#     data.frame(Feature = names(taxa.names.rename),
+#                Feature.rename = taxa.names.rename,
+#                stringsAsFactors = FALSE)
+#   res.rename <- read.Maaslin(directory)
+#   res <- list()
+#   for(variable in variables) {
+#     if(variables.rename[variable] %in% names(res.rename)) {
+#       i.result.rename <- res.rename[[variables.rename[variable]]]
+#       i.lvls <- unique(gsub(variables.rename[variable], "", i.result.rename$Value, fixed = TRUE))
+#       i.table.taxa.rename <- expand.grid(Feature.rename = taxa.names.rename,
+#                                          Value = paste0(variables.rename[variable],
+#                                                         i.lvls),
+#                                          stringsAsFactors = FALSE)
+#       i.table.taxa.rename <- dplyr::left_join(i.table.taxa.rename, table.taxa.rename,
+#                                               by = "Feature.rename")
+#       i.result <- dplyr::left_join(i.table.taxa.rename,
+#                                    i.result.rename,
+#                                    by = c("Feature.rename" = "Feature",
+#                                           "Value" = "Value"))
+#       i.result$Value <- gsub(paste0("^", variables.rename[variable]),
+#                              variable,
+#                              i.result$Value)
+#       i.result$Variable <- variable
+#       i.result <- i.result[, c("Variable",
+#                                "Feature",
+#                                "Value",
+#                                "Coefficient",
+#                                "N",
+#                                "N.not.0",
+#                                "P.value",
+#                                "Q.value")]
+#
+#     } else {
+#       i.result <- data.frame(
+#         Variable = variable,
+#         Feature = names(taxa.names.rename),
+#         Value = NA,
+#         Coefficient = NA,
+#         N = NA,
+#         N.not.0 = NA,
+#         P.value = NA,
+#         Q.value = NA
+#       )
+#     }
+#     i.result$Standard.error <- get.se.Maaslin(i.result$Coefficient, i.result$P.value)
+#     res[[variable]] <- i.result
+#   }
+#
+#   return(res)
+# }
+
+# write.config <- function(taxa, variables, filename){
+#   template <-
+#     "Matrix: Metadata
+#   Read_PCL_Rows: %s-%s
+#
+#   Matrix: Abundance
+#   Read_PCL_Rows: %s-"
+#
+#   cat(sprintf(template,
+#               variables[1],
+#               variables[length(variables)],
+#               colnames(taxa)[1]),
+#       file = filename)
+# }
+
+# write.data <- function(taxa, metadata, variables, filename){
+#   meta <- as.matrix(metadata[, variables, drop = FALSE])
+#   otu <- as.matrix(taxa)
+#   header <- matrix(rownames(taxa), ncol = 1, dimnames = list(NULL, "ID"))
+#
+#   mat <- cbind(header, meta, otu)
+#
+#   write.table(mat, sep = "\t", row.names = F, col.names = T, quote = F, file = filename)
+# }
+
 
