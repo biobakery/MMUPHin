@@ -40,25 +40,29 @@ tb_results <- tb_results %>%
 registerDoParallel(15)
 l_permanova_before <- foreach(i = 1:nrow(tb_results)) %dopar% {
   i_result <- tb_results[i, ]
-  distance <- i_result$otu_count[[1]] %>% 
-    phyloseq::otu_table(taxa_are_rows = TRUE) %>% 
-    phyloseq::transform_sample_counts(MMUPHin:::tss) %>% 
-    phyloseq::distance(method = "bray")
+  phylo_tmp <- phyloseq::phyloseq(
+    otu_table(i_result$otu_count[[1]], taxa_are_rows = TRUE),
+    sample_data(i_result$df_metadata[[1]])
+  ) %>% prune_taxaSamples()
+  
+  distance <- phyloseq::distance(phylo_tmp, method = "bray")
   list(batch = try(vegan::adonis(distance ~ batch, 
-                             data = i_result$df_metadata[[1]],
+                             data = sample_data2(phylo_tmp),
                              permutations = 2),
                    silent = TRUE),
        positive_control = try(vegan::adonis(distance ~ positive_control, 
-                                        data = i_result$df_metadata[[1]],
+                                        data = sample_data2(phylo_tmp),
                                         permutations = 2),
                               silent = TRUE),
        negative_control = try(vegan::adonis(distance ~ negative_control, 
-                                        data = i_result$df_metadata[[1]],
+                                        data = sample_data2(phylo_tmp),
                                         permutations = 2),
                               silent = TRUE))
 }
 stopImplicitCluster()
 save(l_permanova_before, file = paste0(dir_output, "permanova_before.RData"))
+# load(paste0(dir_output, "permanova_before.RData"))
+# classes <- sapply(l_permanova_before, function(i) sapply(i, class))
 ```
 
 ```{r batch adjustment}
@@ -94,18 +98,21 @@ save(l_adjust.batch, file = paste0(dir_output, "adjust.batch.RData"))
 registerDoParallel(15)
 l_permanova_after <- foreach(i = 1:nrow(tb_results)) %dopar% {
   i_result <- tb_results[i, ]
-  distance <- l_adjust.batch[[i]]$otu_adjust %>% 
-    phyloseq::otu_table(taxa_are_rows = TRUE) %>% 
-    phyloseq::transform_sample_counts(MMUPHin:::tss) %>% 
-    phyloseq::distance(method = "bray")
+  
+  phylo_tmp <- phyloseq::phyloseq(
+    otu_table(l_adjust.batch[[i]]$otu_adjust, taxa_are_rows = TRUE),
+    sample_data(i_result$df_metadata[[1]])
+  ) %>% prune_taxaSamples()
+  distance <- phyloseq::distance(phylo_tmp, method = "bray")
+  
   list(batch = vegan::adonis(distance ~ batch, 
-                             data = i_result$df_metadata[[1]],
+                             data = sample_data2(phylo_tmp),
                              permutations = 2),
        positive_control = vegan::adonis(distance ~ positive_control, 
-                                        data = i_result$df_metadata[[1]],
+                                        data = sample_data2(phylo_tmp),
                                         permutations = 2),
        negative_control = vegan::adonis(distance ~ negative_control, 
-                                        data = i_result$df_metadata[[1]],
+                                        data = sample_data2(phylo_tmp),
                                         permutations = 2))
 }
 stopImplicitCluster()
@@ -113,18 +120,21 @@ save(l_permanova_after, file = paste0(dir_output, "permanova_after.RData"))
 registerDoParallel(15)
 l_permanova_afterComBat <- foreach(i = 1:nrow(tb_results)) %dopar% {
   i_result <- tb_results[i, ]
-  distance <- l_adjust.batch[[i]]$otu_adjust_ComBat %>% 
-    phyloseq::otu_table(taxa_are_rows = TRUE) %>% 
-    phyloseq::transform_sample_counts(MMUPHin:::tss) %>% 
-    phyloseq::distance(method = "bray")
+  
+  phylo_tmp <- phyloseq::phyloseq(
+    otu_table(l_adjust.batch[[i]]$otu_adjust_ComBa, taxa_are_rows = TRUE),
+    sample_data(i_result$df_metadata[[1]])
+  ) %>% prune_taxaSamples()
+  distance <- phyloseq::distance(phylo_tmp, method = "bray")
+  
   list(batch = vegan::adonis(distance ~ batch, 
-                             data = i_result$df_metadata[[1]],
+                             data = sample_data2(phylo_tmp),
                              permutations = 2),
        positive_control = vegan::adonis(distance ~ positive_control, 
-                                        data = i_result$df_metadata[[1]],
+                                        data = sample_data2(phylo_tmp),
                                         permutations = 2),
        negative_control = vegan::adonis(distance ~ negative_control, 
-                                        data = i_result$df_metadata[[1]],
+                                        data = sample_data2(phylo_tmp),
                                         permutations = 2))
 }
 stopImplicitCluster()
