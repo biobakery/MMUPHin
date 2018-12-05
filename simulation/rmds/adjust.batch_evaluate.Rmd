@@ -108,7 +108,7 @@ l_permanova_after <- foreach(i = 1:N) %dopar% {
   
   list(batch = vegan::adonis(distance ~ batch, 
                                  data = sample_data2(phylo_tmp),
-                                 permutations = 2)),
+                                 permutations = 2),
        positive_control = vegan::adonis(distance ~ positive_control, 
                                             data = sample_data2(phylo_tmp),
                                             permutations = 2),
