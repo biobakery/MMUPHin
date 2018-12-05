@@ -25,11 +25,11 @@ dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
 
 ```{r simulation parameters}
 # sample size
-nBatch <- c(10)
-nSample_perBatch <- c(10)
+nBatch <- c(5, 10)
+nSample_perBatch <- c(10, 50, 100)
 # feature size
-nMicrobe <- c(50)
-spikeMicrobes <- c(0.5)
+nMicrobe <- c(50, 300)
+spikeMicrobes <- c(0.1, 0.2, 0.5)
 # metadata specification
 metadata_type <- c("batch" = "factor",
                    "positive_control" = "factor",
