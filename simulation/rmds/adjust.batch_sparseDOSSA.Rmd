@@ -25,22 +25,22 @@ dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
 
 ```{r simulation parameters}
 # sample size
-nBatch <- c(5, 10)
-nSample_perBatch <- c(10, 50, 100)
+nBatch <- c(10)
+nSample_perBatch <- c(10)
 # feature size
-nMicrobe <- c(50, 300)
-spikeMicrobes <- c(0.1, 0.2, 0.5)
+nMicrobe <- c(50)
+spikeMicrobes <- c(0.5)
 # metadata specification
 metadata_type <- c("batch" = "factor",
-                   "positive_control" = "numeric",
-                   "negative_control" = "numeric")
+                   "positive_control" = "factor",
+                   "negative_control" = "factor")
 effectSize <- tibble::tibble(effectSize = 
                                list(c("batch" = 0.1, "positive_control" = 1, "negative_control" = 0),
                                     c("batch" = 1, "positive_control" = 1, "negative_control" = 0),
                                     c("batch" = 10, "positive_control" = 1, "negative_control" = 0)))
 # replicates
 rep <- 1:10
-fDummyData <- FALSE
+fDummyData <- TRUE
 # additional setup
 noZeroInflate <- FALSE
 
@@ -63,9 +63,20 @@ tb_sim <- tb_simSetup %>%
   dplyr::mutate(df_metadata = list(
     data.frame(batch = rep(1:nBatch, each = nSample_perBatch) %>% 
                  as.factor(),
-               positive_control = rnorm(1:nSample),
-               negative_control = rnorm(1:nSample))
-  )) %>% 
+               positive_control = rbinom(n = nSample, size = 1, prob = 0.5) %>% 
+                 as.factor(),
+               negative_control = rbinom(n = nSample, size = 1, prob = 0.5) %>% 
+                 as.factor(),
+               row.names = paste0("Sample", 1:nSample))),
+    spikein.mt = list(create_spikein.mt(
+      number_features = nMicrobe,
+      percent_spiked = spikeMicrobes,
+      seed = rep,
+      effectSize = 
+        create_effectSize(effectSize = effectSize[[1]],
+                          df_metadata = df_metadata[[1]],
+                          metadata_type = metadata_type,
+                          fDummyData = fDummyData)))) %>% 
   dplyr::ungroup()
 save(tb_sim, file = paste0(dir_output, "tb_sim.RData"))
 ```
@@ -75,44 +86,30 @@ registerDoParallel(15)
 l_sparseDOSSA <- foreach(i = 1:nrow(tb_sim)) %dopar% {
   i_simSetup <- tb_sim[i, ]
   
-  # Error control using `try`,
-  tryAgain <-  TRUE
-  infiniteloopcounter <- 1
-  while (tryAgain & infiniteloopcounter < 5) {
-    otu_count <- try(sparseDOSSA::sparseDOSSA(
-      number_features = i_simSetup$nMicrobe,
-      number_samples = i_simSetup$nSample,
-      UserMetadata = 
-        create_metadataMatrix(df_metadata = i_simSetup$df_metadata[[1]],
-                              metadata_type = metadata_type,
-                              fDummyData = fDummyData),
-      Metadatafrozenidx = 
-        create_fronzenIndex(df_metadata = i_simSetup$df_metadata[[1]],
+  otu_count <- try(sparseDOSSA::sparseDOSSA(
+    number_features = i_simSetup$nMicrobe,
+    number_samples = i_simSetup$nSample,
+    UserMetadata = 
+      create_metadataMatrix(df_metadata = i_simSetup$df_metadata[[1]],
                             metadata_type = metadata_type,
-                            fDummyData = fDummyData),
-      datasetCount = 1,
-      spikeStrength =                                                                             
-        create_effectSize(effectSize = i_simSetup$effectSize[[1]],
-                          df_metadata = i_simSetup$df_metadata[[1]],
-                          metadata_type = metadata_type,
-                          fDummyData = fDummyData) %>% 
-        paste(collapse = ","),
-      noZeroInflate = i_simSetup$noZeroInflate,
-      percent_spiked = i_simSetup$spikeMicrobes,
-      seed = i_simSetup$rep,
-      minLevelPercent = 0,
-      write_table = FALSE,
-      verbose = FALSE) %>%
-        extract_sparseDOSSA() %>%
-        extract2("features"),
-      silent = TRUE)
-    if (is.null(otu_count) | inherits(otu_count, "try-error")) {
-      tryAgain = TRUE
-      infiniteloopcounter = infiniteloopcounter + 1
-    } else {
-      tryAgain = FALSE
-    }
-  }
+                            fDummyData = fDummyData,
+                            scale = TRUE),
+    spikein.mt = i_simSetup$spikein.mt[[1]] %>% 
+      dplyr::group_by(feature) %>% 
+      dplyr::mutate(metadata = paste(metadata, collapse = ";"), 
+                    strength = paste(strength, collapse = ";")) %>% 
+      dplyr::slice(1) %>%  
+      dplyr::ungroup(),
+    noZeroInflate = i_simSetup$noZeroInflate,
+    percent_spiked = i_simSetup$spikeMicrobes,
+    seed = i_simSetup$rep,
+    minLevelPercent = 0,
+    write_table = FALSE,
+    verbose = FALSE) %>%
+      extract_sparseDOSSA() %>%
+      extract2("features"),
+    silent = TRUE)
+  
   return(otu_count)
 }
 stopImplicitCluster()

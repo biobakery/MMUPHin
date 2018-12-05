@@ -1,4 +1,7 @@
-create_metadataMatrix <- function(df_metadata, metadata_type, fDummyData = FALSE) {
+create_metadataMatrix <- function(df_metadata,
+                                  metadata_type,
+                                  scale = FALSE,
+                                  fDummyData = FALSE) {
   if(any(colnames(df_metadata) != names(metadata_type)))
     stop("Variable names in df_metadata and metadata_type do not agree!")
   if(any(sapply(df_metadata, class) != metadata_type))
@@ -18,7 +21,14 @@ create_metadataMatrix <- function(df_metadata, metadata_type, fDummyData = FALSE
       return(mat_tmp)
     }
   })
-  return(Reduce("rbind", l_mat_metadata))
+  mat_metadata <- Reduce("rbind", l_mat_metadata)
+  if(scale) {
+    mean_metadata <- apply(mat_metadata, 1, mean)
+    sd_metadata <- apply(mat_metadata, 1, sd)
+    sd_metadata[sd_metadata == 0] <- 1
+    mat_metadata <- (mat_metadata - mean_metadata) / sd_metadata
+  }
+  return(mat_metadata)
 }
 
 create_effectSize <- function(effectSize, df_metadata, metadata_type, fDummyData = FALSE) {
