@@ -1,0 +1,129 @@
+---
+title: "Evaluation for adjust.batch function"
+author: "Siyuan Ma"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+html_document:
+df_print: paged
+---
+# Overview
+Evaluate for batch adjustment function
+
+```{r setup, echo = FALSE}                                           
+knitr::opts_knit$set(root.dir = normalizePath("../"))
+# setwd("simulation/")
+```
+```{r setup2, message=FALSE, warning=FALSE, echo = FALSE}
+rm(list = ls())
+for(i.function in list.files("functions/", full.names = TRUE)) {
+  source(i.function)
+}
+setup()
+dir_output <- "results/adjust.batch/"
+dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
+```
+
+```{r load data}
+load(paste0(dir_output, "tb_sim.RData"))
+load(paste0(dir_output, "sparseDOSSA.RData"))
+tb_results <- tb_sim %>% 
+  dplyr::mutate(otu_count = l_sparseDOSSA) %>% 
+  dplyr::mutate(success = sapply(otu_count, class) == "matrix")
+mean(tb_results$success)
+# View(tb_results %>% dplyr::filter(!success))
+# i_simSetup <- tb_results %>% dplyr::filter(!success) %>% dplyr::slice(1)
+tb_results <- tb_results %>% 
+  dplyr::filter(success)
+```
+
+```{r calculate R2 before adjustment}
+registerDoParallel(15)
+l_permanova_before <- foreach(i = 1:nrow(tb_results)) %dopar% {
+  i_result <- tb_results[i, ]
+  distance <- i_result$otu_count[[1]] %>% 
+    phyloseq::otu_table(taxa_are_rows = TRUE) %>% 
+    phyloseq::transform_sample_counts(MMUPHin:::tss) %>% 
+    phyloseq::distance(method = "bray")
+  list(batch = vegan::adonis(distance ~ batch, 
+                             data = i_result$df_metadata[[1]],
+                             permutations = 2),
+       positive_control = vegan::adonis(distance ~ positive_control, 
+                                        data = i_result$df_metadata[[1]],
+                                        permutations = 2),
+       negative_control = vegan::adonis(distance ~ negative_control, 
+                                        data = i_result$df_metadata[[1]],
+                                        permutations = 2))
+}
+stopImplicitCluster()
+save(l_permanova_before, file = paste0(dir_output, "permanova_before.RData"))
+```
+
+```{r batch adjustment}
+registerDoParallel(15)
+l_adjust.batch <- foreach(i = nrow(tb_results)) %dopar% {
+  i_result <- tb_results[i, ]
+  colnames(i_result$otu_count[[1]]) <- 
+    rownames(i_result$df_metadata[[1]]) <- 
+    paste0("Sample", 1:i_result$nSample)
+  otu_adjust <- MMUPHin::adjust.batch(
+    feature.count = i_result$otu_count[[1]],
+    batch = "batch",
+    covariates = c("positive_control", "negative_control"),
+    data = i_result$df_metadata[[1]],
+    zero.inflation = TRUE,pseudo.count = 0.5,
+    diagnostics = FALSE,
+    verbose = FALSE
+  )
+  otu_adjust_ComBat <- sva::ComBat(
+    dat = log10(i_result$otu_count[[1]] + 0.5),
+    batch = i_result$df_metadata[[1]]$batch,
+    mod = model.matrix(~., i_result$df_metadata[[1]][, -1])
+  ) %>% 
+    `^`(10, .)
+  list(otu_adjust = otu_adjust,
+       otu_adjust_ComBat = otu_adjust_ComBat)
+}
+stopImplicitCluster()
+save(l_adjust.batch, file = paste0(dir_output, "adjust.batch.RData"))
+```
+
+```{r calculate R2 after adjustment}
+registerDoParallel(15)
+l_permanova_after <- foreach(i = 1:nrow(tb_results)) %dopar% {
+  i_result <- tb_results[i, ]
+  distance <- l_adjust.batch[[i]]$otu_adjust %>% 
+    phyloseq::otu_table(taxa_are_rows = TRUE) %>% 
+    phyloseq::transform_sample_counts(MMUPHin:::tss) %>% 
+    phyloseq::distance(method = "bray")
+  list(batch = vegan::adonis(distance ~ batch, 
+                             data = i_result$df_metadata[[1]],
+                             permutations = 2),
+       positive_control = vegan::adonis(distance ~ positive_control, 
+                                        data = i_result$df_metadata[[1]],
+                                        permutations = 2),
+       negative_control = vegan::adonis(distance ~ negative_control, 
+                                        data = i_result$df_metadata[[1]],
+                                        permutations = 2))
+}
+stopImplicitCluster()
+save(l_permanova_after, file = paste0(dir_output, "permanova_after.RData"))
+registerDoParallel(15)
+l_permanova_afterComBat <- foreach(i = 1:nrow(tb_results)) %dopar% {
+  i_result <- tb_results[i, ]
+  distance <- l_adjust.batch[[i]]$otu_adjust_ComBat %>% 
+    phyloseq::otu_table(taxa_are_rows = TRUE) %>% 
+    phyloseq::transform_sample_counts(MMUPHin:::tss) %>% 
+    phyloseq::distance(method = "bray")
+  list(batch = vegan::adonis(distance ~ batch, 
+                             data = i_result$df_metadata[[1]],
+                             permutations = 2),
+       positive_control = vegan::adonis(distance ~ positive_control, 
+                                        data = i_result$df_metadata[[1]],
+                                        permutations = 2),
+       negative_control = vegan::adonis(distance ~ negative_control, 
+                                        data = i_result$df_metadata[[1]],
+                                        permutations = 2))
+}
+stopImplicitCluster()
+save(l_permanova_afterComBat, file = paste0(dir_output, "permanova_afterComBat.RData"))
+```
