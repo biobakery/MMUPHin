@@ -24,6 +24,7 @@ dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
 ```
 
 ```{r load data}
+ncores <- 20
 load(paste0(dir_output, "tb_sim.RData"))
 load(paste0(dir_output, "sparseDOSSA.RData"))
 tb_results <- tb_sim %>% 
@@ -34,30 +35,30 @@ mean(tb_results$success)
 # i_simSetup <- tb_results %>% dplyr::filter(!success) %>% dplyr::slice(1)
 tb_results <- tb_results %>% 
   dplyr::filter(success)
+# Total number iterations. Set so easy to have testing run
+N <- nrow(tb_results)
 ```
 
 ```{r calculate R2 before adjustment}
-registerDoParallel(15)
-l_permanova_before <- foreach(i = 1:nrow(tb_results)) %dopar% {
+registerDoParallel(ncores)
+l_permanova_before <- foreach(i = 1:N) %dopar% {
   i_result <- tb_results[i, ]
   phylo_tmp <- phyloseq::phyloseq(
     otu_table(i_result$otu_count[[1]], taxa_are_rows = TRUE),
     sample_data(i_result$df_metadata[[1]])
-  ) %>% prune_taxaSamples()
+  ) %>% prune_taxaSamples() %>% 
+    transform_sample_counts(MMUPHin:::tss)
   
   distance <- phyloseq::distance(phylo_tmp, method = "bray")
-  list(batch = try(vegan::adonis(distance ~ batch, 
+  list(batch = vegan::adonis(distance ~ batch, 
                              data = sample_data2(phylo_tmp),
                              permutations = 2),
-                   silent = TRUE),
-       positive_control = try(vegan::adonis(distance ~ positive_control, 
+       positive_control = vegan::adonis(distance ~ positive_control, 
                                         data = sample_data2(phylo_tmp),
                                         permutations = 2),
-                              silent = TRUE),
-       negative_control = try(vegan::adonis(distance ~ negative_control, 
+       negative_control = vegan::adonis(distance ~ negative_control, 
                                         data = sample_data2(phylo_tmp),
-                                        permutations = 2),
-                              silent = TRUE))
+                                        permutations = 2))
 }
 stopImplicitCluster()
 save(l_permanova_before, file = paste0(dir_output, "permanova_before.RData"))
@@ -66,8 +67,8 @@ save(l_permanova_before, file = paste0(dir_output, "permanova_before.RData"))
 ```
 
 ```{r batch adjustment}
-registerDoParallel(15)
-l_adjust.batch <- foreach(i = nrow(tb_results)) %dopar% {
+registerDoParallel(ncores)
+l_adjust.batch <- foreach(i = 1:N) %dopar% {
   i_result <- tb_results[i, ]
   colnames(i_result$otu_count[[1]]) <- 
     rownames(i_result$df_metadata[[1]]) <- 
@@ -95,14 +96,15 @@ save(l_adjust.batch, file = paste0(dir_output, "adjust.batch.RData"))
 ```
 
 ```{r calculate R2 after adjustment}
-registerDoParallel(15)
-l_permanova_after <- foreach(i = 1:nrow(tb_results)) %dopar% {
+registerDoParallel(ncores)
+l_permanova_after <- foreach(i = 1:N) %dopar% {
   i_result <- tb_results[i, ]
   
   phylo_tmp <- phyloseq::phyloseq(
     otu_table(l_adjust.batch[[i]]$otu_adjust, taxa_are_rows = TRUE),
     sample_data(i_result$df_metadata[[1]])
-  ) %>% prune_taxaSamples()
+  ) %>% prune_taxaSamples() %>%
+    transform_sample_counts(MMUPHin:::tss)
   distance <- phyloseq::distance(phylo_tmp, method = "bray")
   
   list(batch = vegan::adonis(distance ~ batch, 
@@ -117,14 +119,15 @@ l_permanova_after <- foreach(i = 1:nrow(tb_results)) %dopar% {
 }
 stopImplicitCluster()
 save(l_permanova_after, file = paste0(dir_output, "permanova_after.RData"))
-registerDoParallel(15)
-l_permanova_afterComBat <- foreach(i = 1:nrow(tb_results)) %dopar% {
+registerDoParallel(ncores)
+l_permanova_afterComBat <- foreach(i = 1:N) %dopar% {
   i_result <- tb_results[i, ]
   
   phylo_tmp <- phyloseq::phyloseq(
-    otu_table(l_adjust.batch[[i]]$otu_adjust_ComBa, taxa_are_rows = TRUE),
+    otu_table(l_adjust.batch[[i]]$otu_adjust_ComBat, taxa_are_rows = TRUE),
     sample_data(i_result$df_metadata[[1]])
-  ) %>% prune_taxaSamples()
+  ) %>% prune_taxaSamples() %>% 
+    transform_sample_counts(MMUPHin:::tss)
   distance <- phyloseq::distance(phylo_tmp, method = "bray")
   
   list(batch = vegan::adonis(distance ~ batch, 

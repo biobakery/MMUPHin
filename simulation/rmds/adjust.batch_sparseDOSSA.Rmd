@@ -24,6 +24,8 @@ dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
 ```
 
 ```{r simulation parameters}
+# parallel computing
+ncores <- 20
 # sample size
 nBatch <- c(5, 10)
 nSample_perBatch <- c(10, 50, 100)
@@ -79,11 +81,12 @@ tb_sim <- tb_simSetup %>%
                           fDummyData = fDummyData)))) %>% 
   dplyr::ungroup()
 save(tb_sim, file = paste0(dir_output, "tb_sim.RData"))
+N <- nrow(tb_sim)
 ```
 
 ```{r run sparseDOSSA}
-registerDoParallel(15)
-l_sparseDOSSA <- foreach(i = 1:nrow(tb_sim)) %dopar% {
+registerDoParallel(ncores)
+l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
   i_simSetup <- tb_sim[i, ]
   
   otu_count <- try(sparseDOSSA::sparseDOSSA(
