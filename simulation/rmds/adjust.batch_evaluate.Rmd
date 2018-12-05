@@ -40,60 +40,58 @@ N <- nrow(tb_results)
 ```
 
 ```{r calculate R2 before adjustment}
-# registerDoParallel(ncores)
-# l_permanova_before <- foreach(i = 1:N) %dopar% {
-#   i_result <- tb_results[i, ]
-#   phylo_tmp <- phyloseq::phyloseq(
-#     otu_table(i_result$otu_count[[1]], taxa_are_rows = TRUE),
-#     sample_data(i_result$df_metadata[[1]])
-#   ) %>% prune_taxaSamples() %>% 
-#     transform_sample_counts(MMUPHin:::tss)
-#   
-#   distance <- phyloseq::distance(phylo_tmp, method = "bray")
-#   list(batch = vegan::adonis(distance ~ batch, 
-#                              data = sample_data2(phylo_tmp),
-#                              permutations = 2),
-#        positive_control = vegan::adonis(distance ~ positive_control, 
-#                                         data = sample_data2(phylo_tmp),
-#                                         permutations = 2),
-#        negative_control = vegan::adonis(distance ~ negative_control, 
-#                                         data = sample_data2(phylo_tmp),
-#                                         permutations = 2))
-# }
-# stopImplicitCluster()
-# save(l_permanova_before, file = paste0(dir_output, "permanova_before.RData"))
+registerDoParallel(ncores)
+l_permanova_before <- foreach(i = 1:N) %dopar% {
+  i_result <- tb_results[i, ]
+  phylo_tmp <- phyloseq::phyloseq(
+    otu_table(i_result$otu_count[[1]], taxa_are_rows = TRUE),
+    sample_data(i_result$df_metadata[[1]])
+  ) %>% prune_taxaSamples() %>%
+    transform_sample_counts(MMUPHin:::tss)
+
+  distance <- phyloseq::distance(phylo_tmp, method = "bray")
+  list(batch = vegan::adonis(distance ~ batch,
+                             data = sample_data2(phylo_tmp),
+                             permutations = 2),
+       positive_control = vegan::adonis(distance ~ positive_control,
+                                        data = sample_data2(phylo_tmp),
+                                        permutations = 2),
+       negative_control = vegan::adonis(distance ~ negative_control,
+                                        data = sample_data2(phylo_tmp),
+                                        permutations = 2))
+}
+stopImplicitCluster()
+save(l_permanova_before, file = paste0(dir_output, "permanova_before.RData"))
 # load(paste0(dir_output, "permanova_before.RData"))
 # classes <- sapply(l_permanova_before, function(i) sapply(i, class))
 ```
 
 ```{r batch adjustment}
-# registerDoParallel(ncores)
-# l_adjust.batch <- foreach(i = 1:N) %dopar% {
-#   i_result <- tb_results[i, ]
-#   colnames(i_result$otu_count[[1]]) <- 
-#     rownames(i_result$df_metadata[[1]]) <- 
-#     paste0("Sample", 1:i_result$nSample)
-#   otu_adjust <- MMUPHin::adjust.batch(
-#     feature.count = i_result$otu_count[[1]],
-#     batch = "batch",
-#     covariates = c("positive_control", "negative_control"),
-#     data = i_result$df_metadata[[1]],
-#     zero.inflation = TRUE,pseudo.count = 0.5,
-#     diagnostics = FALSE,
-#     verbose = FALSE
-#   )
-#   otu_adjust_ComBat <- sva::ComBat(
-#     dat = log10(i_result$otu_count[[1]] + 0.5),
-#     batch = i_result$df_metadata[[1]]$batch,
-#     mod = model.matrix(~., i_result$df_metadata[[1]][, -1])
-#   ) %>% 
-#     `^`(10, .)
-#   list(otu_adjust = otu_adjust,
-#        otu_adjust_ComBat = otu_adjust_ComBat)
-# }
-# stopImplicitCluster()
-# save(l_adjust.batch, file = paste0(dir_output, "adjust.batch.RData"))
-load(paste0(dir_output, "adjust.batch.RData"))
+registerDoParallel(ncores)
+l_adjust.batch <- foreach(i = 1:N) %dopar% {
+  i_result <- tb_results[i, ]
+  otu_adjust <- MMUPHin::adjust.batch(
+    feature.count = i_result$otu_count[[1]],
+    batch = "batch",
+    covariates = c("positive_control", "negative_control"),
+    data = i_result$df_metadata[[1]],
+    zero.inflation = TRUE,
+    pseudo.count = 0.5,
+    diagnostics = FALSE,
+    verbose = FALSE
+  )
+  otu_adjust_ComBat <- sva::ComBat(
+    dat = log10(i_result$otu_count[[1]] + 0.5),
+    batch = i_result$df_metadata[[1]]$batch,
+    mod = model.matrix(~., i_result$df_metadata[[1]][, -1])
+  ) %>%
+    `^`(10, .)
+  list(otu_adjust = otu_adjust,
+       otu_adjust_ComBat = otu_adjust_ComBat)
+}
+stopImplicitCluster()
+save(l_adjust.batch, file = paste0(dir_output, "adjust.batch.RData"))
+# load(paste0(dir_output, "adjust.batch.RData"))
 ```
 
 ```{r calculate R2 after adjustment}
@@ -101,46 +99,46 @@ registerDoParallel(ncores)
 l_permanova_after <- foreach(i = 1:N) %dopar% {
   i_result <- tb_results[i, ]
   
-  phylo_tmp <- try(phyloseq::phyloseq(
+  phylo_tmp <- phyloseq::phyloseq(
     otu_table(l_adjust.batch[[i]]$otu_adjust, taxa_are_rows = TRUE),
     sample_data(i_result$df_metadata[[1]])
   ) %>% prune_taxaSamples() %>%
-    transform_sample_counts(MMUPHin:::tss))
-  distance <- try(phyloseq::distance(phylo_tmp, method = "bray"))
+    transform_sample_counts(MMUPHin:::tss)
+  distance <- phyloseq::distance(phylo_tmp, method = "bray")
   
-  list(batch = try(vegan::adonis(distance ~ batch, 
+  list(batch = vegan::adonis(distance ~ batch, 
                                  data = sample_data2(phylo_tmp),
                                  permutations = 2)),
-       positive_control = try(vegan::adonis(distance ~ positive_control, 
+       positive_control = vegan::adonis(distance ~ positive_control, 
                                             data = sample_data2(phylo_tmp),
-                                            permutations = 2)),
-       negative_control = try(vegan::adonis(distance ~ negative_control, 
+                                            permutations = 2),
+       negative_control = vegan::adonis(distance ~ negative_control, 
                                             data = sample_data2(phylo_tmp),
-                                            permutations = 2)))
+                                            permutations = 2))
 }
 stopImplicitCluster()
 save(l_permanova_after, file = paste0(dir_output, "permanova_after.RData"))
-# registerDoParallel(ncores)
-# l_permanova_afterComBat <- foreach(i = 1:N) %dopar% {
-#   i_result <- tb_results[i, ]
-#   
-#   phylo_tmp <- phyloseq::phyloseq(
-#     otu_table(l_adjust.batch[[i]]$otu_adjust_ComBat, taxa_are_rows = TRUE),
-#     sample_data(i_result$df_metadata[[1]])
-#   ) %>% prune_taxaSamples() %>% 
-#     transform_sample_counts(MMUPHin:::tss)
-#   distance <- phyloseq::distance(phylo_tmp, method = "bray")
-#   
-#   list(batch = vegan::adonis(distance ~ batch, 
-#                              data = sample_data2(phylo_tmp),
-#                              permutations = 2),
-#        positive_control = vegan::adonis(distance ~ positive_control, 
-#                                         data = sample_data2(phylo_tmp),
-#                                         permutations = 2),
-#        negative_control = vegan::adonis(distance ~ negative_control, 
-#                                         data = sample_data2(phylo_tmp),
-#                                         permutations = 2))
-# }
-# stopImplicitCluster()
-# save(l_permanova_afterComBat, file = paste0(dir_output, "permanova_afterComBat.RData"))
+registerDoParallel(ncores)
+l_permanova_afterComBat <- foreach(i = 1:N) %dopar% {
+  i_result <- tb_results[i, ]
+
+  phylo_tmp <- phyloseq::phyloseq(
+    otu_table(l_adjust.batch[[i]]$otu_adjust_ComBat, taxa_are_rows = TRUE),
+    sample_data(i_result$df_metadata[[1]])
+  ) %>% prune_taxaSamples() %>%
+    transform_sample_counts(MMUPHin:::tss)
+  distance <- phyloseq::distance(phylo_tmp, method = "bray")
+
+  list(batch = vegan::adonis(distance ~ batch,
+                             data = sample_data2(phylo_tmp),
+                             permutations = 2),
+       positive_control = vegan::adonis(distance ~ positive_control,
+                                        data = sample_data2(phylo_tmp),
+                                        permutations = 2),
+       negative_control = vegan::adonis(distance ~ negative_control,
+                                        data = sample_data2(phylo_tmp),
+                                        permutations = 2))
+}
+stopImplicitCluster()
+save(l_permanova_afterComBat, file = paste0(dir_output, "permanova_afterComBat.RData"))
 ```

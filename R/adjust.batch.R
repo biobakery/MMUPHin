@@ -242,7 +242,7 @@ adjust.batch <- function(feature.count,
 
   adj.data <- exp(adj.data)
   adj.data[feature.count == 0] <- 0
-  adj.data <- apply(adj.data, 2, function(x) x / sum(x))
+  adj.data <- apply(adj.data, 2, tss)
   adj.feature.count <- t(t(adj.data) * lib.size)
   dimnames(adj.feature.count) <- dimnames(feature.count)
 
