@@ -44,7 +44,9 @@ effectSize <- tibble::tibble(effectSize =
                                     c("batch" = 10, "positive_control" = 1, "negative_control" = 0)))
 # replicates
 rep <- 1:10
+# metadata simulation
 fDummyData <- TRUE
+fDummyDirection <- TRUE
 # additional setup
 noZeroInflate <- FALSE
 
@@ -79,7 +81,8 @@ tb_sim <- tb_simSetup %>%
         create_effectSize(effectSize = effectSize[[1]],
                           df_metadata = df_metadata[[1]],
                           metadata_type = metadata_type,
-                          fDummyData = fDummyData),
+                          fDummyData = fDummyData,
+                          fDummyDirection = fDummyDirection),
       seed = rep))) %>% 
   dplyr::ungroup()
 save(tb_sim, file = paste0(dir_output, "tb_sim.RData"))
@@ -98,6 +101,7 @@ l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
       create_metadataMatrix(df_metadata = i_simSetup$df_metadata[[1]],
                             metadata_type = metadata_type,
                             fDummyData = fDummyData,
+                            fDummyDirection = fDummyDirection,
                             scale = FALSE),
     spikein.mt = i_simSetup$spikein.mt[[1]] %>% 
       dplyr::group_by(feature) %>% 

@@ -1,7 +1,8 @@
 create_metadataMatrix <- function(df_metadata,
                                   metadata_type,
-                                  scale = FALSE,
-                                  fDummyData = FALSE) {
+                                  fDummyData = TRUE,
+                                  fDummyDirection = TRUE,
+                                  scale = FALSE) {
   if(any(colnames(df_metadata) != names(metadata_type)))
     stop("Variable names in df_metadata and metadata_type do not agree!")
   if(any(sapply(df_metadata, class) != metadata_type))
@@ -18,6 +19,13 @@ create_metadataMatrix <- function(df_metadata,
         (df_metadata[, variable] == lvls[ilvl]) * 1
       }))
       rownames(mat_tmp) <- paste0(variable, "_", 2:nlvls)
+      if(fDummyDirection) {
+        mat_tmp_opposite <- t(sapply(2:nlvls, function(ilvl) {
+          (df_metadata[, variable] == lvls[ilvl]) * (-1)
+        }))
+        rownames(mat_tmp_opposite) <- paste0(variable, "_", 2:nlvls, "_opposite")
+        mat_tmp <- rbind(mat_tmp, mat_tmp_opposite)
+      }
       return(mat_tmp)
     }
   })
@@ -31,7 +39,11 @@ create_metadataMatrix <- function(df_metadata,
   return(mat_metadata)
 }
 
-create_effectSize <- function(effectSize, df_metadata, metadata_type, fDummyData = FALSE) {
+create_effectSize <- function(effectSize,
+                              df_metadata,
+                              metadata_type,
+                              fDummyData = TRUE,
+                              fDummyDirection = TRUE) {
   if(any(names(effectSize) != names(metadata_type)))
     stop("Variable names in effectSize and metadata_type do not agree!")
   if(any(colnames(df_metadata) != names(metadata_type)))
@@ -47,24 +59,13 @@ create_effectSize <- function(effectSize, df_metadata, metadata_type, fDummyData
       nlvls <- nlevels(df_metadata[, variable])
       effectSize_tmp <- rep(effectSize[variable], nlvls - 1)
       names(effectSize_tmp) <- paste0(variable, "_", 2:nlvls)
+      if(fDummyDirection) {
+        effectSize_tmp_opposite <- rep(effectSize[variable], nlvls - 1)
+        names(effectSize_tmp) <- paste0(variable, "_", 2:nlvls, "_opposite")
+        effectSize_tmp <- c(effectSize_tmp, effectSize_tmp_opposite)
+      }
       return(effectSize_tmp)
     }
   })
   return(unlist(l_effectSize))
-}
-
-create_fronzenIndex <- function(df_metadata, metadata_type, fDummyData = FALSE) {
-  if(any(colnames(df_metadata) != names(metadata_type)))
-    stop("Variable names in df_metadata and metadata_type do not agree!")
-  if(any(sapply(df_metadata, class) != metadata_type))
-    stop("Variable classes in df_metadata and metadata_type do not agree!")
-  ns <- sapply(names(metadata_type), function(variable) {
-    if(!fDummyData | metadata_type[variable] != "factor") {
-      return(1)
-    } else {
-      nlvls <- nlevels(df_metadata[, variable])
-      return(nlvls - 1)
-    }
-  })
-  return(1:sum(ns))
 }
