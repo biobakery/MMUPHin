@@ -27,7 +27,7 @@ dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
 # parallel computing
 ncores <- 20
 # sample size
-nBatch <- c(5, 10)
+nBatch <- c(2, 5, 10)
 nSample_perBatch <- c(10, 50, 100)
 # feature size
 nMicrobe <- c(50, 300)
@@ -39,6 +39,8 @@ metadata_type <- c("batch" = "factor",
 effectSize <- tibble::tibble(effectSize = 
                                list(c("batch" = 0.1, "positive_control" = 1, "negative_control" = 0),
                                     c("batch" = 1, "positive_control" = 1, "negative_control" = 0),
+                                    c("batch" = 2, "positive_control" = 1, "negative_control" = 0),
+                                    c("batch" = 5, "positive_control" = 1, "negative_control" = 0),
                                     c("batch" = 10, "positive_control" = 1, "negative_control" = 0)))
 # replicates
 rep <- 1:10
@@ -73,12 +75,12 @@ tb_sim <- tb_simSetup %>%
     spikein.mt = list(create_spikein.mt(
       number_features = nMicrobe,
       percent_spiked = spikeMicrobes,
-      seed = rep,
       effectSize = 
         create_effectSize(effectSize = effectSize[[1]],
                           df_metadata = df_metadata[[1]],
                           metadata_type = metadata_type,
-                          fDummyData = fDummyData)))) %>% 
+                          fDummyData = fDummyData),
+      seed = rep))) %>% 
   dplyr::ungroup()
 save(tb_sim, file = paste0(dir_output, "tb_sim.RData"))
 N <- nrow(tb_sim)
@@ -96,7 +98,7 @@ l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
       create_metadataMatrix(df_metadata = i_simSetup$df_metadata[[1]],
                             metadata_type = metadata_type,
                             fDummyData = fDummyData,
-                            scale = TRUE),
+                            scale = FALSE),
     spikein.mt = i_simSetup$spikein.mt[[1]] %>% 
       dplyr::group_by(feature) %>% 
       dplyr::mutate(metadata = paste(metadata, collapse = ";"), 

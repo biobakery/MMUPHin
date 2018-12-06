@@ -1,18 +1,22 @@
 create_spikein.mt <- function(number_features,
                               percent_spiked,
+                              effectSize,
                               seed,
-                              effectSize) {
+                              same_features = FALSE,
+                              var_direction = TRUE) {
   set.seed(seed)
   nFeatureSpiked <- floor(number_features * percent_spiked)
   if(nFeatureSpiked == 0)
     stop("No features are spiked in with current configuration!")
+  if(same_features) features_spike <- sample.int(n = number_features, size = nFeatureSpiked)
   l_spikein.mt <- lapply(1:length(effectSize), function(i) {
-    features_spike <- sample.int(n = number_features, size = nFeatureSpiked)
-    effect_direction <- sample(c(-1, 1), size = nFeatureSpiked, replace = TRUE)
+    if(!same_features) features_spike <- sample.int(n = number_features, size = nFeatureSpiked)
+    effectSize_tmp <- effectSize[i]
+    if(var_direction) effectSize_tmp <- effectSize_tmp * sample(c(-1, 1), size = nFeatureSpiked, replace = TRUE)
     data.frame(feature = features_spike,
                metadata = i,
-               strength = effectSize[i] * effect_direction,
-               stringsAsFactors = FALSE)
+               strength = effectSize_tmp,
+               stringsAsFactors = FALSE, row.names = NULL)
   })
   return(Reduce("rbind", l_spikein.mt))
 }
