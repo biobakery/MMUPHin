@@ -80,12 +80,16 @@ l_adjust.batch <- foreach(i = 1:N) %dopar% {
     diagnostics = FALSE,
     verbose = FALSE
   )
-  otu_adjust_ComBat <- sva::ComBat(
-    dat = log10(i_result$otu_count[[1]] + 0.5),
-    batch = i_result$df_metadata[[1]]$batch,
-    mod = model.matrix(~., i_result$df_metadata[[1]][, -1])
-  ) %>%
-    `^`(10, .)
+  otu_adjust_ComBat <- MMUPHin::adjust.batch(
+    feature.count = i_result$otu_count[[1]],
+    batch = "batch",
+    covariates = c("positive_control", "negative_control"),
+    data = i_result$df_metadata[[1]],
+    zero.inflation = FALSE,
+    pseudo.count = 0.5,
+    diagnostics = FALSE,
+    verbose = FALSE
+  )
   list(otu_adjust = otu_adjust,
        otu_adjust_ComBat = otu_adjust_ComBat)
 }
