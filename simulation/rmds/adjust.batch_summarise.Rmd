@@ -1,0 +1,96 @@
+---
+title: "Summarise adjust.batch simulation results"
+author: "Siyuan Ma"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+html_document:
+df_print: paged
+---
+# Overview
+Summarise batch adjustment simulation results
+
+```{r setup, echo = FALSE}                                           
+knitr::opts_knit$set(root.dir = normalizePath("../"))
+# setwd("simulation/")
+```
+```{r setup2, message=FALSE, warning=FALSE, echo = FALSE}
+rm(list = ls())
+for(i.function in list.files("functions/", full.names = TRUE)) {
+  source(i.function)
+}
+setup()
+dir_output <- "results/adjust.batch/"
+dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
+```
+
+```{r load data}
+load(paste0(dir_output, "tb_sim.RData"))
+load(paste0(dir_output, "sparseDOSSA.RData"))
+load(paste0(dir_output, "permanova_before.RData"))
+load(paste0(dir_output, "adjust.batch.RData"))
+load(paste0(dir_output, "permanova_after.RData"))
+load(paste0(dir_output, "permanova_afterComBat.RData"))
+```
+
+```{r summarise results and plot}
+tb_results <- list(l_permanova_before, 
+                   l_permanova_after,
+                   l_permanova_afterComBat) %>% 
+  purrr::map2_dfr(c("original", "MMUPHin", "ComBat"),
+                  function(ll_adonis, data) 
+                  {ll_adonis %>% 
+                      purrr::imap_dfr(
+                        function(l_adonis, i) 
+                        {l_adonis %>% 
+                            purrr::imap_dfr(
+                              function(fit_adonis, variable) 
+                              {tibble::tibble(R2 = fit_adonis$aov.tab[variable, "R2"],
+                                              variable = variable)}) %>% 
+                            dplyr::mutate(i = i)}) %>% 
+                      dplyr::mutate(data = data)})
+tb_results <- tb_results %>% 
+  dplyr::left_join(tb_sim %>% dplyr::mutate(i = 1:n()),
+                   by = "i")
+p <- tb_results %>% 
+  dplyr::arrange(nBatch, nSample_perBatch) %>% 
+  dplyr::mutate(nBatch_nSample_perBatch = 
+                  paste0("nBatch=", nBatch, ";",
+                    "nSample_perBatch=", nSample_perBatch) %>% 
+                  factor %>% forcats::fct_inorder()) %>% 
+  dplyr::arrange(nMicrobe, spikeMicrobes) %>% 
+  dplyr::mutate(nMicrobe_percMicrobe = 
+                  paste0("nMicrobe=", nMicrobe, ";",
+                      "percSpike=", spikeMicrobes) %>% 
+                  factor %>% forcats::fct_inorder()) %>% 
+  dplyr::mutate(variable = factor(variable, 
+                                  levels = c("batch", "positive_control", "negative_control"))) %>% 
+  dplyr::mutate(data = factor(data, levels = c("original", "ComBat", "MMUPHin"))) %>% 
+  dplyr::mutate(effect_batch = effectSize %>% 
+                  purrr::map_dbl("batch")) %>% 
+  dplyr::arrange(effect_batch) %>% 
+  dplyr::mutate(effect_batch = effect_batch %>% factor %>% forcats::fct_inorder()) %>% 
+  ggplot(aes(x = variable,
+             y = R2,
+             alpha = effect_batch,
+             fill = data)) +
+  geom_boxplot() +
+  facet_grid(nBatch_nSample_perBatch ~ nMicrobe_percMicrobe, scales = "free_y")
+ggsave(filename = paste0(dir_output, "overall.pdf"), p, width = 20, height = 20)
+
+p <- tb_results %>% 
+  dplyr::filter(nMicrobe == 300, spikeMicrobes == 0.1) %>% 
+  dplyr::mutate(variable = factor(variable, 
+                                  levels = c("batch", "positive_control", "negative_control"))) %>% 
+  dplyr::mutate(data = factor(data, levels = c("original", "ComBat", "MMUPHin"))) %>% 
+  dplyr::mutate(effect_batch = effectSize %>% 
+                  purrr::map_dbl("batch")) %>% 
+  dplyr::arrange(effect_batch) %>% 
+  dplyr::mutate(effect_batch = effect_batch %>% factor %>% forcats::fct_inorder()) %>% 
+  ggplot(aes(x = variable,
+             y = R2,
+             alpha = effect_batch,
+             fill = data)) +
+  geom_boxplot() +
+  facet_grid(nBatch ~ nSample_perBatch, scales = "free_y")
+ggsave(filename = paste0(dir_output, "zoom_nMicrobe300_spikeMicrobes10percent.pdf"), p, width = 15, height = 15)
+```

@@ -1,0 +1,291 @@
+---
+title: "Unit test for adjust.batch function"
+author: "Siyuan Ma"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+html_document:
+df_print: paged
+---
+# Overview
+Unit test for batch adjustment function
+
+```{r setup, echo = FALSE}                                           
+knitr::opts_knit$set(root.dir = normalizePath("../"))
+# setwd("simulation/")
+```
+```{r setup2, message=FALSE, warning=FALSE, echo = FALSE}
+rm(list = ls())
+for(i.function in list.files("functions/", full.names = TRUE)) {
+  source(i.function)
+}
+setup()
+dir_output <- "results/adjust.batch/unit_test/"
+dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
+```
+
+```{r simulation parameters}
+# parallel computing
+ncores <- 6
+# sample size
+nBatch <- c(2, 5)
+nSample_perBatch <- c(10, 50, 100)
+# feature size
+nMicrobe <- c(50)
+spikeMicrobes <- c(0.2)
+# metadata specification
+metadata_type <- c("batch" = "factor",
+                   "positive_control" = "factor",
+                   "negative_control" = "factor")
+effectSize <- tibble::tibble(effectSize = 
+                               list(c("batch" = 1, "positive_control" = 1, "negative_control" = 0),
+                                    c("batch" = 2, "positive_control" = 1, "negative_control" = 0),
+                                    c("batch" = 5, "positive_control" = 1, "negative_control" = 0)))
+# replicates
+rep <- 1:5
+fDummyData <- TRUE
+# additional setup
+noZeroInflate <- FALSE
+
+tb_simSetup <- tidyr::crossing(
+  rep,
+  nBatch,
+  nSample_perBatch,
+  nMicrobe,
+  spikeMicrobes,
+  noZeroInflate,
+  effectSize
+) %>% 
+  dplyr::mutate(nSample = nBatch * nSample_perBatch)
+```
+
+```{r simulate metadata}
+set.seed(1)
+tb_sim <- tb_simSetup %>% 
+  dplyr::group_by(1:n()) %>% 
+  dplyr::mutate(df_metadata = list(
+    data.frame(batch = rep(1:nBatch, each = nSample_perBatch) %>% 
+                 as.factor(),
+               positive_control = rbinom(n = nSample, size = 1, prob = 0.5) %>% 
+                 as.factor(),
+               negative_control = rbinom(n = nSample, size = 1, prob = 0.5) %>% 
+                 as.factor(),
+               row.names = paste0("Sample", 1:nSample))),
+    spikein.mt = list(create_spikein.mt(
+      number_features = nMicrobe,
+      percent_spiked = spikeMicrobes,
+      
+      effectSize = 
+        create_effectSize(effectSize = effectSize[[1]],
+                          df_metadata = df_metadata[[1]],
+                          metadata_type = metadata_type,
+                          fDummyData = fDummyData),
+      seed = rep,
+      same_features = FALSE))) %>% 
+  dplyr::ungroup()
+save(tb_sim, file = paste0(dir_output, "tb_sim.RData"))
+N <- nrow(tb_sim)
+```
+
+```{r run sparseDOSSA}
+registerDoParallel(ncores)
+l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
+  i_simSetup <- tb_sim[i, ]
+  
+  otu_count <- try(sparseDOSSA::sparseDOSSA(
+    number_features = i_simSetup$nMicrobe,
+    number_samples = i_simSetup$nSample,
+    UserMetadata = 
+      create_metadataMatrix(df_metadata = i_simSetup$df_metadata[[1]],
+                            metadata_type = metadata_type,
+                            fDummyData = fDummyData,
+                            scale = FALSE),
+    spikein.mt = i_simSetup$spikein.mt[[1]] %>% 
+      dplyr::group_by(feature) %>% 
+      dplyr::mutate(metadata = paste(metadata, collapse = ";"), 
+                    strength = paste(strength, collapse = ";")) %>% 
+      dplyr::slice(1) %>%  
+      dplyr::ungroup(),
+    noZeroInflate = i_simSetup$noZeroInflate,
+    percent_spiked = i_simSetup$spikeMicrobes,
+    seed = i_simSetup$rep,
+    minLevelPercent = 0,
+    write_table = FALSE,
+    verbose = FALSE) %>%
+      extract_sparseDOSSA() %>%
+      extract2("features"),
+    silent = TRUE)
+  
+  return(otu_count)
+}
+stopImplicitCluster()
+save(l_sparseDOSSA, file = paste0(dir_output, "sparseDOSSA.RData"))
+```
+
+```{r load data}
+load(paste0(dir_output, "tb_sim.RData"))
+load(paste0(dir_output, "sparseDOSSA.RData"))
+tb_results <- tb_sim %>% 
+  dplyr::mutate(otu_count = l_sparseDOSSA) %>% 
+  dplyr::mutate(success = sapply(otu_count, class) == "matrix")
+mean(tb_results$success)
+# View(tb_results %>% dplyr::filter(!success))
+# i_simSetup <- tb_results %>% dplyr::filter(!success) %>% dplyr::slice(1)
+tb_results <- tb_results %>% 
+  dplyr::filter(success)
+# Total number iterations. Set so easy to have testing run
+N <- nrow(tb_results)
+```
+
+```{r calculate R2 before adjustment}
+registerDoParallel(ncores)
+l_permanova_before <- foreach(i = 1:N) %dopar% {
+  i_result <- tb_results[i, ]
+  phylo_tmp <- phyloseq::phyloseq(
+    otu_table(i_result$otu_count[[1]], taxa_are_rows = TRUE),
+    sample_data(i_result$df_metadata[[1]])
+  ) %>% prune_taxaSamples() %>%
+    transform_sample_counts(MMUPHin:::tss)
+  
+  distance <- phyloseq::distance(phylo_tmp, method = "bray")
+  list(batch = vegan::adonis(distance ~ batch,
+                             data = sample_data2(phylo_tmp),
+                             permutations = 2),
+       positive_control = vegan::adonis(distance ~ positive_control,
+                                        data = sample_data2(phylo_tmp),
+                                        permutations = 2),
+       negative_control = vegan::adonis(distance ~ negative_control,
+                                        data = sample_data2(phylo_tmp),
+                                        permutations = 2))
+}
+stopImplicitCluster()
+save(l_permanova_before, file = paste0(dir_output, "permanova_before.RData"))
+# load(paste0(dir_output, "permanova_before.RData"))
+# classes <- sapply(l_permanova_before, function(i) sapply(i, class))
+```
+
+```{r batch adjustment}
+registerDoParallel(ncores)
+l_adjust.batch <- foreach(i = 1:N) %dopar% {
+  i_result <- tb_results[i, ]
+  otu_adjust <- MMUPHin::adjust.batch(
+    feature.count = i_result$otu_count[[1]],
+    batch = "batch",
+    covariates = c("positive_control", "negative_control"),
+    data = i_result$df_metadata[[1]],
+    zero.inflation = TRUE,
+    pseudo.count = 0.5,
+    diagnostics = FALSE,
+    verbose = FALSE
+  )
+  otu_adjust_ComBat <- MMUPHin::adjust.batch(
+    feature.count = i_result$otu_count[[1]],
+    batch = "batch",
+    covariates = c("positive_control", "negative_control"),
+    data = i_result$df_metadata[[1]],
+    zero.inflation = FALSE,
+    pseudo.count = 0.5,
+    diagnostics = FALSE,
+    verbose = FALSE
+  )
+  list(otu_adjust = otu_adjust,
+       otu_adjust_ComBat = otu_adjust_ComBat)
+}
+stopImplicitCluster()
+save(l_adjust.batch, file = paste0(dir_output, "adjust.batch.RData"))
+# load(paste0(dir_output, "adjust.batch.RData"))
+```
+
+```{r calculate R2 after adjustment}
+registerDoParallel(ncores)
+l_permanova_after <- foreach(i = 1:N) %dopar% {
+  i_result <- tb_results[i, ]
+  
+  phylo_tmp <- phyloseq::phyloseq(
+    otu_table(l_adjust.batch[[i]]$otu_adjust, taxa_are_rows = TRUE),
+    sample_data(i_result$df_metadata[[1]])
+  ) %>% prune_taxaSamples() %>%
+    transform_sample_counts(MMUPHin:::tss)
+  distance <- phyloseq::distance(phylo_tmp, method = "bray")
+  
+  list(batch = vegan::adonis(distance ~ batch, 
+                             data = sample_data2(phylo_tmp),
+                             permutations = 2),
+       positive_control = vegan::adonis(distance ~ positive_control, 
+                                        data = sample_data2(phylo_tmp),
+                                        permutations = 2),
+       negative_control = vegan::adonis(distance ~ negative_control, 
+                                        data = sample_data2(phylo_tmp),
+                                        permutations = 2))
+}
+stopImplicitCluster()
+save(l_permanova_after, file = paste0(dir_output, "permanova_after.RData"))
+registerDoParallel(ncores)
+l_permanova_afterComBat <- foreach(i = 1:N) %dopar% {
+  i_result <- tb_results[i, ]
+  
+  phylo_tmp <- phyloseq::phyloseq(
+    otu_table(l_adjust.batch[[i]]$otu_adjust_ComBat, taxa_are_rows = TRUE),
+    sample_data(i_result$df_metadata[[1]])
+  ) %>% prune_taxaSamples() %>%
+    transform_sample_counts(MMUPHin:::tss)
+  distance <- phyloseq::distance(phylo_tmp, method = "bray")
+  
+  list(batch = vegan::adonis(distance ~ batch,
+                             data = sample_data2(phylo_tmp),
+                             permutations = 2),
+       positive_control = vegan::adonis(distance ~ positive_control,
+                                        data = sample_data2(phylo_tmp),
+                                        permutations = 2),
+       negative_control = vegan::adonis(distance ~ negative_control,
+                                        data = sample_data2(phylo_tmp),
+                                        permutations = 2))
+}
+stopImplicitCluster()
+save(l_permanova_afterComBat, file = paste0(dir_output, "permanova_afterComBat.RData"))
+```
+
+```{r summarise results}
+tb_results <- list(l_permanova_before, 
+                   l_permanova_after,
+                   l_permanova_afterComBat) %>% 
+  purrr::map2_dfr(c("original", "MMUPHin", "ComBat"),
+                  function(ll_adonis, data) 
+                  {ll_adonis %>% 
+                      purrr::imap_dfr(
+                        function(l_adonis, i) 
+                        {l_adonis %>% 
+                            purrr::imap_dfr(
+                              function(fit_adonis, variable) 
+                              {tibble::tibble(R2 = fit_adonis$aov.tab[variable, "R2"],
+                                              variable = variable)}) %>% 
+                            dplyr::mutate(i = i)}) %>% 
+                      dplyr::mutate(data = data)})
+tb_results <- tb_results %>% 
+  dplyr::left_join(tb_sim %>% dplyr::mutate(i = 1:n()),
+                   by = "i")
+p <- tb_results %>% 
+  dplyr::arrange(nBatch, nSample_perBatch) %>% 
+  dplyr::mutate(nBatch_nSample_perBatch = 
+                  paste0("nBatch=", nBatch, ";",
+                         "nSample_perBatch=", nSample_perBatch) %>% 
+                  factor %>% forcats::fct_inorder()) %>% 
+  dplyr::arrange(nMicrobe, spikeMicrobes) %>% 
+  dplyr::mutate(nMicrobe_percMicrobe = 
+                  paste0("nMicrobe=", nMicrobe, ";",
+                         "percSpike=", spikeMicrobes) %>% 
+                  factor %>% forcats::fct_inorder()) %>% 
+  dplyr::mutate(variable = factor(variable, 
+                                  levels = c("batch", "positive_control", "negative_control"))) %>% 
+  dplyr::mutate(data = factor(data, levels = c("original", "MMUPHin", "ComBat"))) %>% 
+  dplyr::mutate(effect_batch = effectSize %>% 
+                  purrr::map_dbl("batch")) %>% 
+  dplyr::arrange(effect_batch) %>% 
+  dplyr::mutate(effect_batch = effect_batch %>% factor %>% forcats::fct_inorder()) %>% 
+  ggplot(aes(x = variable,
+             y = R2,
+             fill = data,
+             alpha = effect_batch)) +
+  geom_boxplot() +
+  facet_grid(nBatch_nSample_perBatch ~ nMicrobe_percMicrobe, scales = "free_y")
+ggsave(filename = paste0(dir_output, "overall.pdf"), p, width = 20, height = 20)
+```
