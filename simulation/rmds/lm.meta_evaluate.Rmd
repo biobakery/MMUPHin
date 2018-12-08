@@ -67,7 +67,7 @@ for(metadata_type in c("cont", "disc")){
                                     data = i_result$df_metadata[[1]],
                                     normalization = "TSS",
                                     transform = "AST",
-                                    directory = paste0(dir_output, "MMUPHin/"),
+                                    directory = paste0(dir_output, "MMUPHin/", i, "/"),
                                     forest.plots = TRUE,
                                     verbose = FALSE)
     return(fit_lm.meta$meta.results)
@@ -118,7 +118,7 @@ for(metadata_type in c("cont", "disc")){
                                     data = i_result$df_metadata[[1]],
                                     normalization = "TSS",
                                     transform = "AST",
-                                    directory = paste0(dir_output, "MMUPHin/"),
+                                    directory = paste0(dir_output, "MMUPHin/", i, "/"),
                                     forest.plots = TRUE,
                                     verbose = FALSE)
     return(fit_lm.meta$meta.results)
