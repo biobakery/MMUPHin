@@ -82,52 +82,52 @@ for(metadata_type in c("cont", "disc")){
 ```
 
 ```{r batch adjustment}
-for(metadata_type in c("cont", "disc")){
-  registerDoParallel(ncores)
-  tb_results <- l_tb_results[[metadata_type]]
-  l_adjust.batch <- foreach(i = 1:N[metadata_type]) %dopar% {
-    i_result <- tb_results[i, ]
-    otu_adjust <- MMUPHin::adjust.batch(
-      feature.count = i_result$otu_count[[1]],
-      batch = "batch",
-      covariates = c("exposure"),
-      data = i_result$df_metadata[[1]],
-      zero.inflation = TRUE,
-      pseudo.count = 0.5,
-      diagnostics = FALSE,
-      verbose = FALSE
-    )
-    return(otu_adjust)
-  }
-  stopImplicitCluster()
-  save(l_adjust.batch, file = paste0(dir_output, "adjust.batch_",
-                                     metadata_type, ".RData"))
-}
+# for(metadata_type in c("cont", "disc")){
+#   registerDoParallel(ncores)
+#   tb_results <- l_tb_results[[metadata_type]]
+#   l_adjust.batch <- foreach(i = 1:N[metadata_type]) %dopar% {
+#     i_result <- tb_results[i, ]
+#     otu_adjust <- MMUPHin::adjust.batch(
+#       feature.count = i_result$otu_count[[1]],
+#       batch = "batch",
+#       covariates = c("exposure"),
+#       data = i_result$df_metadata[[1]],
+#       zero.inflation = TRUE,
+#       pseudo.count = 0.5,
+#       diagnostics = FALSE,
+#       verbose = FALSE
+#     )
+#     return(otu_adjust)
+#   }
+#   stopImplicitCluster()
+#   save(l_adjust.batch, file = paste0(dir_output, "adjust.batch_",
+#                                      metadata_type, ".RData"))
+# }
 ```
 
 ```{r run meta-analysis after batch adjustment}
-for(metadata_type in c("cont", "disc")){
-  registerDoParallel(ncores)
-  tb_results <- l_tb_results[[metadata_type]]
-  load(paste0(dir_output, "adjust.batch_", metadata_type, ".RData"))
-  l_lm.meta_after <- foreach(i = 1:N[metadata_type]) %dopar% {
-    i_result <- tb_results[i, ]
-    fit_lm.meta <- MMUPHin::lm.meta(feature.count = l_adjust.batch[[i]],
-                                    batch = "batch",
-                                    exposure = "exposure",
-                                    data = i_result$df_metadata[[1]],
-                                    normalization = "TSS",
-                                    transform = "AST",
-                                    directory = paste0(dir_output, "MMUPHin/", i, "/"),
-                                    forest.plots = TRUE,
-                                    verbose = FALSE)
-    return(fit_lm.meta$meta.results)
-  }
-  stopImplicitCluster()
-  save(l_lm.meta_after, 
-       file = paste0(dir_output, 
-                     "lm.meta_", 
-                     metadata_type,
-                     "_after.RData"))
-}
+# for(metadata_type in c("cont", "disc")){
+#   registerDoParallel(ncores)
+#   tb_results <- l_tb_results[[metadata_type]]
+#   load(paste0(dir_output, "adjust.batch_", metadata_type, ".RData"))
+#   l_lm.meta_after <- foreach(i = 1:N[metadata_type]) %dopar% {
+#     i_result <- tb_results[i, ]
+#     fit_lm.meta <- MMUPHin::lm.meta(feature.count = l_adjust.batch[[i]],
+#                                     batch = "batch",
+#                                     exposure = "exposure",
+#                                     data = i_result$df_metadata[[1]],
+#                                     normalization = "TSS",
+#                                     transform = "AST",
+#                                     directory = paste0(dir_output, "MMUPHin/", i, "/"),
+#                                     forest.plots = TRUE,
+#                                     verbose = FALSE)
+#     return(fit_lm.meta$meta.results)
+#   }
+#   stopImplicitCluster()
+#   save(l_lm.meta_after, 
+#        file = paste0(dir_output, 
+#                      "lm.meta_", 
+#                      metadata_type,
+#                      "_after.RData"))
+# }
 ```
