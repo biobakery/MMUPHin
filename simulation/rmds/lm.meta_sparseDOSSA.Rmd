@@ -81,7 +81,7 @@ tb_simCont <- tb_simSetup %>%
       seed = rep))) %>% 
   dplyr::ungroup()
 save(tb_simCont, file = paste0(dir_output, "tb_simCont.RData"))
-N <- 10
+N <- nrow(tb_simCont)
 ```
 
 ```{r run sparseDOSSA continuous}
@@ -148,7 +148,7 @@ tb_simDisc <- tb_simSetup %>%
       seed = rep))) %>% 
   dplyr::ungroup()
 save(tb_simDisc, file = paste0(dir_output, "tb_simDisc.RData"))
-N <- 10
+N <- nrow(tb_simDisc)
 ```
 
 ```{r run sparseDOSSA discrete}
