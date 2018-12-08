@@ -41,7 +41,7 @@ effectSize <- tibble::tibble(effectSize =
                                (1:nrow(tb_effectSize)) %>% 
                                purrr::map(function(i) unlist(tb_effectSize[i, ])))
 # replicates
-rep <- 1:20
+rep <- 1:10
 # metadata simulation
 fDummyData <- TRUE
 fDummyDirection <- TRUE
@@ -81,7 +81,7 @@ tb_simCont <- tb_simSetup %>%
       seed = rep))) %>% 
   dplyr::ungroup()
 save(tb_simCont, file = paste0(dir_output, "tb_simCont.RData"))
-N <- nrow(tb_simCont)
+N <- 10
 ```
 
 ```{r run sparseDOSSA continuous}
@@ -148,6 +148,7 @@ tb_simDisc <- tb_simSetup %>%
       seed = rep))) %>% 
   dplyr::ungroup()
 save(tb_simDisc, file = paste0(dir_output, "tb_simDisc.RData"))
+N <- 10
 ```
 
 ```{r run sparseDOSSA discrete}

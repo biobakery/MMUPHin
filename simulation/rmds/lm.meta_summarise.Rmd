@@ -1,0 +1,136 @@
+---
+title: "Summarise lm.meta simulation results"
+author: "Siyuan Ma"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+html_document:
+df_print: paged
+---
+# Overview
+Summarise lm.meta simulation results
+
+```{r setup, echo = FALSE}                                           
+knitr::opts_knit$set(root.dir = normalizePath("../"))
+# setwd("simulation/")
+```
+```{r setup2, message=FALSE, warning=FALSE, echo = FALSE}
+rm(list = ls())
+for(i.function in list.files("functions/", full.names = TRUE)) {
+  source(i.function)
+}
+setup()
+dir_output <- "results/lm.meta/"
+dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
+```
+
+```{r load data for summary}
+load(paste0(dir_output, "tb_simCont.RData"))
+load(paste0(dir_output, "tb_simDisc.RData"))
+l_tb_sim <- list(
+  cont = tb_simCont,
+  disc = tb_simDisc
+)
+
+ll_lm.meta_before <- list()
+load(paste0(dir_output, "lm.meta_disc_before.RData"))
+ll_lm.meta_before[["disc"]] <- l_lm.meta_before
+load(paste0(dir_output, "lm.meta_cont_before.RData"))
+ll_lm.meta_before[["cont"]] <- l_lm.meta_before
+
+ll_lm.meta_after <- list()
+load(paste0(dir_output, "lm.meta_disc_after.RData"))
+ll_lm.meta_after[["disc"]] <- l_lm.meta_after
+load(paste0(dir_output, "lm.meta_cont_after.RData"))
+ll_lm.meta_after[["cont"]] <- l_lm.meta_after
+```
+
+```{r summarise results and plot}
+for(metadata_type in c("cont", "disc")) {
+  tb_results <- list(ll_lm.meta_before[[metadata_type]], 
+                     ll_lm.meta_after[[metadata_type]]) %>% 
+    purrr::map2_dfr(c("before", "after"),
+                    function(l_results, data) 
+                    {l_results %>% 
+                        purrr::imap_dfr(
+                          function(results, i) 
+                          {results %>% 
+                              dplyr::mutate(i = i)}) %>% 
+                        dplyr::mutate(data = data)})
+  tb_results <- tb_results %>% 
+    dplyr::left_join(l_tb_sim[[metadata_type]] %>% dplyr::mutate(i = 1:n()),
+                     by = "i")
+  tb_results <- tb_results %>% 
+    dplyr::mutate(features_TP = purrr::map2(spikein.mt, nBatch, 
+                                            function(i_df_spikein, i_nBatch)
+                                              i_df_spikein %>% 
+                                              dplyr::filter(metadata == i_nBatch * 2 - 1) %>% 
+                                              dplyr::pull(feature) %>% 
+                                              paste0("Feature", .)),
+                  TP = purrr::map2_lgl(feature, features_TP, function(i_feature, i_features_TP)
+                    i_feature %in% i_features_TP))
+  tb_summarise <- tb_results %>% 
+    dplyr::group_by(i, data) %>% 
+    dplyr::summarise(power = sum(TP & pval < 0.05, na.rm = TRUE) / sum(TP),
+                     FPR = sum(!TP & pval < 0.05, na.rm = TRUE) / sum(!TP)) %>% 
+    dplyr::ungroup()
+  tb_summarise <- tb_summarise %>% 
+    dplyr::left_join(l_tb_sim[[metadata_type]] %>% dplyr::mutate(i = 1:n()),
+                     by = "i") 
+  p_power <- tb_summarise %>% 
+    dplyr::arrange(nBatch, nSample_perBatch) %>% 
+    dplyr::mutate(nBatch_nSample_perBatch = 
+                    paste0("nBatch=", nBatch, ";",
+                           "nSample_perBatch=", nSample_perBatch) %>% 
+                    factor %>% forcats::fct_inorder()) %>% 
+    dplyr::arrange(nMicrobe, spikeMicrobes) %>% 
+    dplyr::mutate(nMicrobe_percMicrobe = 
+                    paste0("nMicrobe=", nMicrobe, ";",
+                           "percSpike=", spikeMicrobes) %>% 
+                    factor %>% forcats::fct_inorder()) %>% 
+    dplyr::mutate(effect_batch = effectSize %>% 
+                    purrr::map_dbl("batch"), 
+                  effect_exposure = effectSize %>% 
+                    purrr::map_dbl("exposure")) %>% 
+    dplyr::arrange(effect_exposure) %>% 
+    dplyr::mutate(effect_exposure = effect_exposure %>% factor %>% forcats::fct_inorder()) %>%
+    dplyr::arrange(desc(effect_batch)) %>% 
+    dplyr::mutate(effect_batch = effect_batch %>% factor %>% forcats::fct_inorder()) %>%
+    dplyr::mutate(data = factor(data, levels = c("before", "after"))) %>% 
+    ggplot(aes(x = effect_batch,
+               y = power,
+               alpha = data,
+               fill = effect_exposure)) +
+    geom_boxplot() +
+    facet_grid(nBatch_nSample_perBatch ~ nMicrobe_percMicrobe, scales = "free_y")
+  p_FPR <- tb_summarise %>% 
+    dplyr::arrange(nBatch, nSample_perBatch) %>% 
+    dplyr::mutate(nBatch_nSample_perBatch = 
+                    paste0("nBatch=", nBatch, ";",
+                           "nSample_perBatch=", nSample_perBatch) %>% 
+                    factor %>% forcats::fct_inorder()) %>% 
+    dplyr::arrange(nMicrobe, spikeMicrobes) %>% 
+    dplyr::mutate(nMicrobe_percMicrobe = 
+                    paste0("nMicrobe=", nMicrobe, ";",
+                           "percSpike=", spikeMicrobes) %>% 
+                    factor %>% forcats::fct_inorder()) %>% 
+    dplyr::mutate(effect_batch = effectSize %>% 
+                    purrr::map_dbl("batch"), 
+                  effect_exposure = effectSize %>% 
+                    purrr::map_dbl("exposure")) %>% 
+    dplyr::arrange(effect_exposure) %>% 
+    dplyr::mutate(effect_exposure = effect_exposure %>% factor %>% forcats::fct_inorder()) %>%
+    dplyr::arrange(desc(effect_batch)) %>% 
+    dplyr::mutate(effect_batch = effect_batch %>% factor %>% forcats::fct_inorder()) %>%
+    dplyr::mutate(data = factor(data, levels = c("before", "after"))) %>% 
+    ggplot(aes(x = effect_batch,
+               y = FPR,
+               alpha = data,
+               fill = effect_exposure)) +
+    geom_boxplot() +
+    facet_grid(nBatch_nSample_perBatch ~ nMicrobe_percMicrobe, scales = "free_y")
+}
+```
+
+
+
+
