@@ -51,8 +51,7 @@ l_tb_results <- l_tb_results %>%
     tb_results %>% dplyr::filter(success)
   })
 # Total number iterations. Set so easy to have testing run
-# N <- l_tb_results %>% purrr::map_dbl(nrow)
-N <- c("cont" = 20, "disc" = 20)
+N <- l_tb_results %>% purrr::map_dbl(nrow)
 ```
 
 ```{r run meta-analysis before batch adjustment}
@@ -68,7 +67,7 @@ for(metadata_type in c("cont", "disc")){
                                     normalization = "TSS",
                                     transform = "AST",
                                     directory = paste0(dir_output, "MMUPHin/", i, "/"),
-                                    forest.plots = TRUE,
+                                    forest.plots = FALSE,
                                     verbose = FALSE)
     return(fit_lm.meta$meta.results)
   }
