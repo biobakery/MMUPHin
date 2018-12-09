@@ -254,7 +254,7 @@ rma.wrapper <- function(l.Maaslin.fit, method = "REML",
                 100)
       }
     }
-    dev.off()
+    if(forest.plots) dev.off()
     i.result$pval.bonf <- p.adjust(i.result$pval, method = "bonf")
     i.result$qval.fdr <- p.adjust(i.result$pval, method = "fdr")
 
