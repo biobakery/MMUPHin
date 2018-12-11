@@ -153,13 +153,15 @@ continuous.discover <- function(feature.count,
   list.membership.sub <- lapply(unique(list.membership.sub),
                                 function(x) names(list.membership.sub)[list.membership.sub == x])
   # Visualization
-  pdf(paste0(directory, "network_communities.pdf"),
-      width = 10,
-      height = 10)
-  igraph::plot.igraph(pc.graph.sub, mark.groups = list.membership.sub,
-                      vertex.size = igraph::degree(pc.graph.sub) / max(igraph::degree(pc.graph.sub)) * 15,
-                      edge.width = igraph::E(pc.graph.sub)$weight * 10)
-  dev.off()
+  if(length(igraph::V(pc.graph.sub)) > 0) {
+    pdf(paste0(directory, "network_communities.pdf"),
+        width = 10,
+        height = 10)
+    igraph::plot.igraph(pc.graph.sub, mark.groups = list.membership.sub,
+                        vertex.size = igraph::degree(pc.graph.sub) / max(igraph::degree(pc.graph.sub)) * 15,
+                        edge.width = igraph::E(pc.graph.sub)$weight * 10)
+    dev.off()
+  }
 
   # Internal validation
   mat.cor.vali <- sapply(data.loadings, function(loadings) {
