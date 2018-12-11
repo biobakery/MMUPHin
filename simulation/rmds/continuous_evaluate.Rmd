@@ -75,7 +75,7 @@ l_continuous_before <- foreach(i = 1:N) %dopar% {
                            "effectPC2", i_result$effectSize[[1]]["PC2"], "_",
                            ".pdf"),
          cowplot::plot_grid(p1, p2, nrow = 2),
-         width = 4*i_result$nBatch, height = 8)
+         width = 3*i_result$nBatch, height = 6, limitsize = FALSE)
   fit_continuous <- MMUPHin::continuous.discover(feature.count = i_result$otu_count[[1]] %>% apply(2, MMUPHin:::tss),
                                                  batch = "batch",
                                                  data = df_metadata,
