@@ -76,21 +76,77 @@ l_continuous_before <- foreach(i = 1:N) %dopar% {
                            ".pdf"),
          cowplot::plot_grid(p1, p2, nrow = 2),
          width = 3*i_result$nBatch, height = 6, limitsize = FALSE)
-  fit_continuous <- MMUPHin::continuous.discover(feature.count = i_result$otu_count[[1]] %>% apply(2, MMUPHin:::tss),
-                                                 batch = "batch",
-                                                 data = df_metadata,
-                                                 transform = "AST",
-                                                 var.perc.cutoff = 0.5,
-                                                 cor.cutoff = 0.5,
-                                                 directory = paste0(dir_output, i, "/"))
+  fit_continuous <- MMUPHin::continuous.discover(
+    feature.count = i_result$otu_count[[1]] %>% 
+      apply(2, MMUPHin:::tss),
+    batch = "batch",
+    data = df_metadata,
+    transform = "AST",
+    var.perc.cutoff = 0.5,
+    cor.cutoff = 0.5,
+    verbose = FALSE,
+    directory = paste0(dir_output, i, "/"))
   if(is.null(fit_continuous)) {
     return(fit_continuous)} else {
-    scores <- t(asin(sqrt(apply(i_result$otu_count[[1]], 2, MMUPHin:::tss)))) %*% 
-      fit_continuous$consensus.loading
-    return(cor(scores, df_metadata[, c("PC1", "PC2")]))
-  }
+      scores <- t(asin(sqrt(apply(i_result$otu_count[[1]], 2, MMUPHin:::tss)))) %*% 
+        fit_continuous$consensus.loading
+      return(cor(scores, df_metadata[, c("PC1", "PC2")]))
+    }
 }
 stopImplicitCluster()
+# 
+# l_continuous_before <- list()
+# for(i in 1:N) {
+#   print(i)
+#   dir.create(paste0(dir_output, i, "/"))
+#   i_result <- tb_results[i, ]
+#   df_metadata <- i_result$df_metadata[[1]]
+#   phylo <- phyloseq::phyloseq(
+#     phyloseq::otu_table(i_result$otu_count[[1]], taxa_are_rows = TRUE),
+#     sample_data(df_metadata)) %>% 
+#     transform_sample_counts(MMUPHin:::tss) %>% 
+#     prune_taxaSamples()
+#   # features_TP <- i_simSetup$spikein.mt[[1]] %>% 
+#   #   dplyr::filter(!(metadata %in% (1:(2*nBatch)))) %>% 
+#   #   dplyr::pull(feature) %>% paste0("Feature", .)
+#   D <- phyloseq::distance(phylo, method = "bray")
+#   ordinate.tmp <-  ape::pcoa(D)$vectors
+#   p1 <- cbind(data.frame(ordinate.tmp), df_metadata) %>% 
+#     ggplot(aes(x = Axis.1, y = Axis.2, color = PC1)) +
+#     geom_point() +
+#     facet_grid(. ~ batch) +
+#     theme(legend.title=element_blank())
+#   p2 <- cbind(data.frame(ordinate.tmp), df_metadata) %>% 
+#     ggplot(aes(x = Axis.1, y = Axis.2, color = PC2)) +
+#     geom_point() +
+#     facet_grid(. ~ batch) +
+#     theme(legend.title=element_blank())
+#   ggsave(filename = paste0(paste0(dir_output, i, "/"), "ordination_",
+#                            "nBatch", i_result$nBatch, "_",
+#                            "nSamplePerBatch", i_result$nSample_perBatch, "_",
+#                            "nMicrobe", i_result$nMicrobe, "_",
+#                            "percSpike", i_result$spikeMicrobes, "_",
+#                            "effectBatch", i_result$effectSize[[1]]["batch"], "_",
+#                            "effectPC2", i_result$effectSize[[1]]["PC2"], "_",
+#                            ".pdf"),
+#          cowplot::plot_grid(p1, p2, nrow = 2),
+#          width = 3*i_result$nBatch, height = 6, limitsize = FALSE)
+#   fit_continuous <- MMUPHin::continuous.discover(feature.count = i_result$otu_count[[1]] %>% apply(2, MMUPHin:::tss),
+#                                                  batch = "batch",
+#                                                  data = df_metadata,
+#                                                  transform = "AST",
+#                                                  var.perc.cutoff = 0.5,
+#                                                  cor.cutoff = 0.5,
+#                                                  directory = paste0(dir_output, i, "/"),
+#                                                  verbose = FALSE)
+#   if(is.null(fit_continuous)) {
+#     l_continuous_before[[i]] <- NULL} else {
+#     scores <- t(asin(sqrt(apply(i_result$otu_count[[1]], 2, MMUPHin:::tss)))) %*% 
+#       fit_continuous$consensus.loading
+#     l_continuous_before[[i]] <- cor(scores, df_metadata[, c("PC1", "PC2")])
+#   }
+# }
+
 save(l_continuous_before, file = paste0(dir_output, "continuous_before.RData"))
 # load(paste0(dir_output, "permanova_before.RData"))
 # classes <- sapply(l_permanova_before, function(i) sapply(i, class))
