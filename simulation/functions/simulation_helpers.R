@@ -15,15 +15,15 @@ create_metadataMatrix <- function(df_metadata,
     } else {
       lvls <- levels(df_metadata[, variable])
       nlvls <- nlevels(df_metadata[, variable])
-      mat_tmp <- t(sapply(2:nlvls, function(ilvl) {
+      mat_tmp <- t(sapply(1:nlvls, function(ilvl) {
         (df_metadata[, variable] == lvls[ilvl]) * 1
       }))
-      rownames(mat_tmp) <- paste0(variable, "_", 2:nlvls)
+      rownames(mat_tmp) <- paste0(variable, "_", 1:nlvls)
       if(fDummyDirection) {
-        mat_tmp_opposite <- t(sapply(2:nlvls, function(ilvl) {
+        mat_tmp_opposite <- t(sapply(1:nlvls, function(ilvl) {
           (df_metadata[, variable] == lvls[ilvl]) * (-1)
         }))
-        rownames(mat_tmp_opposite) <- paste0(variable, "_", 2:nlvls, "_opposite")
+        rownames(mat_tmp_opposite) <- paste0(variable, "_", 1:nlvls, "_opposite")
         mat_tmp <- rbind(mat_tmp, mat_tmp_opposite)
       }
       return(mat_tmp)
@@ -57,11 +57,11 @@ create_effectSize <- function(effectSize,
       return(effectSize_tmp)
     } else {
       nlvls <- nlevels(df_metadata[, variable])
-      effectSize_tmp <- rep(effectSize[variable], nlvls - 1)
-      names(effectSize_tmp) <- paste0(variable, "_", 2:nlvls)
+      effectSize_tmp <- rep(effectSize[variable], nlvls)
+      names(effectSize_tmp) <- paste0(variable, "_", 1:nlvls)
       if(fDummyDirection) {
-        effectSize_tmp_opposite <- rep(effectSize[variable], nlvls - 1)
-        names(effectSize_tmp) <- paste0(variable, "_", 2:nlvls, "_opposite")
+        effectSize_tmp_opposite <- rep(effectSize[variable], nlvls)
+        names(effectSize_tmp) <- paste0(variable, "_", 1:nlvls, "_opposite")
         effectSize_tmp <- c(effectSize_tmp, effectSize_tmp_opposite)
       }
       return(effectSize_tmp)
