@@ -1,0 +1,180 @@
+---
+title: "Unit test for discrete structure discovery"
+author: "Siyuan Ma"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+html_document:
+df_print: paged
+---
+# Overview
+Unit test for discrete structure discovery
+
+```{r setup, echo = FALSE}                                           
+knitr::opts_knit$set(root.dir = normalizePath("../"))
+# setwd("simulation/")
+```
+```{r setup2, message=FALSE, warning=FALSE, echo = FALSE}
+rm(list = ls())
+for(i.function in list.files("functions/", full.names = TRUE)) {
+  source(i.function)
+}
+setup()
+dir_output <- "results/discrete/unitTest/"
+dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
+```
+
+```{r simulation parameters}
+# parallel computing
+ncores <- 6
+# sample size
+nBatch <- c(5)
+nCluster <- c(4)
+nSample_perCluster <- c(50)
+# feature size
+nMicrobe <- c(300)
+spikeMicrobes <- c(0.2)
+# metadata specification
+metadata_type <- c("batch" = "factor",
+                   "cluster1" = "numeric",
+                   "cluster2" = "numeric")
+tb_effectSize <- tidyr::crossing(batch = c(0.1),
+                                 cluster1 = c(5),
+                                 cluster2 = c(5))
+effectSize <- tibble::tibble(effectSize = 
+                               (1:nrow(tb_effectSize)) %>% 
+                               purrr::map(function(i) unlist(tb_effectSize[i, ])))
+# replicates
+rep <- 1
+# metadata simulation
+fDummyData <- TRUE
+fDummyDirection <- TRUE
+# additional setup
+noZeroInflate <- FALSE
+
+tb_simSetup <- tidyr::crossing(
+  rep,
+  nBatch,
+  nCluster,
+  nSample_perCluster,
+  nMicrobe,
+  spikeMicrobes,
+  noZeroInflate,
+  effectSize
+) %>% 
+  dplyr::mutate(nSample_perBatch = nCluster * nSample_perCluster,
+                nSample = nBatch * nSample_perBatch)
+```
+
+```{r simulate metadata}
+set.seed(1)
+tb_sim <- tb_simSetup %>% 
+  dplyr::group_by(1:n()) %>% 
+  dplyr::mutate(df_metadata = list(
+    data.frame(batch = rep(1:nBatch, each = nSample_perBatch) %>% 
+                 as.factor(),
+               cluster1 = rep(c(-1, 1), each = nSample_perCluster) %>% 
+                 c(rep(0, nSample_perCluster*2)) %>% 
+                 rep(nBatch) %>% 
+                 as.numeric(),
+               cluster2 = rep(c(-1, 1), each = nSample_perCluster) %>% 
+                 c(rep(0, nSample_perCluster*2), .) %>% 
+                 rep(nBatch) %>% 
+                 as.numeric(),
+               row.names = paste0("Sample", 1:nSample))),
+    spikein.mt = list(create_spikein.mt(number_features = nMicrobe,
+                        percent_spiked = spikeMicrobes,
+                        effectSize = 
+                          create_effectSize(effectSize = effectSize[[1]],
+                                            df_metadata = df_metadata[[1]],
+                                            metadata_type = metadata_type,
+                                            fDummyData = fDummyData,
+                                            fDummyDirection = fDummyDirection),
+                        seed = rep))) %>% 
+  dplyr::ungroup()
+save(tb_sim, file = paste0(dir_output, "tb_sim.RData"))
+N <- nrow(tb_sim)
+```
+
+```{r run sparseDOSSA}
+registerDoParallel(ncores)
+l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
+  i_simSetup <- tb_sim[i, ]
+  
+  otu_count <- sparseDOSSA::sparseDOSSA(
+    number_features = i_simSetup$nMicrobe,
+    number_samples = i_simSetup$nSample,
+    UserMetadata = 
+      create_metadataMatrix(df_metadata = i_simSetup$df_metadata[[1]],
+                            metadata_type = metadata_type,
+                            fDummyData = fDummyData,
+                            fDummyDirection = fDummyDirection,
+                            scale = FALSE),
+    spikein.mt = i_simSetup$spikein.mt[[1]] %>% 
+      dplyr::group_by(feature) %>% 
+      dplyr::mutate(metadata = paste(metadata, collapse = ";"), 
+                    strength = paste(strength, collapse = ";")) %>% 
+      dplyr::slice(1) %>%  
+      dplyr::ungroup(),
+    noZeroInflate = i_simSetup$noZeroInflate,
+    percent_spiked = i_simSetup$spikeMicrobes,
+    seed = i_simSetup$rep,
+    minLevelPercent = 0,
+    write_table = FALSE,
+    verbose = FALSE) %>%
+    extract_sparseDOSSA() %>%
+    extract2("features")
+  return(otu_count)
+}
+stopImplicitCluster()
+save(l_sparseDOSSA, file = paste0(dir_output, "sparseDOSSA.RData"))
+```
+
+```{r see if the clsuters are real?}
+i <- 1
+i_simSetup <- tb_sim[i, ]
+phylo <- phyloseq::phyloseq(
+  phyloseq::otu_table(l_sparseDOSSA[[i]], taxa_are_rows = TRUE),
+  sample_data(i_simSetup$df_metadata[[1]])) %>% 
+  transform_sample_counts(MMUPHin:::tss) %>% 
+  prune_taxaSamples()
+features_TP <- i_simSetup$spikein.mt[[1]] %>% 
+  dplyr::filter(!(metadata %in% (1:(2*nBatch)))) %>% 
+  dplyr::pull(feature) %>% paste0("Feature", .)
+D <- phyloseq::distance(phylo, method = "bray")
+D2 <- phyloseq::distance(phylo %>% phyloseq::prune_taxa(features_TP, .), method = "bray")
+ordinate.tmp <-  ape::pcoa(D2)$vectors
+cbind(data.frame(ordinate.tmp), i_simSetup$df_metadata[[1]]) %>% 
+  ggplot(aes(x = Axis.1, y = Axis.2, color = rep(rep(1:4, each = nSample_perCluster), nBatch) %>% as.factor)) +
+  geom_point() +
+  facet_wrap(.~batch, nrow = 2) +
+  theme(legend.title=element_blank())
+ggsave(filename = paste0(dir_output, "ordination.pdf"),
+       width = 15, height = 4)
+```
+
+```{r see if the clsuters are real?}
+tmp <- MMUPHin::discrete.discover(feature.count = l_sparseDOSSA[[i]],
+                                  batch = "batch",
+                                  data = i_simSetup$df_metadata[[1]],
+                                  distance = D,
+                                  k.max = 10,
+                                  diagnostics = TRUE,
+                                  verbose = FALSE)
+ggsave(filename = paste0(dir_output, "evaluation.pdf"),
+       width = 15, height = 4)
+tmp2 <- fpc::prediction.strength(
+  xdata = D,
+  Gmin = 2,
+  Gmax = 5,
+  clustermethod = fpc::claraCBI,
+  classification = "knn",
+  M = 10,
+  distances = TRUE,
+  count = FALSE,
+  diss = TRUE
+)
+test <- cluster::pam(x = D, k = 4, diss = TRUE, pamonce = 2)
+test <- cluster::pam(x = ordinate.tmp[, 1:100], k = 4, diss = FALSE)
+table(test$clustering, rep(1:4, each = nSample_perCluster) %>% rep(nBatch))
+summary(cluster::silhouette(rep(rep(1:2, 2*nSample_perCluster), nBatch), D))$si.summary
+```
