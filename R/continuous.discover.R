@@ -29,8 +29,6 @@ continuous.discover <- function(feature.count,
   data <- as.data.frame(data, stringsAsFactors = FALSE)
   if(!(batch%in% names(data)))
     stop("Batch/covariate variable not found in data.")
-  if(class(data[, batch]) != "character")
-    stop("Batch variable must be character class!")
 
   ## Data dimensions need to agree with each other
   if(ncol(feature.count) != nrow(data))
@@ -165,8 +163,9 @@ continuous.discover <- function(feature.count,
 
   # Internal validation
   mat.cor.vali <- sapply(data.loadings, function(loadings) {
-    apply(abs(cor(mat.cons.loading, loadings)), 1, max)
+    apply(abs(t(mat.cons.loading) %*% loadings), 1, max)
   })
+  mat.cor.vali <- matrix(mat.cor.vali, nrow = ncol(mat.cons.loading))
   if(diagnostics) {
     df.cor.vali <- data.frame(mat.cor.vali)
     colnames(df.cor.vali) <- lvl.batch

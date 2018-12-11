@@ -35,8 +35,6 @@ discrete.discover <- function(feature.count,
   data <- as.data.frame(data, stringsAsFactors = FALSE)
   if(!(batch%in% names(data)))
     stop("Batch/covariate variable not found in data.")
-  if(class(data[, batch]) != "character")
-    stop("Batch variable must be character class!")
 
   ## Data dimensions need to agree with each other
   if(ncol(feature.count) != nrow(data))
