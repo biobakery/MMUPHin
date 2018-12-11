@@ -109,6 +109,11 @@ continuous.discover <- function(feature.count,
   # edge.matrix <- cor.matrix
   dimnames(edge.matrix) <- dimnames(cor.matrix)
   edge.matrix[abs(cor.matrix) < cor.cutoff] <- 0
+  if(sum(edge.matrix) == nrow(edge.matrix)) {
+    warning("No clusters found in the PC network (all edges are filtered out)!\n",
+            "Consider lowering the value of cor.cutoff.")
+    return(NULL)
+  }
 
   # Create igraph graph object
   pc.graph <- igraph::graph_from_adjacency_matrix(abs(edge.matrix),
