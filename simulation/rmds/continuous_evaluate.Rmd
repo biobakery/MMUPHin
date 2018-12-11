@@ -47,7 +47,7 @@ l_continuous_before <- foreach(i = 1:N) %dopar% {
   i_result <- tb_results[i, ]
   df_metadata <- i_result$df_metadata[[1]]
   phylo <- phyloseq::phyloseq(
-    phyloseq::otu_table(l_sparseDOSSA[[i]], taxa_are_rows = TRUE),
+    phyloseq::otu_table(i_result$otu_count[[1]], taxa_are_rows = TRUE),
     sample_data(df_metadata)) %>% 
     transform_sample_counts(MMUPHin:::tss) %>% 
     prune_taxaSamples()
@@ -76,7 +76,7 @@ l_continuous_before <- foreach(i = 1:N) %dopar% {
                            ".pdf"),
          cowplot::plot_grid(p1, p2, nrow = 2),
          width = 4*i_result$nBatch, height = 8)
-  fit_continuous <- MMUPHin::continuous.discover(feature.count = l_sparseDOSSA[[i]] %>% apply(2, MMUPHin:::tss),
+  fit_continuous <- MMUPHin::continuous.discover(feature.count = i_result$otu_count[[1]] %>% apply(2, MMUPHin:::tss),
                                                  batch = "batch",
                                                  data = df_metadata,
                                                  transform = "AST",
@@ -85,7 +85,7 @@ l_continuous_before <- foreach(i = 1:N) %dopar% {
                                                  directory = paste0(dir_output, i, "/"))
   if(is.null(fit_continuous)) return(fit_continuous)
   else {
-    scores <- t(asin(sqrt(apply(l_sparseDOSSA[[i]], 2, MMUPHin:::tss)))) %*% 
+    scores <- t(asin(sqrt(apply(i_result$otu_count[[1]], 2, MMUPHin:::tss)))) %*% 
       fit_continuous$consensus.loading
     return(cor(scores, df_metadata[, c("PC1", "PC2")]))
   }
