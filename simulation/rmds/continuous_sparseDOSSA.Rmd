@@ -91,7 +91,7 @@ registerDoParallel(ncores)
 l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
   i_simSetup <- tb_sim[i, ]
   
-  otu_count <- sparseDOSSA::sparseDOSSA(
+  otu_count <- try(sparseDOSSA::sparseDOSSA(
     number_features = i_simSetup$nMicrobe,
     number_samples = i_simSetup$nSample,
     UserMetadata = 
@@ -113,7 +113,7 @@ l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
     write_table = FALSE,
     verbose = FALSE) %>%
     extract_sparseDOSSA() %>%
-    extract2("features")
+    extract2("features"), silent = TRUE)
   return(otu_count)
 }
 stopImplicitCluster()
