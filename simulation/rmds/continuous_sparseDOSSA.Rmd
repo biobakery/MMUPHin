@@ -1,0 +1,121 @@
+---
+title: "sparseDOSSA simulation for continuous structure discovery"
+author: "Siyuan Ma"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+html_document:
+df_print: paged
+---
+# Overview
+sparseDOSSA simulation for discrete structure discovery
+
+```{r setup, echo = FALSE}                                           
+knitr::opts_knit$set(root.dir = normalizePath("../"))
+# setwd("simulation/")
+```
+```{r setup2, message=FALSE, warning=FALSE, echo = FALSE}
+rm(list = ls())
+for(i.function in list.files("functions/", full.names = TRUE)) {
+  source(i.function)
+}
+setup()
+dir_output <- "results/continuous/"
+dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
+```
+
+```{r simulation parameters}
+# parallel computing
+ncores <- 20
+# sample size
+nBatch <- c(5, 10)
+nSample_perBatch <- c(100, 300, 500)
+# feature size
+nMicrobe <- c(50, 300)
+spikeMicrobes <- c(0.1, 0.2, 0.5)
+# metadata specification
+metadata_type <- c("batch" = "factor",
+                   "PC1" = "numeric",
+                   "PC2" = "numeric")
+tb_effectSize <- tidyr::crossing(batch = c(0, 0.1, 0.5, 1), 
+                                 PC1 = c(10),
+                                 PC2 = c(2, 5, 10))
+effectSize <- tibble::tibble(effectSize = 
+                               (1:nrow(tb_effectSize)) %>% 
+                               purrr::map(function(i) unlist(tb_effectSize[i, ])))
+# replicates
+rep <- 1
+# metadata simulation
+fDummyData <- TRUE
+fDummyDirection <- TRUE
+# additional setup
+noZeroInflate <- FALSE
+
+tb_simSetup <- tidyr::crossing(
+  rep,
+  nBatch,
+  nSample_perBatch,
+  nMicrobe,
+  spikeMicrobes,
+  noZeroInflate,
+  effectSize
+) %>% 
+  dplyr::mutate(nSample = nBatch * nSample_perBatch)
+```
+
+```{r simulate metadata}
+set.seed(1)
+tb_sim <- tb_simSetup %>% 
+  dplyr::group_by(1:n()) %>% 
+  dplyr::mutate(df_metadata = list(
+    data.frame(batch = rep(1:nBatch, each = nSample_perBatch) %>%
+                 as.factor(),
+               PC1 = rep(rnorm(nSample_perBatch), nBatch),
+               PC2 = rep(rnorm(nSample_perBatch), nBatch),
+               row.names = paste0("Sample", 1:nSample))),
+    spikein.mt = list(create_spikein.mt(number_features = nMicrobe,
+                        percent_spiked = spikeMicrobes,
+                        effectSize = 
+                          create_effectSize(effectSize = effectSize[[1]],
+                                            df_metadata = df_metadata[[1]],
+                                            metadata_type = metadata_type,
+                                            fDummyData = fDummyData,
+                                            fDummyDirection = fDummyDirection),
+                        seed = rep))) %>% 
+  dplyr::ungroup()
+save(tb_sim, file = paste0(dir_output, "tb_sim.RData"))
+N <- nrow(tb_sim)
+```
+
+```{r run sparseDOSSA}
+registerDoParallel(ncores)
+l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
+  i_simSetup <- tb_sim[i, ]
+  
+  otu_count <- sparseDOSSA::sparseDOSSA(
+    number_features = i_simSetup$nMicrobe,
+    number_samples = i_simSetup$nSample,
+    UserMetadata = 
+      create_metadataMatrix(df_metadata = i_simSetup$df_metadata[[1]],
+                            metadata_type = metadata_type[-1],
+                            fDummyData = fDummyData,
+                            fDummyDirection = fDummyDirection,
+                            scale = FALSE),
+    spikein.mt = i_simSetup$spikein.mt[[1]] %>% 
+      dplyr::group_by(feature) %>% 
+      dplyr::mutate(metadata = paste(metadata, collapse = ";"), 
+                    strength = paste(strength, collapse = ";")) %>% 
+      dplyr::slice(1) %>%  
+      dplyr::ungroup(),
+    noZeroInflate = i_simSetup$noZeroInflate,
+    percent_spiked = i_simSetup$spikeMicrobes,
+    seed = i_simSetup$rep,
+    minLevelPercent = 0,
+    write_table = FALSE,
+    verbose = FALSE) %>%
+    extract_sparseDOSSA() %>%
+    extract2("features")
+  return(otu_count)
+}
+stopImplicitCluster()
+save(l_sparseDOSSA, file = paste0(dir_output, "sparseDOSSA.RData"))
+```
