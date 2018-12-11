@@ -83,8 +83,8 @@ l_continuous_before <- foreach(i = 1:N) %dopar% {
                                                  var.perc.cutoff = 0.5,
                                                  cor.cutoff = 0.5,
                                                  directory = paste0(dir_output, i, "/"))
-  if(is.null(fit_continuous)) return(fit_continuous)
-  else {
+  if(is.null(fit_continuous)) {
+    return(fit_continuous)} else {
     scores <- t(asin(sqrt(apply(i_result$otu_count[[1]], 2, MMUPHin:::tss)))) %*% 
       fit_continuous$consensus.loading
     return(cor(scores, df_metadata[, c("PC1", "PC2")]))
