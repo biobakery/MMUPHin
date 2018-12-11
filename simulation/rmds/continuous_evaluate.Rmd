@@ -1,0 +1,97 @@
+---
+title: "Evaluate continuous structure discovery"
+author: "Siyuan Ma"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+html_document:
+df_print: paged
+---
+# Overview
+Evaluate continuous structure discovery
+
+```{r setup, echo = FALSE}                                           
+knitr::opts_knit$set(root.dir = normalizePath("../"))
+# setwd("simulation/")
+```
+```{r setup2, message=FALSE, warning=FALSE, echo = FALSE}
+rm(list = ls())
+for(i.function in list.files("functions/", full.names = TRUE)) {
+  source(i.function)
+}
+setup()
+dir_output <- "results/continuous/"
+dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
+```
+
+```{r load data}
+# parallel computing
+ncores <- 20
+load(paste0(dir_output, "tb_sim.RData"))
+load(paste0(dir_output, "sparseDOSSA.RData"))
+tb_results <- tb_sim %>% 
+  dplyr::mutate(otu_count = l_sparseDOSSA) %>% 
+  dplyr::mutate(success = sapply(otu_count, class) == "matrix")
+mean(tb_results$success)
+# View(tb_results %>% dplyr::filter(!success))
+# i_simSetup <- tb_results %>% dplyr::filter(!success) %>% dplyr::slice(1)
+tb_results <- tb_results %>% 
+  dplyr::filter(success)
+# Total number iterations. Set so easy to have testing run
+N <- nrow(tb_results)
+```
+
+```{r continuous before batch adjustment}
+registerDoParallel(ncores)
+l_continuous_before <- foreach(i = 1:N) %dopar% {
+  dir.create(paste0(dir_output, i, "/"))
+  i_result <- tb_results[i, ]
+  df_metadata <- i_result$df_metadata[[1]]
+  phylo <- phyloseq::phyloseq(
+    phyloseq::otu_table(l_sparseDOSSA[[i]], taxa_are_rows = TRUE),
+    sample_data(df_metadata)) %>% 
+    transform_sample_counts(MMUPHin:::tss) %>% 
+    prune_taxaSamples()
+  # features_TP <- i_simSetup$spikein.mt[[1]] %>% 
+  #   dplyr::filter(!(metadata %in% (1:(2*nBatch)))) %>% 
+  #   dplyr::pull(feature) %>% paste0("Feature", .)
+  D <- phyloseq::distance(phylo, method = "bray")
+  ordinate.tmp <-  ape::pcoa(D)$vectors
+  p1 <- cbind(data.frame(ordinate.tmp), df_metadata) %>% 
+    ggplot(aes(x = Axis.1, y = Axis.2, color = PC1)) +
+    geom_point() +
+    facet_grid(. ~ batch) +
+    theme(legend.title=element_blank())
+  p2 <- cbind(data.frame(ordinate.tmp), df_metadata) %>% 
+    ggplot(aes(x = Axis.1, y = Axis.2, color = PC2)) +
+    geom_point() +
+    facet_grid(. ~ batch) +
+    theme(legend.title=element_blank())
+  ggsave(filename = paste0(paste0(dir_output, i, "/"), "ordination_",
+                           "nBatch", i_result$nBatch, "_",
+                           "nSamplePerBatch", i_result$nSample_perBatch, "_",
+                           "nMicrobe", i_result$nMicrobe, "_",
+                           "percSpike", i_result$spikeMicrobes, "_",
+                           "effectBatch", i_result$effectSize[[1]]["batch"], "_",
+                           "effectPC2", i_result$effectSize[[1]]["PC2"], "_",
+                           ".pdf"),
+         cowplot::plot_grid(p1, p2, nrow = 2),
+         width = 4*i_result$nBatch, height = 8)
+  fit_continuous <- MMUPHin::continuous.discover(feature.count = l_sparseDOSSA[[i]] %>% apply(2, MMUPHin:::tss),
+                                                 batch = "batch",
+                                                 data = df_metadata,
+                                                 transform = "AST",
+                                                 var.perc.cutoff = 0.5,
+                                                 cor.cutoff = 0.5,
+                                                 directory = paste0(dir_output, i, "/"))
+  if(is.null(fit_continuous)) return(fit_continuous)
+  else {
+    scores <- t(asin(sqrt(apply(l_sparseDOSSA[[i]], 2, MMUPHin:::tss)))) %*% 
+      fit_continuous$consensus.loading
+    return(cor(scores, df_metadata[, c("PC1", "PC2")]))
+  }
+}
+stopImplicitCluster()
+save(l_continuous_before, file = paste0(dir_output, "continuous_before.RData"))
+# load(paste0(dir_output, "permanova_before.RData"))
+# classes <- sapply(l_permanova_before, function(i) sapply(i, class))
+```

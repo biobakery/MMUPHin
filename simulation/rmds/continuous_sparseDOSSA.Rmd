@@ -101,6 +101,7 @@ l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
                             fDummyDirection = fDummyDirection,
                             scale = FALSE),
     spikein.mt = i_simSetup$spikein.mt[[1]] %>% 
+      dplyr::filter(strength != 0) %>% 
       dplyr::group_by(feature) %>% 
       dplyr::mutate(metadata = paste(metadata, collapse = ";"), 
                     strength = paste(strength, collapse = ";")) %>% 
