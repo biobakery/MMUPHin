@@ -18,27 +18,6 @@ create_spikein.mt <- function(number_features,
   return(Reduce("rbind", l_spikein.mt))
 }
 
-create_spikein.mt_cluster <- function(number_features,
-                                      percent_spiked,
-                                      effectSize,
-                                      base = 0,
-                                      seed) {
-  set.seed(seed)
-  nFeatureSpiked <- floor(number_features * percent_spiked)
-  if(nFeatureSpiked == 0)
-    stop("No features are spiked in with current configuration!")
-  features_shuffle <- sample.int(n = number_features, size = number_features, replace = FALSE)
-  l_spikein.mt <- lapply(1:length(effectSize), function(i) {
-    loc_start <- (i - 1)*nFeatureSpiked %% number_features + 1
-    features_spike <- features_shuffle[loc_start:(loc_start + nFeatureSpiked - 1)]
-    data.frame(feature = features_spike,
-               metadata = i + base,
-               strength = effectSize[i],
-               stringsAsFactors = FALSE, row.names = NULL)
-  })
-  return(Reduce("rbind", l_spikein.mt))
-}
-
 extract_sparseDOSSA <- function(sparseDOSSA_fit) {
 
   # metadata + feature data
