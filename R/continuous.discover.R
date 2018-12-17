@@ -3,7 +3,8 @@
 #' @param feature.count Feature x sample matrix of feature abundance
 #' @param batch Name of batch variable
 #' @param data data frame
-#' @param transform transformation
+#' @param normalization normalization, consistent with Maaslin2
+#' @param transform transformation, consistent with Maaslin2
 #' @param var.perc.cutoff percentage variance cutoff for top PCs
 #' @param cor.cutoff correlation cutoff for constructing graph
 #' @param directory output directory for figures
@@ -14,6 +15,7 @@
 continuous.discover <- function(feature.count,
                                 batch,
                                 data,
+                                normalization = "TSS",
                                 transform = "AST",
                                 var.perc.cutoff = 0.8,
                                 cor.cutoff = 0.707,
@@ -58,13 +60,14 @@ continuous.discover <- function(feature.count,
   lvl.batch <- levels(batch)
 
   ## Transform sample counts
-  feature.count.transformed <- asin(sqrt(apply(feature.count, 2, tss))) ## FIXME
+  feature.pca <- normalizeFeatures(feature.count, normalization = normalization)
+  feature.pca <- transformFeatures(feature.pca, transformation = transform)
 
   # Calculate PC for the training sets
   if(verbose) message("Performing PCA in individual datasets...")
   pca.all <- lapply(lvl.batch, function(lvl)
   {
-    pc <- feature.count.transformed[, batch == lvl]
+    pc <- feature.pca[, batch == lvl]
     dat.pca <- prcomp(t(pc))
     return(dat.pca)
   })
