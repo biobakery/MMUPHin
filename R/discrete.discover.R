@@ -1,9 +1,8 @@
 #' Main function for discrete structure discovery
 #'
-#' @param feature.count Feature x sample matrix of feature abundance
+#' @param distance dissimilarity object
 #' @param batch Name of batch variable
 #' @param data data frame
-#' @param distance dissimilarity measure or dist object
 #' @param k.max max k for testing
 #' @param cluster.method method for clustering. consistent with fpc
 #' @param classify.method method for classification. consistent with fpc
@@ -14,10 +13,9 @@
 #' @param ... additional parameters for clsutering. consistent with fpc
 #' @return A list of MMUPHin continuous score discovery object
 #' @export
-discrete.discover <- function(feature.count,
+discrete.discover <- function(distance,
                               batch,
                               data,
-                              distance = "bray",
                               k.max = 10,
                               cluster.method = fpc::claraCBI, # must take distance and k as parameters
                               classify.method = "centroid",
@@ -27,31 +25,24 @@ discrete.discover <- function(feature.count,
                               verbose = TRUE,
                               ...) {
   ## Ensure data formatts are as expected
-  feature.count <- as.matrix(feature.count)
-  if(any(is.na(feature.count)))
-    stop("Found missing values in the feature table!")
-  if(any(feature.count < 0))
-    stop("Found negative values in the feature table!")
+  if(inherits(distance) != "dist") {
+    stop("distance must be a dissimilarity matrix!")
+  }
+  dist.all <- as.matrix(distance)
   data <- as.data.frame(data, stringsAsFactors = FALSE)
   if(!(batch%in% names(data)))
     stop("Batch/covariate variable not found in data.")
-
   ## Data dimensions need to agree with each other
-  if(ncol(feature.count) != nrow(data))
-    stop("Dimensions of feature table and metadata table do not agree!")
+  if(ncol(dist.all) != nrow(data))
+    stop("Dimensions of distance matrix and metadata table do not agree!")
 
   ## Check that sample names agree between the feature and metadata table
   ## And assign row and column names if emppty
-  if(is.null(colnames(feature.count))) colnames(feature.count) <-
-    paste0("Sample",
-           1:ncol(feature.count))
-  if(is.null(rownames(feature.count))) rownames(feature.count) <-
-    paste0("Feature",
-           1:nrow(feature.count))
-  if(is.null(rownames(data))) rownames(data) <-
-    paste0("Sample",
-           1:ncol(feature.count))
-  if(any(colnames(feature.count) != rownames(data)))
+  if(is.null(rownames(data)))
+    rownames(data) <- paste0("Sample",1:ncol(feature.count))
+  if(is.null(rownames(dist.all)))
+    colnames(dist.all) <- rownames(dist.all) <- rownames(data)
+  if(any(colnames(dist.all) != rownames(data)))
     stop("Sample names in feature.count and data don't agree!")
 
   # Check batch variable and identify groups
@@ -68,20 +59,6 @@ discrete.discover <- function(feature.count,
     message("k.max be less than half smallest sample size!")
     k.max <- floor(min(table(batch)) / 2) - 1
     message("Set k.max to ", k.max)
-  }
-
-  if(!(class(distance) %in% c("dist", "character")))
-    stop("distance must be either a dist object or dissimilarity measure!")
-  if(class(distance) == "dist") {
-    if(verbose) message("Distance matrix is provided...")
-    dist.all <- as.matrix(distance)
-  }
-  if(class(distance) == "character") {
-    if(verbose) message("Calculating all vs. all dissimilarity matrix...")
-    dist.all <- as.matrix(phyloseq::distance(
-      phyloseq::otu_table(apply(feature.count, 2, tss),
-                          taxa_are_rows = TRUE),
-      method = distance))
   }
 
   # Clustering validation
@@ -177,7 +154,6 @@ discrete.discover <- function(feature.count,
             ggplot2::theme_bw())
   }
   return(list(internal = stats.internal,
-              external = stats.external,
-              dist.all = as.dist(dist.all)))
+              external = stats.external))
 }
 
