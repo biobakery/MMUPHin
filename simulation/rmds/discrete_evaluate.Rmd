@@ -1,0 +1,128 @@
+---
+title: "evaluate for discrete structure discovery"
+author: "Siyuan Ma"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+html_document:
+df_print: paged
+---
+# Overview
+Evaluate for discrete structure discovery
+
+```{r setup, echo = FALSE}                                           
+knitr::opts_knit$set(root.dir = normalizePath("../"))
+# setwd("simulation/")
+```
+```{r setup2, message=FALSE, warning=FALSE, echo = FALSE}
+rm(list = ls())
+for(i.function in list.files("functions/", full.names = TRUE)) {
+  source(i.function)
+}
+setup()
+dir_output <- "results/discrete/"
+dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
+```
+
+```{r load data}
+# parallel computing
+ncores <- 20
+
+load(paste0(dir_output, "tb_sim.RData"))
+load(paste0(dir_output, "sparseDOSSA.RData"))
+```
+
+```{r evaluate metrics before correction}
+N <- nrow(tb_sim)
+registerDoParallel(ncores)
+l_results <- foreach(i = 1:N) %dopar% {
+  mat_otu <- l_sparseDOSSA[[i]]
+  i_simSetup <- tb_sim[i, ]
+  
+  phylo <- phyloseq::phyloseq(
+    phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
+    sample_data(i_simSetup$df_metadata[[1]])) %>% 
+    transform_sample_counts(MMUPHin:::tss) %>% 
+    prune_taxaSamples()
+  D <- distance(phylo, method = "bray")
+  R2 <- c(
+    vegan::adonis(D ~ cluster, 
+                      data = i_simSetup$df_metadata[[1]], 
+                      permutations = 2) %>% 
+    extract2("aov.tab") %>% extract(1, 5),
+    vegan::adonis(D ~ batch, 
+                      data = i_simSetup$df_metadata[[1]], 
+                      permutations = 2) %>% 
+    extract2("aov.tab") %>% extract(1, 5)
+    )
+  pred.str <- 
+    fpc::prediction.strength(
+      xdata = D,
+      Gmin = 2,
+      Gmax = 5,
+      clustermethod = fpc::claraCBI,
+      classification = "centroid",
+      M = 10,
+      distances = TRUE,
+      count = FALSE)$mean.pred[-1] %>% 
+    data.frame(k = 2:5, mean_pred = .)
+  
+  return(list(R2 = R2, pred.str = pred.str))
+} 
+stopImplicitCluster()
+save(l_results, file = paste0(dir_output, "evaluate_before.RData"))
+```
+
+```{r batch correction}
+registerDoParallel(ncores)
+l_sparseDOSSA_correct <- foreach(i = 1:N) %dopar% {
+  mat_otu <- l_sparseDOSSA[[i]]
+  i_simSetup <- tb_sim[i, ]
+  df_metadata <- tb_sim[i, ]$df_metadata[[1]]
+  
+    mat_otu %>% 
+      MMUPHin::adjust.batch(batch = "batch", 
+                            data = df_metadata) %>% 
+      return()
+} 
+stopImplicitCluster()
+```
+
+```{r evaluate metrics after correction}
+registerDoParallel(ncores)
+l_results_correct <- foreach(i = 1:N) %dopar% {
+  mat_otu <- l_sparseDOSSA_correct[[i]]
+  i_simSetup <- tb_sim[i, ]
+  
+  phylo <- phyloseq::phyloseq(
+    phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
+    sample_data(i_simSetup$df_metadata[[1]])) %>% 
+    transform_sample_counts(MMUPHin:::tss) %>% 
+    prune_taxaSamples()
+  D <- distance(phylo, method = "bray")
+  R2 <- c(
+    vegan::adonis(D ~ cluster, 
+                      data = i_simSetup$df_metadata[[1]], 
+                      permutations = 2) %>% 
+    extract2("aov.tab") %>% extract(1, 5),
+    vegan::adonis(D ~ batch, 
+                      data = i_simSetup$df_metadata[[1]], 
+                      permutations = 2) %>% 
+    extract2("aov.tab") %>% extract(1, 5)
+    )
+  pred.str <- 
+    fpc::prediction.strength(
+      xdata = D,
+      Gmin = 2,
+      Gmax = 5,
+      clustermethod = fpc::claraCBI,
+      classification = "centroid",
+      M = 10,
+      distances = TRUE,
+      count = FALSE)$mean.pred[-1] %>% 
+    data.frame(k = 2:5, mean_pred = .)
+  
+  return(list(R2 = R2, pred.str = pred.str))
+} 
+stopImplicitCluster()
+save(l_results_correct, file = paste0(dir_output, "evaluate_after.RData"))
+```

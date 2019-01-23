@@ -25,7 +25,7 @@ discrete.discover <- function(distance,
                               verbose = TRUE,
                               ...) {
   ## Ensure data formatts are as expected
-  if(inherits(distance) != "dist") {
+  if(!inherits(distance, "dist")) {
     stop("distance must be a dissimilarity matrix!")
   }
   dist.all <- as.matrix(distance)
@@ -39,7 +39,7 @@ discrete.discover <- function(distance,
   ## Check that sample names agree between the feature and metadata table
   ## And assign row and column names if emppty
   if(is.null(rownames(data)))
-    rownames(data) <- paste0("Sample",1:ncol(feature.count))
+    rownames(data) <- paste0("Sample",1:nrow(data))
   if(is.null(rownames(dist.all)))
     colnames(dist.all) <- rownames(dist.all) <- rownames(data)
   if(any(colnames(dist.all) != rownames(data)))
@@ -97,7 +97,7 @@ discrete.discover <- function(distance,
       stats.internal[[k - 1]][[i]] <- i.result.internal$predcorr[[k]]
 
       if(verbose) message("Performing external validation...")
-      i.clustering <- rep(-1, ncol(feature.count))
+      i.clustering <- rep(-1, nrow(data))
       i.clustering[batch == i.batch] <- clusterings[[i]]$partition
       classifications[[i]] <- fpc::classifdist(as.dist(dist.all),
                                                clustering = i.clustering,

@@ -28,22 +28,21 @@ dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
 ncores <- 20
 # sample size
 nBatch <- c(2, 5, 10)
-nSample_perBatch <- c(10, 50, 100)
+nCluster <- c(4, 8)
+nSample_perCluster <- c(20, 100)
 # feature size
-nMicrobe <- c(50, 300)
-spikeMicrobes <- c(0.1, 0.2, 0.5)
+nMicrobe <- c(200, 1000)
+spikeMicrobes <- c(0.2)
 # metadata specification
 metadata_type <- c("batch" = "factor",
-                   "positive_control" = "factor",
-                   "negative_control" = "factor")
+                   "cluster" = "factor")
+tb_effectSize <- tidyr::crossing(batch = 0:10,
+                                 cluster = c(5, 10))
 effectSize <- tibble::tibble(effectSize = 
-                               list(c("batch" = 0.1, "positive_control" = 1, "negative_control" = 0),
-                                    c("batch" = 1, "positive_control" = 1, "negative_control" = 0),
-                                    c("batch" = 2, "positive_control" = 1, "negative_control" = 0),
-                                    c("batch" = 5, "positive_control" = 1, "negative_control" = 0),
-                                    c("batch" = 10, "positive_control" = 1, "negative_control" = 0)))
+                               (1:nrow(tb_effectSize)) %>% 
+                               purrr::map(function(i) unlist(tb_effectSize[i, ])))
 # replicates
-rep <- 1:10
+rep <- 1:5
 # metadata simulation
 fDummyData <- TRUE
 fDummyDirection <- TRUE
@@ -53,13 +52,14 @@ noZeroInflate <- FALSE
 tb_simSetup <- tidyr::crossing(
   rep,
   nBatch,
-  nSample_perBatch,
+  nCluster,
+  nSample_perCluster,
   nMicrobe,
   spikeMicrobes,
   noZeroInflate,
   effectSize
 ) %>% 
-  dplyr::mutate(nSample = nBatch * nSample_perBatch)
+  dplyr::mutate(nSample = nBatch * nCluster * nSample_perCluster)
 ```
 
 ```{r simulate metadata}
@@ -67,23 +67,21 @@ set.seed(1)
 tb_sim <- tb_simSetup %>% 
   dplyr::group_by(1:n()) %>% 
   dplyr::mutate(df_metadata = list(
-    data.frame(batch = rep(1:nBatch, each = nSample_perBatch) %>% 
+    data.frame(batch = sample.int(nBatch, size = nSample, replace = TRUE) %>% 
                  as.factor(),
-               positive_control = rbinom(n = nSample, size = 1, prob = 0.5) %>% 
-                 as.factor(),
-               negative_control = rbinom(n = nSample, size = 1, prob = 0.5) %>% 
+               cluster = rep(1:nCluster, each = nSample_perCluster*nBatch) %>% 
                  as.factor(),
                row.names = paste0("Sample", 1:nSample))),
-    spikein.mt = list(create_spikein.mt(
-      number_features = nMicrobe,
-      percent_spiked = spikeMicrobes,
-      effectSize = 
-        create_effectSize(effectSize = effectSize[[1]],
-                          df_metadata = df_metadata[[1]],
-                          metadata_type = metadata_type,
-                          fDummyData = fDummyData,
-                          fDummyDirection = fDummyDirection),
-      seed = rep))) %>% 
+    spikein.mt = create_effectSize(effectSize = effectSize[[1]],
+                                   df_metadata = df_metadata[[1]],
+                                   metadata_type = metadata_type,
+                                   fDummyData = fDummyData,
+                                   fDummyDirection = fDummyDirection) %>% 
+      create_spikein.mt(number_features = nMicrobe,
+                        percent_spiked = spikeMicrobes,
+                        effectSize = .,
+                        seed = rep) %>% 
+      list()) %>% 
   dplyr::ungroup()
 save(tb_sim, file = paste0(dir_output, "tb_sim.RData"))
 N <- nrow(tb_sim)
@@ -91,6 +89,28 @@ N <- nrow(tb_sim)
 
 ```{r run sparseDOSSA}
 registerDoParallel(ncores)
+set.seed(1)
+# l_sparseDOSSA1 <- foreach(i = 1:N) %dopar% {
+#   i_simSetup <- tb_sim[i, ]
+#   
+#   otu_count <- 1:nCluster %>% 
+#     purrr::map(function(i_cluster) 
+#       sparseDOSSA::sparseDOSSA(
+#         number_features = i_simSetup$nMicrobe,
+#         number_samples = i_simSetup$nSample_perCluster * i_simSetup$nBatch,
+#         noZeroInflate = i_simSetup$noZeroInflate,
+#         percent_spiked = i_simSetup$spikeMicrobes,
+#         seed = i_cluster,
+#         minLevelPercent = 0,
+#         write_table = FALSE,
+#         verbose = FALSE) %>%
+#         extract_sparseDOSSA() %>%
+#         extract2("features")
+#     ) %>% 
+#     purrr::reduce(cbind)
+#   colnames(otu_count) <- paste0("Sample", 1:ncol(otu_count))
+#   return(otu_count)
+# }
 l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
   i_simSetup <- tb_sim[i, ]
   
