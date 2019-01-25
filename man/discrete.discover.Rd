@@ -4,19 +4,16 @@
 \alias{discrete.discover}
 \title{Main function for discrete structure discovery}
 \usage{
-discrete.discover(feature.count, batch, data, distance = "bray",
-  k.max = 10, cluster.method = fpc::claraCBI,
-  classify.method = "centroid", M = 10, nnk = 1,
-  diagnostics = TRUE, verbose = TRUE, ...)
+discrete.discover(distance, batch, data, k.max = 10,
+  cluster.method = fpc::claraCBI, classify.method = "centroid",
+  M = 10, nnk = 1, diagnostics = TRUE, verbose = TRUE, ...)
 }
 \arguments{
-\item{feature.count}{Feature x sample matrix of feature abundance}
+\item{distance}{dissimilarity object}
 
 \item{batch}{Name of batch variable}
 
 \item{data}{data frame}
-
-\item{distance}{dissimilarity measure or dist object}
 
 \item{k.max}{max k for testing}
 
