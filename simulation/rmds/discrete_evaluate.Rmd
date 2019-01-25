@@ -25,7 +25,7 @@ dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
 
 ```{r load data}
 # parallel computing
-ncores <- 20
+ncores <- 15
 
 load(paste0(dir_output, "tb_sim.RData"))
 load(paste0(dir_output, "sparseDOSSA.RData"))
