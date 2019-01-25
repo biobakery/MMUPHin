@@ -4,9 +4,9 @@
 \alias{continuous.discover}
 \title{Main function for continuous structure discovery}
 \usage{
-continuous.discover(feature.count, batch, data, transform = "AST",
-  var.perc.cutoff = 0.8, cor.cutoff = 0.707, directory = "./",
-  diagnostics = TRUE, verbose = TRUE)
+continuous.discover(feature.count, batch, data, normalization = "TSS",
+  transform = "AST", var.perc.cutoff = 0.8, cor.cutoff = 0.707,
+  directory = "./", diagnostics = TRUE, verbose = TRUE)
 }
 \arguments{
 \item{feature.count}{Feature x sample matrix of feature abundance}
@@ -15,7 +15,9 @@ continuous.discover(feature.count, batch, data, transform = "AST",
 
 \item{data}{data frame}
 
-\item{transform}{transformation}
+\item{normalization}{normalization, consistent with Maaslin2}
+
+\item{transform}{transformation, consistent with Maaslin2}
 
 \item{var.perc.cutoff}{percentage variance cutoff for top PCs}
 
