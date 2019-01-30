@@ -146,7 +146,7 @@ dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
 dir.create(paste0(dir_output, "sparseDOSSA_sets/"))
 load(paste0(dir_output, "sparseDOSSA.RData"))
 N <- length(l_sparseDOSSA)
-for(i in 1:N) readr::write_tsv(l_sparseDOSSA[[i]], 
+for(i in 1:N) readr::write_tsv(as.data.frame(l_sparseDOSSA[[i]]), 
                                path = paste0(dir_output, "sparseDOSSA_sets/",
                                              i, ".tsv"))
 ```
