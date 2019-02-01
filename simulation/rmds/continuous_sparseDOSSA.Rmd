@@ -7,7 +7,7 @@ html_document:
 df_print: paged
 ---
 # Overview
-sparseDOSSA simulation for discrete structure discovery
+sparseDOSSA simulation for continuous structure discovery
 
 ```{r setup, echo = FALSE}                                           
 knitr::opts_knit$set(root.dir = normalizePath("../"))
@@ -25,25 +25,23 @@ dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
 
 ```{r simulation parameters}
 # parallel computing
-ncores <- 20
+ncores <- 15
 # sample size
-nBatch <- c(5, 10)
-nSample_perBatch <- c(100, 300, 500)
+nBatch <- c(4, 8)
+nSample <- c(200, 1000)
 # feature size
-nMicrobe <- c(50, 300)
-spikeMicrobes <- c(0.1, 0.2, 0.5)
+nMicrobe <- c(200, 1000)
+spikeMicrobes <- c(0.2)
 # metadata specification
 metadata_type <- c("batch" = "factor",
-                   "PC1" = "numeric",
-                   "PC2" = "numeric")
-tb_effectSize <- tidyr::crossing(batch = c(0, 0.1, 0.5, 1), 
-                                 PC1 = c(10),
-                                 PC2 = c(2, 5, 10))
-effectSize <- tibble::tibble(effectSize = 
-                               (1:nrow(tb_effectSize)) %>% 
+                   "score" = "numeric")
+tb_effectSize <- tidyr::crossing(batch = c(0, 2, 5, 10),
+                                 score = c(2, 5, 10))
+effectSize <- tibble::tibble(effectSize =
+                               (1:nrow(tb_effectSize)) %>%
                                purrr::map(function(i) unlist(tb_effectSize[i, ])))
 # replicates
-rep <- 1
+rep <- 1:5
 # metadata simulation
 fDummyData <- TRUE
 fDummyDirection <- TRUE
@@ -53,13 +51,13 @@ noZeroInflate <- FALSE
 tb_simSetup <- tidyr::crossing(
   rep,
   nBatch,
-  nSample_perBatch,
+  nSample,
   nMicrobe,
   spikeMicrobes,
   noZeroInflate,
   effectSize
 ) %>% 
-  dplyr::mutate(nSample = nBatch * nSample_perBatch)
+  dplyr::mutate(nSample_perBatch = nSample / nBatch)
 ```
 
 ```{r simulate metadata}
@@ -69,8 +67,7 @@ tb_sim <- tb_simSetup %>%
   dplyr::mutate(df_metadata = list(
     data.frame(batch = rep(1:nBatch, each = nSample_perBatch) %>%
                  as.factor(),
-               PC1 = rep(rnorm(nSample_perBatch), nBatch),
-               PC2 = rep(rnorm(nSample_perBatch), nBatch),
+               score = rep(rnorm(nSample_perBatch), nBatch),
                row.names = paste0("Sample", 1:nSample))),
     spikein.mt = list(create_spikein.mt(number_features = nMicrobe,
                         percent_spiked = spikeMicrobes,
@@ -89,9 +86,10 @@ N <- nrow(tb_sim)
 ```{r run sparseDOSSA}
 registerDoParallel(ncores)
 l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
+  i <- 80
   i_simSetup <- tb_sim[i, ]
   
-  otu_count <- try(sparseDOSSA::sparseDOSSA(
+  otu_count <- sparseDOSSA::sparseDOSSA(
     number_features = i_simSetup$nMicrobe,
     number_samples = i_simSetup$nSample,
     UserMetadata = 
@@ -114,7 +112,7 @@ l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
     write_table = FALSE,
     verbose = FALSE) %>%
     extract_sparseDOSSA() %>%
-    extract2("features"), silent = TRUE)
+    extract2("features")
   return(otu_count)
 }
 stopImplicitCluster()
