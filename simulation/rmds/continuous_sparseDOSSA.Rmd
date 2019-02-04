@@ -85,6 +85,7 @@ N <- nrow(tb_sim)
 
 ```{r run sparseDOSSA}
 registerDoParallel(ncores)
+set.seed(1)
 l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
   i_simSetup <- tb_sim[i, ]
   
