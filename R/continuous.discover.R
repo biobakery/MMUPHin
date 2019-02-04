@@ -19,8 +19,9 @@ continuous.discover <- function(feature.count,
                                 transform = "AST",
                                 var.perc.cutoff = 0.8,
                                 cor.cutoff = 0.707,
-                                directory = "./",
+                                network = TRUE,
                                 diagnostics = TRUE,
+                                directory = "./",
                                 verbose = TRUE) {
   ## Ensure data formatts are as expected
   feature.count <- as.matrix(feature.count)
@@ -161,7 +162,7 @@ continuous.discover <- function(feature.count,
   list.membership.sub <- lapply(unique(list.membership.sub),
                                 function(x) names(list.membership.sub)[list.membership.sub == x])
   # Visualization
-  if(length(igraph::V(pc.graph.sub)) > 0) {
+  if(length(igraph::V(pc.graph.sub)) > 0 & network) {
     pdf(paste0(directory, "network_communities.pdf"),
         width = 10,
         height = 10)
