@@ -28,15 +28,15 @@ dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
 ncores <- 15
 # sample size
 nBatch <- c(4, 8)
-nSample <- c(200, 1000)
+nSample_perBatch <- c(50, 100)
 # feature size
 nMicrobe <- c(200, 1000)
 spikeMicrobes <- c(0.2)
 # metadata specification
 metadata_type <- c("batch" = "factor",
                    "score" = "numeric")
-tb_effectSize <- tidyr::crossing(batch = c(0, 2, 4, 5, 10),
-                                 score = c(2, 5, 10))
+tb_effectSize <- tidyr::crossing(batch = c(0, 2, 10),
+                                 score = c(2, 10))
 effectSize <- tibble::tibble(effectSize =
                                (1:nrow(tb_effectSize)) %>%
                                purrr::map(function(i) unlist(tb_effectSize[i, ])))
@@ -81,6 +81,7 @@ tb_sim <- tb_simSetup %>%
   dplyr::ungroup()
 save(tb_sim, file = paste0(dir_output, "tb_sim.RData"))
 N <- nrow(tb_sim)
+N <- 10
 ```
 
 ```{r run sparseDOSSA}
