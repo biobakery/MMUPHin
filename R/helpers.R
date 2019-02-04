@@ -345,7 +345,7 @@ shorten.name <- function(x, cutoff) {
 normalizeFeatures <- function(features, normalization) {
   if (normalization=='TSS')
   {
-    features<-tss(features)
+    features<-apply(features, 2, tss)
   }
   if (normalization=='NONE')
   {
