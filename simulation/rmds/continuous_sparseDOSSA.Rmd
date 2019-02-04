@@ -67,7 +67,7 @@ tb_sim <- tb_simSetup %>%
   dplyr::mutate(df_metadata = list(
     data.frame(batch = rep(1:nBatch, each = nSample_perBatch) %>%
                  as.factor(),
-               score = rep(rnorm(nSample_perBatch), nBatch),
+               score = rep(runif(n = nSample_perBatch, min = -1, max = 1), nBatch),
                row.names = paste0("Sample", 1:nSample))),
     spikein.mt = list(create_spikein.mt(number_features = nMicrobe,
                         percent_spiked = spikeMicrobes,
