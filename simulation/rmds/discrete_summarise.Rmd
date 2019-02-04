@@ -1,0 +1,88 @@
+---
+title: "summarise discrete structure discovery"
+author: "Siyuan Ma"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+html_document:
+df_print: paged
+---
+# Overview
+Summarise discrete structure discovery
+
+```{r setup, echo = FALSE}                                           
+knitr::opts_knit$set(root.dir = normalizePath("../"))
+# setwd("simulation/")
+```
+```{r setup2, message=FALSE, warning=FALSE, echo = FALSE}
+rm(list = ls())
+for(i.function in list.files("functions/", full.names = TRUE)) {
+  source(i.function)
+}
+setup()
+dir_output <- "results/discrete/"
+dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
+```
+
+```{r load data}
+load(paste0(dir_output, "tb_sim.RData"))
+load(paste0(dir_output, "evaluate_before.RData"))
+load(paste0(dir_output, "evaluate_after.RData"))
+```
+
+```{r evaluate metrics before correction}
+N <- nrow(tb_sim)
+success_before <- (1:N) %>% 
+  purrr::map_lgl(function(i) {
+    i_simSetup <- tb_sim[i, ]
+    i_pred.str <- l_results[[i]]$pred.str
+    
+    i_pred.str %>% 
+      dplyr::arrange(-mean_pred) %>% 
+      dplyr::slice(1) %>% 
+      extract2("k") %>% 
+      equals(i_simSetup$nCluster) %>% 
+      return()
+  })
+success_after <- (1:N) %>% 
+  purrr::map_lgl(function(i) {
+    i_simSetup <- tb_sim[i, ]
+    i_pred.str <- l_results_correct[[i]]$pred.str
+    
+    i_pred.str %>% 
+      dplyr::arrange(-mean_pred) %>% 
+      dplyr::slice(1) %>% 
+      extract2("k") %>% 
+      equals(i_simSetup$nCluster) %>% 
+      return()
+  })
+subset_tmp <- (!success_before) & success_after
+tb_sim_subset <- tb_sim[subset_tmp, ]
+tb_result <- l_results %>% 
+  purrr::map_dfr(function(result) {
+    tb_tmp <- result$pred.str
+    tibble::tibble(true = tb_tmp$mean_pred[3], 
+                   second = tb_tmp$mean_pred[1],
+                   type = "before")
+  })
+tb_result_after <- l_results_correct %>% 
+  purrr::map_dfr(function(result) {
+    tb_tmp <- result$pred.str
+    tibble::tibble(true = tb_tmp$mean_pred[3], 
+                   second = tb_tmp$mean_pred[1],
+                   type = "after")
+  })
+tb_plot <- rbind(cbind(tb_sim, tb_result),
+                 cbind(tb_sim, tb_result_after))
+tb_plot %>% 
+  dplyr::filter(nCluster == 4) %>% 
+  dplyr::mutate(effect_batch = effectSize %>% purrr::map_dbl(~.x["batch"]),
+                effect_cluster = effectSize %>% purrr::map_dbl(~.x["cluster"])) %>% 
+  tidyr::gather(key = "cluster",
+                value = "pred_str",
+                true, second) %>% 
+  ggplot(aes(x = effect_batch %>% as.factor,
+             y = pred_str,
+             color = paste0(type, "_", cluster))) +
+  geom_boxplot() +
+  facet_grid(paste0(nBatch, ",", nSample_perCluster) ~ effect_cluster)
+```
