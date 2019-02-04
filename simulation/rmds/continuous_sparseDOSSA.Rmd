@@ -36,8 +36,7 @@ spikeMicrobes <- c(0.2)
 metadata_type <- c("batch" = "factor",
                    "score" = "numeric")
 tb_effectSize <- tidyr::crossing(batch = c(0, 1, 2, 5, 10),
-                                 score = c(2, 5, 10)) %>% 
-  dplyr::mutate(score_neg = score)
+                                 score = c(2, 5, 10))
 effectSize <- tibble::tibble(effectSize =
                                (1:nrow(tb_effectSize)) %>%
                                purrr::map(function(i) unlist(tb_effectSize[i, ])))
