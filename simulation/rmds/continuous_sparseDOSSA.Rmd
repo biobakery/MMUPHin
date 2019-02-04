@@ -35,7 +35,7 @@ spikeMicrobes <- c(0.2)
 # metadata specification
 metadata_type <- c("batch" = "factor",
                    "score" = "numeric")
-tb_effectSize <- tidyr::crossing(batch = c(0, 2, 5, 10),
+tb_effectSize <- tidyr::crossing(batch = c(0, 2, 4, 5, 10),
                                  score = c(2, 5, 10))
 effectSize <- tibble::tibble(effectSize =
                                (1:nrow(tb_effectSize)) %>%
@@ -86,7 +86,6 @@ N <- nrow(tb_sim)
 ```{r run sparseDOSSA}
 registerDoParallel(ncores)
 l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
-  i <- 80
   i_simSetup <- tb_sim[i, ]
   
   otu_count <- sparseDOSSA::sparseDOSSA(
