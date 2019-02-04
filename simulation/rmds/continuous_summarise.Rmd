@@ -1,0 +1,110 @@
+---
+title: "summarise continuous structure discovery"
+author: "Siyuan Ma"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+html_document:
+df_print: paged
+---
+# Overview
+Summarise continuous structure discovery
+
+```{r setup, echo = FALSE}                                           
+knitr::opts_knit$set(root.dir = normalizePath("../"))
+# setwd("simulation/")
+```
+```{r setup2, message=FALSE, warning=FALSE, echo = FALSE}
+rm(list = ls())
+for(i.function in list.files("functions/", full.names = TRUE)) {
+  source(i.function)
+}
+setup()
+dir_output <- "results/continuous/"
+dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
+```
+
+```{r load data}
+load(paste0(dir_output, "tb_sim.RData"))
+load(paste0(dir_output, "evaluate_before.RData"))
+load(paste0(dir_output, "evaluate_after.RData"))
+```
+
+```{r summarise}
+tb_summarise <- tb_sim %>% 
+  dplyr::mutate(effect_batch = effectSize %>% 
+                  purrr::map_dbl("batch"),
+                effect_score = effectSize %>% 
+                  purrr::map_dbl("score"))
+tb_summarise <- rbind(tb_summarise, tb_summarise) %>% 
+  dplyr::mutate(cor_cutoff = c(results %>% 
+                                 purrr::map_dbl("cor.cutoff"),
+                               results_correct %>% 
+                                 purrr::map_dbl("cor.cutoff")),
+                correlation = c(results %>% 
+                                  purrr::map_dbl("correlation"),
+                                results_correct %>% 
+                                  purrr::map_dbl("correlation")),
+                # R2_score = c(R2 %>% 
+                #                purrr::map_dbl("R2_score"),
+                #              R2_correct %>% 
+                #                purrr::map_dbl("R2_score")),
+                # R2_batch = c(R2 %>% 
+                #                purrr::map_dbl("R2_batch"),
+                #              R2_correct %>% 
+                #                purrr::map_dbl("R2_batch")),
+                correction = c("before", "after") %>% rep(each = nrow(tb_summarise)))
+tb_summarise %>% 
+  ggplot(aes(x = as.factor(effect_score), y = abs(correlation),
+             color = as.factor(effect_batch),
+             alpha = correction)) +
+  geom_boxplot() +
+  facet_grid(paste0(nBatch, "_", nSample_perBatch) ~ nMicrobe)
+tb_summarise %>% 
+  ggplot(aes(x = as.factor(effect_score), y = R2_batch,
+             color = as.factor(effect_batch),
+             alpha = correction)) +
+  geom_boxplot() +
+  facet_grid(paste0(nBatch, "_", nSample_perBatch) ~ nMicrobe)
+```
+
+```{r continuous score does not affect strength too much?}
+tb_sim %>% 
+  dplyr::mutate(effect_batch = effectSize %>% 
+                  purrr::map_dbl("batch"),
+                effect_score = effectSize %>% 
+                  purrr::map_dbl("score")) %>% 
+  dplyr::filter(effect_score == 10, rep == 1, effect_batch == 0, nSample_perBatch == 200) %>% 
+  dplyr::select(`1:n()`)
+i <- 33
+mat_otu <- l_sparseDOSSA[[i]]
+df_metadata <- tb_sim[i, ]$df_metadata[[1]]
+loading <- results[[i]]$fit.continuous$consensus.loading
+score_learned <- mat_otu %>% 
+  apply(2, MMUPHin:::tss) %>% sqrt() %>% asin() %>% 
+  t() %>% `%*%`(loading[, 1])
+
+D <- mat_otu %>% 
+  apply(2, MMUPHin:::tss) %>% 
+  phyloseq::otu_table(taxa_are_rows = TRUE) %>% 
+  phyloseq::distance(method = "bray")
+fit.mds <- cmdscale(D, k = 2, eig = TRUE)
+
+fit.continuous <- MMUPHin::continuous.discover(feature.count = mat_otu,
+                                                   batch = "batch",
+                                                   data = df_metadata,
+                                                   transform = "AST",
+                                                   cor.cutoff = 0.5,
+                                                   diagnostics = TRUE,
+                                                   network = TRUE,
+                                                   verbose = TRUE)
+cor(pca.fit$rotation[, 1], fit.continuous$consensus.loading[, 1])
+PC_overall <- pca.fit <- mat_otu %>% 
+  apply(2, MMUPHin:::tss) %>% 
+  sqrt %>% 
+  asin %>% 
+  t %>% 
+  prcomp
+cbind(fit.mds$points, df_metadata, score_learned) %>% 
+  ggplot(aes(x = `1`, y = `2`, color = score_learned)) +
+  geom_point() + facet_grid(.~batch)
+```
