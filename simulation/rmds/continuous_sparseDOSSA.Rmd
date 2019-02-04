@@ -34,8 +34,7 @@ nMicrobe <- c(200, 1000)
 spikeMicrobes <- c(0.2)
 # metadata specification
 metadata_type <- c("batch" = "factor",
-                   "score" = "numeric",
-                   "score_neg" = "numeric")
+                   "score" = "numeric")
 tb_effectSize <- tidyr::crossing(batch = c(0, 1, 2, 5, 10),
                                  score = c(2, 5, 10)) %>% 
   dplyr::mutate(score_neg = score)
@@ -69,9 +68,8 @@ tb_sim <- tb_simSetup %>%
   dplyr::mutate(df_metadata = list(
     data.frame(batch = rep(1:nBatch, each = nSample_perBatch) %>%
                  as.factor(),
-               score = rep(runif(n = nSample_perBatch, min = -1, max = 1), nBatch)) %>% 
-      dplyr::mutate(score_neg = -score) %>% 
-      data.frame(row.names = paste0("Sample", 1:nSample))),
+               score = rep(runif(n = nSample_perBatch, min = -1, max = 1), nBatch),
+               row.names = paste0("Sample", 1:nSample))),
     spikein.mt = list(create_spikein.mt(number_features = nMicrobe,
                         percent_spiked = spikeMicrobes,
                         effectSize = 
