@@ -35,7 +35,7 @@ spikeMicrobes <- c(0.2)
 # metadata specification
 metadata_type <- c("batch" = "factor",
                    "score" = "numeric")
-tb_effectSize <- tidyr::crossing(batch = c(0, 2, 10),
+tb_effectSize <- tidyr::crossing(batch = c(0, 1, 2, 5, 10),
                                  score = c(2, 10))
 effectSize <- tibble::tibble(effectSize =
                                (1:nrow(tb_effectSize)) %>%
@@ -51,13 +51,13 @@ noZeroInflate <- FALSE
 tb_simSetup <- tidyr::crossing(
   rep,
   nBatch,
-  nSample,
+  nSample_perBatch,
   nMicrobe,
   spikeMicrobes,
   noZeroInflate,
   effectSize
 ) %>% 
-  dplyr::mutate(nSample_perBatch = nSample / nBatch)
+  dplyr::mutate(nSample = nSample_perBatch*nBatch)
 ```
 
 ```{r simulate metadata}
