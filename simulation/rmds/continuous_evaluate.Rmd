@@ -31,10 +31,10 @@ load(paste0(dir_output, "tb_sim.RData"))
 
 ```{r evaluate continuous score before correction}
 N <- nrow(tb_sim)
-N <- 3
 registerDoParallel(ncores)
 cutoff <- seq(0.5, 0.1, by = -0.1)
 results <- foreach(i = 1:N) %dopar% {
+  cat(i, "\n", file = paste0(dir_output, "evaluate_before_progress.txt"), append = TRUE)
   mat_otu <- readr::read_tsv(paste0(dir_output,
                                     "sparseDOSSA_sets/",
                                     i, ".tsv")) %>% 
@@ -92,6 +92,7 @@ save(results, file = paste0(dir_output, "evaluate_before.RData"))
 ```{r batch correction and continuous discovery}
 registerDoParallel(ncores)
 results_correct <- foreach(i = 1:N) %dopar% {
+  cat(i, "\n", file = paste0(dir_output, "evaluate_after_progress.txt"), append = TRUE)
   mat_otu <- readr::read_tsv(paste0(dir_output,
                                     "sparseDOSSA_sets/",
                                     i, ".tsv")) %>% 
