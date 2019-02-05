@@ -11,7 +11,6 @@ Evaluate for discrete structure discovery
 
 ```{r setup, echo = FALSE}                                           
 knitr::opts_knit$set(root.dir = normalizePath("../"))
-# setwd("simulation/")
 ```
 ```{r setup2, message=FALSE, warning=FALSE, echo = FALSE}
 rm(list = ls())
@@ -31,6 +30,7 @@ load(paste0(dir_output, "tb_sim.RData"))
 
 ```{r evaluate metrics before correction}
 N <- nrow(tb_sim)
+N <- 3
 registerDoParallel(ncores)
 results <- foreach(i = 1:N) %dopar% {
   mat_otu <- readr::read_tsv(paste0(dir_output,
