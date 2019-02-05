@@ -25,13 +25,13 @@ dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
 
 ```{r simulation parameters}
 # parallel computing
-ncores <- 15
+ncores <- 6
 # sample size
-nBatch <- c(2, 5, 10)
-nCluster <- c(4, 8)
-nSample_perCluster <- c(20, 100)
+nBatch <- c(2, 4, 6, 8)
+nCluster <- c(3, 4, 5, 6)
+nSample <- c(200, 1000)
 # feature size
-nMicrobe <- c(200, 1000)
+nMicrobe <- c(1000)
 spikeMicrobes <- c(0.2)
 # metadata specification
 metadata_type <- c("batch" = "factor",
@@ -53,13 +53,12 @@ tb_simSetup <- tidyr::crossing(
   rep,
   nBatch,
   nCluster,
-  nSample_perCluster,
+  nSample,
   nMicrobe,
   spikeMicrobes,
   noZeroInflate,
   effectSize
-) %>%
-  dplyr::mutate(nSample = nBatch * nCluster * nSample_perCluster)
+)
 ```
 
 ```{r simulate metadata}
@@ -69,7 +68,7 @@ tb_sim <- tb_simSetup %>%
   dplyr::mutate(df_metadata = list(
     data.frame(batch = sample.int(nBatch, size = nSample, replace = TRUE) %>%
                  as.factor(),
-               cluster = rep(1:nCluster, each = nSample_perCluster*nBatch) %>%
+               cluster = sample.int(nCluster, size = nSample, replace = TRUE) %>%
                  as.factor(),
                row.names = paste0("Sample", 1:nSample))),
     spikein.mt = create_effectSize(effectSize = effectSize[[1]],
@@ -137,16 +136,11 @@ l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
     verbose = FALSE) %>%
     extract_sparseDOSSA() %>%
     extract2("features")
+  readr::write_tsv(as.data.frame(otu_count), 
+                               path = paste0(dir_output, "sparseDOSSA_sets/",
+                                             i, ".tsv"))
   return(otu_count)
 }
 stopImplicitCluster()
 save(l_sparseDOSSA, file = paste0(dir_output, "sparseDOSSA.RData"))
-```
-```{r write files?}
-dir.create(paste0(dir_output, "sparseDOSSA_sets/"))
-load(paste0(dir_output, "sparseDOSSA.RData"))
-N <- length(l_sparseDOSSA)
-for(i in 1:N) readr::write_tsv(as.data.frame(l_sparseDOSSA[[i]]), 
-                               path = paste0(dir_output, "sparseDOSSA_sets/",
-                                             i, ".tsv"))
 ```
