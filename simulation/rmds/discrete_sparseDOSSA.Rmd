@@ -21,6 +21,7 @@ for(i.function in list.files("functions/", full.names = TRUE)) {
 setup()
 dir_output <- "results/discrete/"
 dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
+dir.create(paste0(dir_output, "sparseDOSSA_sets/"), recursive = TRUE, showWarnings = TRUE)
 ```
 
 ```{r simulation parameters}
