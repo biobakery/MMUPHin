@@ -21,21 +21,22 @@ for(i.function in list.files("functions/", full.names = TRUE)) {
 setup()
 dir_output <- "results/continuous/"
 dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
+dir.create(paste0(dir_output, "sparseDOSSA_sets/"), recursive = TRUE, showWarnings = TRUE)
 ```
 
 ```{r simulation parameters}
 # parallel computing
-ncores <- 15
+ncores <- 20
 # sample size
-nBatch <- c(4, 8)
-nSample_perBatch <- c(50, 200)
+nBatch <- c(4, 6, 8)
+nSample <- c(200, 1000)
 # feature size
-nMicrobe <- c(200, 1000)
+nMicrobe <- c(1000)
 spikeMicrobes <- c(0.2)
 # metadata specification
 metadata_type <- c("batch" = "factor",
                    "score" = "numeric")
-tb_effectSize <- tidyr::crossing(batch = c(0, 1, 2, 5, 10),
+tb_effectSize <- tidyr::crossing(batch = 0:10,
                                  score = c(2, 5, 10))
 effectSize <- tibble::tibble(effectSize =
                                (1:nrow(tb_effectSize)) %>%
@@ -51,13 +52,12 @@ noZeroInflate <- FALSE
 tb_simSetup <- tidyr::crossing(
   rep,
   nBatch,
-  nSample_perBatch,
+  nSample,
   nMicrobe,
   spikeMicrobes,
   noZeroInflate,
   effectSize
-) %>% 
-  dplyr::mutate(nSample = nSample_perBatch*nBatch)
+)
 ```
 
 ```{r simulate metadata}
@@ -65,7 +65,7 @@ set.seed(1)
 tb_sim <- tb_simSetup %>% 
   dplyr::group_by(1:n()) %>% 
   dplyr::mutate(df_metadata = list(
-    data.frame(batch = rep(1:nBatch, each = nSample_perBatch) %>%
+    data.frame(batch = sample.int(nBatch, size = nSample, replace = TRUE) %>%
                  as.factor(),
                score = rep(runif(n = nSample_perBatch, min = -1, max = 1), nBatch),
                row.names = paste0("Sample", 1:nSample))),
@@ -113,6 +113,9 @@ l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
     verbose = FALSE) %>%
     extract_sparseDOSSA() %>%
     extract2("features")
+  readr::write_tsv(as.data.frame(otu_count), 
+                               path = paste0(dir_output, "sparseDOSSA_sets/",
+                                             i, ".tsv"))
   return(otu_count)
 }
 stopImplicitCluster()
