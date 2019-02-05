@@ -25,23 +25,41 @@ dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
 
 ```{r load data}
 # parallel computing
-ncores <- 15
-
+ncores <- 20
 load(paste0(dir_output, "tb_sim.RData"))
-load(paste0(dir_output, "sparseDOSSA.RData"))
 ```
 
 ```{r evaluate continuous score before correction}
 N <- nrow(tb_sim)
+N <- 3
 registerDoParallel(ncores)
 cutoff <- seq(0.5, 0.1, by = -0.1)
 results <- foreach(i = 1:N) %dopar% {
+  mat_otu <- readr::read_tsv(paste0(dir_output,
+                                    "sparseDOSSA_sets/",
+                                    i, ".tsv")) %>% 
+    as.matrix
+  rownames(mat_otu) <- paste0("Feature", 1:nrow(mat_otu))
   i_simSetup <- tb_sim[i, ]
-  mat_otu <- l_sparseDOSSA[[i]]
+  df_metadata <- i_simSetup$df_metadata[[1]]
+  
+  phylo <- phyloseq::phyloseq(
+    phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
+    sample_data(df_metadata)) %>%
+    transform_sample_counts(MMUPHin:::tss) %>%
+    prune_taxaSamples()
+  D <- distance(phylo, method = "bray")
+  R2_batch <- vegan::adonis(D ~ batch,
+                            data = sample_data2(phylo),
+                            permutations = 2)$aov.tab["batch", "R2"]
+  R2_score <- vegan::adonis(D ~ score,
+                            data = sample_data2(phylo),
+                            permutations = 2)$aov.tab["score", "R2"]
+  
   for(cor.cutoff in cutoff) {
     fit.continuous <- MMUPHin::continuous.discover(feature.count = mat_otu,
                                                    batch = "batch",
-                                                   data = i_simSetup$df_metadata[[1]],
+                                                   data = df_metadata,
                                                    normalization = "TSS",
                                                    transform = "AST",
                                                    cor.cutoff = cor.cutoff,
@@ -56,34 +74,56 @@ results <- foreach(i = 1:N) %dopar% {
       apply(2, MMUPHin:::tss) %>% sqrt() %>% asin %>% 
       t() %>% `%*%`(fit.continuous$consensus.loading[, 1]) %>% 
       cor(i_simSetup$df_metadata[[1]]$score, method = "spearman")
-    return(list(cor.cutoff = cor.cutoff,
-                fit.continuous = fit.continuous,
-                correlation = correlation[1, 1]))
+    return(list(R2 = c("batch" = R2_batch,
+                       "score" = R2_score),
+                fit.continuous = list(cor.cutoff = cor.cutoff,
+                                      fit.continuous = fit.continuous,
+                                      correlation = correlation[1, 1]))
+    )
   }
-  return(NULL)
+  return(list(R2 = c("batch" = R2_batch,
+                     "score" = R2_score),
+              fit.continuous = NULL))
 }
 stopImplicitCluster()
 save(results, file = paste0(dir_output, "evaluate_before.RData"))
 ```
 
 ```{r batch correction and continuous discovery}
-N <- nrow(tb_sim)
 registerDoParallel(ncores)
-cutoff <- seq(0.5, 0.1, by = -0.1)
 results_correct <- foreach(i = 1:N) %dopar% {
+  mat_otu <- readr::read_tsv(paste0(dir_output,
+                                    "sparseDOSSA_sets/",
+                                    i, ".tsv")) %>% 
+    as.matrix
+  rownames(mat_otu) <- paste0("Feature", 1:nrow(mat_otu))
   i_simSetup <- tb_sim[i, ]
-  mat_otu <- l_sparseDOSSA[[i]]
-  df_metadata <- tb_sim[i, ]$df_metadata[[1]]
+  df_metadata <- i_simSetup$df_metadata[[1]]
   
   mat_otu <- mat_otu %>% 
     MMUPHin::adjust.batch(batch = "batch", 
                           data = df_metadata,
                           diagnostics = FALSE, 
                           verbose = FALSE)
+  
+  phylo <- phyloseq::phyloseq(
+    phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
+    sample_data(df_metadata)) %>%
+    transform_sample_counts(MMUPHin:::tss) %>%
+    prune_taxaSamples()
+  D <- distance(phylo, method = "bray")
+  R2_batch <- vegan::adonis(D ~ batch,
+                            data = sample_data2(phylo),
+                            permutations = 2)$aov.tab["batch", "R2"]
+  R2_score <- vegan::adonis(D ~ score,
+                            data = sample_data2(phylo),
+                            permutations = 2)$aov.tab["score", "R2"]
+  
   for(cor.cutoff in cutoff) {
     fit.continuous <- MMUPHin::continuous.discover(feature.count = mat_otu,
                                                    batch = "batch",
-                                                   data = i_simSetup$df_metadata[[1]],
+                                                   data = df_metadata,
+                                                   normalization = "TSS",
                                                    transform = "AST",
                                                    cor.cutoff = cor.cutoff,
                                                    diagnostics = FALSE,
@@ -97,50 +137,18 @@ results_correct <- foreach(i = 1:N) %dopar% {
       apply(2, MMUPHin:::tss) %>% sqrt() %>% asin %>% 
       t() %>% `%*%`(fit.continuous$consensus.loading[, 1]) %>% 
       cor(i_simSetup$df_metadata[[1]]$score, method = "spearman")
-    return(list(cor.cutoff = cor.cutoff,
-                fit.continuous = fit.continuous,
-                correlation = correlation[1, 1]))
+    return(list(R2 = c("batch" = R2_batch,
+                       "score" = R2_score),
+                fit.continuous = list(cor.cutoff = cor.cutoff,
+                                      fit.continuous = fit.continuous,
+                                      correlation = correlation[1, 1]))
+    )
   }
-  return(NULL)
+  return(list(R2 = c("batch" = R2_batch,
+                     "score" = R2_score),
+              fit.continuous = NULL))
 }
 stopImplicitCluster()
 save(results_correct, file = paste0(dir_output, "evaluate_after.RData"))
-```
-
-```{r sanity check}
-registerDoParallel(ncores)
-R2 <- foreach(i = 1:N) %dopar% {
-  i_simSetup <- tb_sim[i, ]
-  mat_otu <- l_sparseDOSSA[[i]]
-  D <- mat_otu %>% apply(2, MMUPHin:::tss) %>% 
-    phyloseq::otu_table(taxa_are_rows = TRUE) %>% 
-    phyloseq::distance(method = "bray")
-  R2_score <- vegan::adonis(D ~ score, data = i_simSetup$df_metadata[[1]], permutations = 2)
-  R2_batch <- vegan::adonis(D ~ batch, data = i_simSetup$df_metadata[[1]], permutations = 2)
-  return(c("R2_score" = R2_score$aov.tab["score", "R2"],
-           "R2_batch" = R2_batch$aov.tab["batch", "R2"]))
-}
-stopImplicitCluster()
-save(R2, file = paste0(dir_output, "R2_before.RData"))
-registerDoParallel(ncores)
-R2_correct <- foreach(i = 1:N) %dopar% {
-  i_simSetup <- tb_sim[i, ]
-  mat_otu <- l_sparseDOSSA[[i]]
-  mat_otu <- mat_otu %>% 
-    MMUPHin::adjust.batch(batch = "batch", 
-                          data = i_simSetup$df_metadata[[1]],
-                          diagnostics = FALSE, 
-                          verbose = FALSE)
-  
-  D <- mat_otu %>% apply(2, MMUPHin:::tss) %>% 
-    phyloseq::otu_table(taxa_are_rows = TRUE) %>% 
-    phyloseq::distance(method = "bray")
-  R2_score <- vegan::adonis(D ~ score, data = i_simSetup$df_metadata[[1]], permutations = 2)
-  R2_batch <- vegan::adonis(D ~ batch, data = i_simSetup$df_metadata[[1]], permutations = 2)
-  return(c("R2_score" = R2_score$aov.tab["score", "R2"],
-           "R2_batch" = R2_batch$aov.tab["batch", "R2"]))
-}
-stopImplicitCluster()
-save(R2_correct, file = paste0(dir_output, "R2_after.RData"))
 ```
 
