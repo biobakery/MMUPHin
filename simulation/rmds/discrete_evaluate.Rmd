@@ -76,7 +76,7 @@ save(results, file = paste0(dir_output, "evaluate_before.RData"))
 
 
 ```{r batch correction and evaluate metrics after correction}
-N <- nrow(tb_sim)
+rm(results)
 registerDoParallel(ncores)
 results_correct <- foreach(i = 1:N) %dopar% {
   mat_otu <- readr::read_tsv(paste0(dir_output,
