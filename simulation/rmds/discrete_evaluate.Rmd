@@ -25,61 +25,60 @@ dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
 
 ```{r load data}
 # parallel computing
-ncores <- 15
-
+ncores <- 20
 load(paste0(dir_output, "tb_sim.RData"))
 ```
 
 ```{r evaluate metrics before correction}
 N <- nrow(tb_sim)
 registerDoParallel(ncores)
-l_results <- foreach(i = 1:N) %dopar% {
+results <- foreach(i = 1:N) %dopar% {
   mat_otu <- readr::read_tsv(paste0(dir_output,
                                     "sparseDOSSA_sets/",
                                     i, ".tsv")) %>% 
     as.matrix
   rownames(mat_otu) <- paste0("Feature", 1:nrow(mat_otu))
   i_simSetup <- tb_sim[i, ]
+  df_metadata <- i_simSetup$df_metadata[[1]]
 
   phylo <- phyloseq::phyloseq(
     phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
-    sample_data(i_simSetup$df_metadata[[1]])) %>%
+    sample_data(df_metadata)) %>%
     transform_sample_counts(MMUPHin:::tss) %>%
     prune_taxaSamples()
   D <- distance(phylo, method = "bray")
-  R2 <- c(
-    vegan::adonis(D ~ cluster,
-                      data = i_simSetup$df_metadata[[1]],
-                      permutations = 2) %>%
-    extract2("aov.tab") %>% extract(1, 5),
-    vegan::adonis(D ~ batch,
-                      data = i_simSetup$df_metadata[[1]],
-                      permutations = 2) %>%
-    extract2("aov.tab") %>% extract(1, 5)
-    )
+  R2_cluster <- vegan::adonis(D ~ cluster,
+                              data = sample_data2(phylo),
+                              permutations = 2)$aov.tab["cluster", "R2"]
+  R2_batch <- vegan::adonis(D ~ batch,
+                            data = sample_data2(phylo),
+                            permutations = 2)$aov.tab["batch", "R2"]
+  
   pred.str <-
     fpc::prediction.strength(
       xdata = D,
       Gmin = 2,
-      Gmax = 5,
+      Gmax = 10,
       clustermethod = fpc::claraCBI,
       classification = "centroid",
-      M = 10,
+      M = 5,
       distances = TRUE,
       count = FALSE)$mean.pred[-1] %>%
-    data.frame(k = 2:5, mean_pred = .)
+    data.frame(k = 2:10, mean_pred = .)
 
-  return(list(R2 = R2, pred.str = pred.str))
+  return(list(R2 = c("cluster" = R2_cluster,
+                     "batch" = R2_batch), 
+              pred.str = pred.str))
 }
 stopImplicitCluster()
-save(l_results, file = paste0(dir_output, "evaluate_before.RData"))
+save(results, file = paste0(dir_output, "evaluate_before.RData"))
 ```
 
 
 ```{r batch correction and evaluate metrics after correction}
 N <- nrow(tb_sim)
 registerDoParallel(ncores)
-l_results_correct <- foreach(i = 1:N) %dopar% {
+results_correct <- foreach(i = 1:N) %dopar% {
   mat_otu <- readr::read_tsv(paste0(dir_output,
                                     "sparseDOSSA_sets/",
                                     i, ".tsv")) %>% 
@@ -93,36 +92,34 @@ l_results_correct <- foreach(i = 1:N) %dopar% {
                             data = df_metadata,
                             diagnostics = FALSE, 
                             verbose = FALSE)
+  
   phylo <- phyloseq::phyloseq(
     phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
-    sample_data(i_simSetup$df_metadata[[1]])) %>% 
-    transform_sample_counts(MMUPHin:::tss) %>% 
+    sample_data(df_metadata)) %>%
+    transform_sample_counts(MMUPHin:::tss) %>%
     prune_taxaSamples()
   D <- distance(phylo, method = "bray")
-  R2 <- c(
-    vegan::adonis(D ~ cluster, 
-                      data = i_simSetup$df_metadata[[1]], 
-                      permutations = 2) %>% 
-    extract2("aov.tab") %>% extract(1, 5),
-    vegan::adonis(D ~ batch, 
-                      data = i_simSetup$df_metadata[[1]], 
-                      permutations = 2) %>% 
-    extract2("aov.tab") %>% extract(1, 5)
-    )
-  pred.str <- 
+  R2_cluster <- vegan::adonis(D ~ cluster,
+                              data = sample_data2(phylo),
+                              permutations = 2)$aov.tab["cluster", "R2"]
+  R2_batch <- vegan::adonis(D ~ batch,
+                            data = sample_data2(phylo),
+                            permutations = 2)$aov.tab["batch", "R2"]
+  
+  pred.str <-
     fpc::prediction.strength(
       xdata = D,
       Gmin = 2,
-      Gmax = 5,
+      Gmax = 10,
       clustermethod = fpc::claraCBI,
       classification = "centroid",
-      M = 10,
+      M = 5,
       distances = TRUE,
-      count = FALSE)$mean.pred[-1] %>% 
-    data.frame(k = 2:5, mean_pred = .)
+      count = FALSE)$mean.pred[-1] %>%
+    data.frame(k = 2:10, mean_pred = .)
   
   return(list(R2 = R2, pred.str = pred.str))
 } 
 stopImplicitCluster()
-save(l_results_correct, file = paste0(dir_output, "evaluate_after.RData"))
+save(results_correct, file = paste0(dir_output, "evaluate_after.RData"))
 ```

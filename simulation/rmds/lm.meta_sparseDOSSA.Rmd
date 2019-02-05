@@ -24,7 +24,7 @@ dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
 dir.create(paste0(dir_output, "sparseDOSSA_sets/"), recursive = TRUE, showWarnings = TRUE)
 ```
 
-```{r simulation parameters for continuous covariate}
+```{r simulation parameters}
 # parallel computing
 ncores <- 20
 # sample size
@@ -85,7 +85,7 @@ save(tb_sim, file = paste0(dir_output, "tb_sim.RData"))
 N <- nrow(tb_sim)
 ```
 
-```{r run sparseDOSSA discrete}
+```{r run sparseDOSSA}
 registerDoParallel(ncores)
 l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
   i_simSetup <- tb_simDisc[i, ]
