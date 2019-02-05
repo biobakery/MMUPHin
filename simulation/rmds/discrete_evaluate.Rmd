@@ -118,7 +118,9 @@ results_correct <- foreach(i = 1:N) %dopar% {
       count = FALSE)$mean.pred[-1] %>%
     data.frame(k = 2:10, mean_pred = .)
   
-  return(list(R2 = R2, pred.str = pred.str))
+  return(list(R2 = c("cluster" = R2_cluster,
+                     "batch" = R2_batch), 
+              pred.str = pred.str))
 } 
 stopImplicitCluster()
 save(results_correct, file = paste0(dir_output, "evaluate_after.RData"))
