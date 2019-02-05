@@ -64,11 +64,8 @@ tb_simSetup <- tidyr::crossing(
 set.seed(1)
 tb_sim <- tb_simSetup %>% 
   dplyr::group_by(1:n()) %>% 
-  dplyr::mutate(df_metadata = list(
-    data.frame(batch = sample.int(nBatch, size = nSample, replace = TRUE) %>%
-                 as.factor(),
-               score = rep(runif(n = nSample_perBatch, min = -1, max = 1), nBatch),
-               row.names = paste0("Sample", 1:nSample))),
+  dplyr::mutate(df_metadata = list(generate_continuous_structure(nSample = nSample,
+                                                                 nBatch = nBatch)),
     spikein.mt = list(create_spikein.mt(number_features = nMicrobe,
                         percent_spiked = spikeMicrobes,
                         effectSize = 
