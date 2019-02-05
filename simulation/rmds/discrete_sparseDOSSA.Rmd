@@ -28,7 +28,7 @@ dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
 ncores <- 20
 # sample size
 nBatch <- c(2, 4, 6, 8)
-nCluster <- c(3, 4, 5, 6)
+nCluster <- c(3, 4, 5, 6, 7, 8)
 nSample <- c(200, 1000)
 # feature size
 nMicrobe <- c(1000)
