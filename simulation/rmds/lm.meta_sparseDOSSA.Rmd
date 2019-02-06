@@ -86,7 +86,6 @@ save(tb_sim, file = paste0(dir_output, "tb_sim.RData"))
 
 ```{r run sparseDOSSA}
 N <- nrow(tb_sim)
-N <- 3
 registerDoParallel(ncores)
 l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
   i_simSetup <- tb_sim[i, ]
