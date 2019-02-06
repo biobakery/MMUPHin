@@ -35,11 +35,14 @@ nMicrobe <- c(200, 1000)
 spikeMicrobes <- c(0.1, 0.2, 0.5)
 # metadata specification
 metadata_type <- c("batch" = "factor",
-                   "positive_control" = "factor",
+                   "positive_control1" = "factor",
+                   "positive_control2" = "numeric",
                    "negative_control" = "factor")
 tb_effectSize <- tidyr::crossing(batch = c(1, 2, 5, 10),
-                                 positive_control = c(2, 5),
-                                 negative_control = 0)
+                                 positive_control1 = c(2, 5),
+                                 negative_control = 0) %>% 
+  dplyr::mutate(positive_control2 = positive_control1) %>% 
+  dplyr::select(batch, positive_control1, positive_control2, negative_control)
 effectSize <- tibble::tibble(effectSize =
                                (1:nrow(tb_effectSize)) %>%
                                purrr::map(function(i) unlist(tb_effectSize[i, ])))
@@ -69,8 +72,9 @@ tb_sim <- tb_simSetup %>%
   dplyr::mutate(df_metadata = list(
     data.frame(batch = sample.int(nBatch, size = nSample, replace = TRUE) %>%
                  as.factor(),
-               positive_control = rbinom(n = nSample, size = 1, prob = 0.5) %>% 
+               positive_control1 = rbinom(n = nSample, size = 1, prob = 0.5) %>% 
                  as.factor(),
+               positive_control2 = runif(n = nSample, min = -1, max = 1),
                negative_control = rbinom(n = nSample, size = 1, prob = 0.5) %>% 
                  as.factor(),
                row.names = paste0("Sample", 1:nSample))),
