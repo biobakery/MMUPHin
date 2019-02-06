@@ -119,7 +119,8 @@ for(i in is) {
                                "sparseDOSSA_sets/",
                                i, ".tsv"),
                         header = TRUE,
-                        sep = "\t") %>% 
+                        sep = "\t",
+                        row.names = 1) %>% 
     as.matrix
   i_simSetup <- tb_sim[i, ]
   df_metadata <- tb_sim[i, ]$df_metadata[[1]]

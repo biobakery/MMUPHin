@@ -39,7 +39,8 @@ results <- foreach(i = 1:N) %dopar% {
                                "sparseDOSSA_sets/",
                                i, ".tsv"),
                         header = TRUE,
-                        sep = "\t") %>% 
+                        sep = "\t",
+                        row.names = 1) %>% 
     as.matrix
   i_simSetup <- tb_sim[i, ]
   df_metadata <- i_simSetup$df_metadata[[1]]
@@ -98,7 +99,8 @@ results_correct <- foreach(i = 1:N) %dopar% {
                                "sparseDOSSA_sets/",
                                i, ".tsv"),
                         header = TRUE,
-                        sep = "\t") %>% 
+                        sep = "\t",
+                        row.names = 1) %>% 
     as.matrix
   i_simSetup <- tb_sim[i, ]
   df_metadata <- i_simSetup$df_metadata[[1]]
