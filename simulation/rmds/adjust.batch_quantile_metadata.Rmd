@@ -29,7 +29,6 @@ ncores <- 20
 dir.create(paste0(dir_output, "metadata/"), showWarnings = TRUE, recursive = TRUE)
 load(paste0(dir_data, "tb_sim.RData"))
 N <- nrow(tb_sim)
-N <- 3
 results <- foreach(i = 1:N) %dopar% {
   metadata_write <- tb_sim$df_metadata[[i]] %>% 
     dplyr::mutate(CaseControl = ifelse(positive_control1 == 1,
