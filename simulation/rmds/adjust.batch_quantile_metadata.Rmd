@@ -1,0 +1,46 @@
+---
+title: "Write metadata for quantile normalization (Gibbons et al. 2018)"
+author: "Siyuan Ma"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+html_document:
+df_print: paged
+---
+# Overview
+Prepare & read data for quantile normalization 
+
+```{r setup, echo = FALSE}                                           
+knitr::opts_knit$set(root.dir = normalizePath("../"))
+# setwd("simulation/")
+```
+```{r setup2, message=FALSE, warning=FALSE, echo = FALSE}
+rm(list = ls())
+for(i.function in list.files("functions/", full.names = TRUE)) {
+  source(i.function)
+}
+setup()
+dir_output <- "results/adjust.batch/qnorm/"
+dir_data <- "results/adjust.batch/"
+dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
+```
+
+```{r load and write metadata}
+ncores <- 20
+dir.create(paste0(dir_output, "metadata/"), showWarnings = TRUE, recursive = TRUE)
+load(paste0(dir_data, "tb_sim.RData"))
+N <- nrow(tb_sim)
+N <- 3
+results <- foreach(i = 1:N) %dopar% {
+  metadata_write <- tb_sim$df_metadata[[i]] %>% 
+    dplyr::mutate(CaseControl = ifelse(positive_control1 == 1,
+                                       "case",
+                                       "control"),
+                  batch = paste0("batch", as.numeric(batch) - 1)) %>% 
+    dplyr::select(CaseControl, batch)
+  data.frame(`#SampleID` = rownames(tb_sim$df_metadata[[i]]), 
+             check.names = FALSE) %>% 
+    cbind(metadata_write) %>% 
+    readr::write_tsv(path = paste0(dir_output, "metadata/", i, ".tsv"))
+  return(NULL)
+}
+```
