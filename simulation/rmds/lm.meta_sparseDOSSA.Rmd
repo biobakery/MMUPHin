@@ -34,8 +34,11 @@ nSample <- c(200, 1000)
 nMicrobe <- c(200, 1000)
 spikeMicrobes <- c(0.1, 0.2, 0.5)
 # metadata specification
-metadata_type <- c("batch" = "factor",
-                   "exposure" = "factor")
+tb_metadataType <- tibble::tibble(
+  metadata_type = list(c("batch" = "factor",
+                         "exposure" = "factor"),
+                       c("batch" = "factor",
+                         "exposure" = "numeric")))
 tb_effectSize <- tidyr::crossing(batch = c(0, 1, 2, 5),
                                  exposure = 1:5)
 effectSize <- tibble::tibble(effectSize = 
@@ -56,19 +59,25 @@ tb_simSetup <- tidyr::crossing(
   nMicrobe,
   spikeMicrobes,
   noZeroInflate,
+  tb_metadataType,
   effectSize
 )
 ```
 
 ```{r simulate metadata}
 set.seed(1)
+exposure <- function(is_factor, n) {
+  if(is_factor) return(rbinom(n = n, size = 1, prob = 0.5) %>% 
+                                   as.factor())
+  else return(runif(n = n, min = -1, max = 1))
+}
 tb_sim <- tb_simSetup %>% 
   dplyr::group_by(1:n()) %>% 
   dplyr::mutate(df_metadata = list(
     data.frame(batch = sample.int(nBatch, size = nSample, replace = TRUE) %>%
                  as.factor(),
-               exposure = rbinom(n = nSample, size = 1, prob = 0.5) %>% 
-                 as.factor(),
+               exposure = exposure(is_factor = metadata_type[[1]]["exposure"] == "factor",
+                                   n = nSample),
                row.names = paste0("Sample", 1:nSample))),
     spikein.mt = list(create_spikein.mt(
       number_features = nMicrobe,
@@ -76,11 +85,16 @@ tb_sim <- tb_simSetup %>%
       effectSize = 
         create_effectSize(effectSize = effectSize[[1]],
                           df_metadata = df_metadata[[1]],
-                          metadata_type = metadata_type,
+                          metadata_type = metadata_type[[1]],
                           fDummyData = fDummyData,
                           fDummyDirection = fDummyDirection),
       seed = rep))) %>% 
   dplyr::ungroup()
+# sanity_check <- tb_sim %>% 
+#   dplyr::group_by(1:n()) %>% 
+#   dplyr::summarise(mean_exposure = mean(as.numeric(df_metadata[[1]]$exposure)),
+#                    sd_exposure = sd(as.numeric(df_metadata[[1]]$exposure)),
+#                    exposure_type = metadata_type[[1]]["exposure"])
 save(tb_sim, file = paste0(dir_output, "tb_sim.RData"))
 ```
 
@@ -95,7 +109,7 @@ l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
     number_samples = i_simSetup$nSample,
     UserMetadata = 
       create_metadataMatrix(df_metadata = i_simSetup$df_metadata[[1]],
-                            metadata_type = metadata_type,
+                            metadata_type = i_simSetup$metadata_type[[1]],
                             fDummyData = fDummyData,
                             fDummyDirection = fDummyDirection,
                             scale = FALSE),
