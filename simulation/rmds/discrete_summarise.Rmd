@@ -153,11 +153,12 @@ is <- tb_sim %>%
                 nBatch == 2, nSample == 1000) %>% 
   extract2("i")
 for(i in is) {
-  mat_otu <- readr::read_tsv(paste0(dir_output,
-                                    "sparseDOSSA_sets/",
-                                    i, ".tsv")) %>% 
+  mat_otu <- read.table(paste0(dir_output,
+                               "sparseDOSSA_sets/",
+                               i, ".tsv"),
+                        header = TRUE,
+                        sep = "\t") %>% 
     as.matrix
-  rownames(mat_otu) <- paste0("Feature", 1:nrow(mat_otu))
   i_simSetup <- tb_sim[i, ]
   df_metadata <- tb_sim[i, ]$df_metadata[[1]]
   
