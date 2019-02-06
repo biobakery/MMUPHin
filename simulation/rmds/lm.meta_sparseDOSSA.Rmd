@@ -82,13 +82,14 @@ tb_sim <- tb_simSetup %>%
       seed = rep))) %>% 
   dplyr::ungroup()
 save(tb_sim, file = paste0(dir_output, "tb_sim.RData"))
-N <- nrow(tb_sim)
 ```
 
 ```{r run sparseDOSSA}
+N <- nrow(tb_sim)
+N <- 3
 registerDoParallel(ncores)
 l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
-  i_simSetup <- tb_simDisc[i, ]
+  i_simSetup <- tb_sim[i, ]
   
   otu_count <- sparseDOSSA::sparseDOSSA(
     number_features = i_simSetup$nMicrobe,
