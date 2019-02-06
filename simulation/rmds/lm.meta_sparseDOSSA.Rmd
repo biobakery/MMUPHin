@@ -113,9 +113,10 @@ l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
     verbose = FALSE) %>%
     extract_sparseDOSSA() %>%
     extract2("features")
-  readr::write_tsv(as.data.frame(otu_count), 
-                               path = paste0(dir_output, "sparseDOSSA_sets/",
-                                             i, ".tsv"))
+  write.table(otu_count, 
+              file = paste0(dir_output, "sparseDOSSA_sets/", i, ".tsv"),
+              quote = FALSE,
+              sep = "\t")
   return(otu_count)
 }
 stopImplicitCluster()
