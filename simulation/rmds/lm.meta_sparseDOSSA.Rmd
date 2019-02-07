@@ -82,7 +82,7 @@ tb_sim <- tb_simSetup %>%
                                    n = nSample),
                row.names = paste0("Sample", 1:nSample))),
     rel.mean = list(rnorm(nBatch, 
-                             mean = effectSize[[1]]["exposure"],
+                             mean = 0,
                              sd = batch_sd)),
     spikein.mt = list(create_spikein.mt(
       number_features = nMicrobe,
@@ -117,7 +117,7 @@ l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
       create_metadataMatrix_RE(df_metadata = i_simSetup$df_metadata[[1]],
                             metadata_type = i_simSetup$metadata_type[[1]],
                             batch = "batch", exposure = "exposure",
-                            rel.effects = i_simSetup$rel.effects[[1]],
+                            rel.mean = i_simSetup$rel.mean[[1]],
                             fDummyData = fDummyData,
                             fDummyDirection = fDummyDirection),
     spikein.mt = i_simSetup$spikein.mt[[1]] %>% 
