@@ -81,8 +81,10 @@ lm.meta <- function(feature.count,
 
   ## Factor exposures must have common levels across batches
   lvl.exposure <- NULL
-  if(is.character(data[, exposure, drop = TRUE])) {
-    lvl.exposure <- setdiff(unique(data[, exposure, drop = TRUE]), NA)
+  if(is.character(data[, exposure, drop = TRUE]))
+    data[, exposure] <- factor(data[, exposure, drop = TRUE])
+  if(is.factor(data[, exposure, drop = TRUE])) {
+    lvl.exposure <- levels(data[, exposure, drop = TRUE])
     ind.exposure.cat <- tapply(data[, exposure, drop = TRUE], batch,
                                function(x) all(lvl.exposure %in% x))
     if(any(ind.exposure & !ind.exposure.cat))
@@ -149,7 +151,6 @@ lm.meta <- function(feature.count,
       feature.count = i.feature.count,
       data = i.data,
       exposure = exposure,
-      lvl.exposure = lvl.exposure,
       covariates = i.covariates,
       covariates.random = i.covariates.random,
       directory = i.directory.Maaslin,

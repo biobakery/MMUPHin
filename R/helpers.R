@@ -66,11 +66,10 @@ postvar <- function(sum2,n,a,b){
   (.5*sum2 + b) / (n/2 + a - 1)
 }
 
-Maaslin2.wrapper <- function(feature.count = i.feature.count,
-                             data = i.data,
-                             exposure = exposure,
-                             lvl.exposure = NULL,
-                             covariates = i.covariates,
+Maaslin2.wrapper <- function(feature.count,
+                             data,
+                             exposure,
+                             covariates = NULL,
                              covariates.random = NULL,
                              directory = "./",
                              normalization = "TSS",
@@ -115,6 +114,9 @@ Maaslin2.wrapper <- function(feature.count = i.feature.count,
   #     file = file.path(directory, "Maaslin2_warnings.log"))
 
   # Read Maaslin results
+  lvl.exposure <- NULL
+  if(is.factor(data[, exposure, drop = TRUE]))
+    lvl.exposure <- levels(data[, exposure, drop = TRUE])
   suppressWarnings(table.Maaslin <-
                      dplyr::left_join(data.frame(feature = names(features.rename),
                                                  feature.rename = features.rename,
@@ -146,7 +148,7 @@ create.table.Maaslin <- function(features, exposure, lvl.exposure) {
   if(is.null(lvl.exposure))
     values.exposure <- exposure
   else
-    values.exposure <- sort(lvl.exposure)[-1]
+    values.exposure <- lvl.exposure[-1]
   table.Maaslin <- expand.grid(features, exposure, values.exposure, stringsAsFactors = FALSE)
   names(table.Maaslin) <- c("feature", "metadata", "value")
   return(table.Maaslin)
