@@ -39,11 +39,12 @@ tb_metadataType <- tibble::tibble(
                          "exposure" = "factor"),
                        c("batch" = "factor",
                          "exposure" = "numeric")))
-tb_effectSize <- tidyr::crossing(batch = c(0, 1, 2, 5),
+tb_effectSize <- tidyr::crossing(batch = c(0),
                                  exposure = 1:5)
 effectSize <- tibble::tibble(effectSize = 
                                (1:nrow(tb_effectSize)) %>% 
                                purrr::map(function(i) unlist(tb_effectSize[i, ])))
+batch_sd <- c(0, 1, 2, 5)
 # replicates
 rep <- 1:5
 # metadata simulation
@@ -57,6 +58,7 @@ tb_simSetup <- tidyr::crossing(
   nBatch,
   nSample,
   nMicrobe,
+  batch_sd,
   spikeMicrobes,
   noZeroInflate,
   tb_metadataType,
@@ -81,7 +83,7 @@ tb_sim <- tb_simSetup %>%
                row.names = paste0("Sample", 1:nSample))),
     rel.effects = list(rnorm(nBatch, 
                              mean = effectSize[[1]]["exposure"],
-                             sd = effectSize[[1]]["batch"]) /
+                             sd = batch_sd) /
                           effectSize[[1]]["exposure"]),
     spikein.mt = list(create_spikein.mt(
       number_features = nMicrobe,
