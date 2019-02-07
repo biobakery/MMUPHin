@@ -96,7 +96,8 @@ results_correct <- foreach(i = 1:N) %dopar% {
   df_metadata <- i_simSetup$df_metadata[[1]]
   
   mat_otu <- mat_otu %>% 
-      MMUPHin::adjust.batch(batch = "batch", 
+      MMUPHin::adjust.batch(batch = "batch",
+                            covariates = "exposure",
                             data = df_metadata,
                             diagnostics = FALSE, 
                             verbose = FALSE)
