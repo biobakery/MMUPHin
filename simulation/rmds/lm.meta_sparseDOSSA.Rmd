@@ -66,7 +66,7 @@ tb_simSetup <- tidyr::crossing(
 
 ```{r simulate metadata}
 set.seed(1)
-exposure <- function(is_factor, n) {
+exposure <- function(is_factor, n) { # helper funciton for simulating exposure metadata
   if(is_factor) return(rbinom(n = n, size = 1, prob = 0.5) %>% 
                                    as.factor())
   else return(runif(n = n, min = -1, max = 1))
