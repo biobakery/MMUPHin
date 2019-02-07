@@ -46,7 +46,7 @@ create_metadataMatrix_RE <- function(df_metadata,
                                      metadata_type,
                                      batch = "batch", #name of the batch variable
                                      exposure = "exposure", #name of the exposure variable
-                                     rel.effects,
+                                     rel.mean,
                                      fDummyData = TRUE,
                                      fDummyDirection = TRUE) {
   if(any(colnames(df_metadata) != names(metadata_type)))
@@ -59,14 +59,14 @@ create_metadataMatrix_RE <- function(df_metadata,
     stop("Batch variable must be factor!")
 
   batch <- df_metadata[, batch, drop = TRUE]
-  if(length(rel.effects) != nlevels(batch))
+  if(length(rel.mean) != nlevels(batch))
     stop("Length of relative effects is different from number of batches!")
   l_mat_metadata <- lapply(names(metadata_type), function(variable) {
     if(!fDummyData | metadata_type[variable] != "factor") {
       mat_tmp <- rbind(df_metadata[, variable, drop = TRUE])
       rownames(mat_tmp) <- variable
       if(variable == exposure) mat_tmp <- mat_tmp %>%
-        apply(1, scale_RE, batch = batch, rel.effects = rel.effects) %>%
+        apply(1, scale_RE, batch = batch, rel.mean = rel.mean) %>%
         t()
       return(mat_tmp)
     } else {
@@ -84,7 +84,7 @@ create_metadataMatrix_RE <- function(df_metadata,
         mat_tmp <- rbind(mat_tmp, mat_tmp_opposite)
       }
       if(variable == exposure) mat_tmp <- mat_tmp %>%
-        apply(1, scale_RE, batch = batch, rel.effects = rel.effects) %>%
+        apply(1, scale_RE, batch = batch, rel.mean = rel.mean) %>%
         t()
       return(mat_tmp)
     }
@@ -94,11 +94,11 @@ create_metadataMatrix_RE <- function(df_metadata,
   return(mat_metadata)
 }
 
-scale_RE <- function(x, batch, rel.effects) {
+scale_RE <- function(x, batch, rel.mean) {
   x.scaled <- x - mean(x)
   lvl.batch <- levels(batch)
   for(i in 1:nlevels(batch)) {
-    x.scaled[batch == lvl.batch[i]] <- x.scaled[batch == lvl.batch[i]]*rel.effects[i]
+    x.scaled[batch == lvl.batch[i]] <- x.scaled[batch == lvl.batch[i]] + rel.mean[i]
   }
   return(x.scaled + mean(x))
 }

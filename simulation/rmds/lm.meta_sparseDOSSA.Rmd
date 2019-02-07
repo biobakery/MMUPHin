@@ -81,10 +81,9 @@ tb_sim <- tb_simSetup %>%
                exposure = exposure(is_factor = metadata_type[[1]]["exposure"] == "factor",
                                    n = nSample),
                row.names = paste0("Sample", 1:nSample))),
-    rel.effects = list(rnorm(nBatch, 
+    rel.mean = list(rnorm(nBatch, 
                              mean = effectSize[[1]]["exposure"],
-                             sd = batch_sd) /
-                          effectSize[[1]]["exposure"]),
+                             sd = batch_sd)),
     spikein.mt = list(create_spikein.mt(
       number_features = nMicrobe,
       percent_spiked = spikeMicrobes,
