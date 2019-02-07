@@ -31,6 +31,7 @@ load(paste0(dir_output, "tb_sim.RData"))
 
 ```{r run meta-analysis before batch adjustment}
 N <- nrow(tb_sim)
+N <- 3
 registerDoParallel(ncores)
 results <- foreach(i = 1:N) %dopar% {
   cat(i, "\n", file = paste0(dir_output, "evaluate_before_progress.txt"), append = TRUE)
@@ -43,6 +44,19 @@ results <- foreach(i = 1:N) %dopar% {
     as.matrix
   i_simSetup <- tb_sim[i, ]
   df_metadata <- i_simSetup$df_metadata[[1]]
+  
+  phylo <- phyloseq::phyloseq(
+    phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
+    sample_data(df_metadata)) %>%
+    transform_sample_counts(MMUPHin:::tss) %>%
+    prune_taxaSamples()
+  D <- distance(phylo, method = "bray")
+  R2_exposure <- vegan::adonis(D ~ exposure,
+                              data = sample_data2(phylo),
+                              permutations = 2)$aov.tab["exposure", "R2"]
+  R2_batch <- vegan::adonis(D ~ batch,
+                            data = sample_data2(phylo),
+                            permutations = 2)$aov.tab["batch", "R2"]
   
   fit_lm.meta <- MMUPHin::lm.meta(feature.count = mat_otu,
                                   batch = "batch",
@@ -60,7 +74,9 @@ results <- foreach(i = 1:N) %dopar% {
     directory = paste0(dir_output, "MMUPHin_before/", i, "/all/")
   )
   return(list(MMUPHin = fit_lm.meta$meta.results,
-              naive = fit_Maaslin2))
+              naive = fit_Maaslin2,
+              R2 = c("exposure" = R2_exposure,
+                     "batch" = R2_batch)))
 }
 stopImplicitCluster()
 save(results, file = paste0(dir_output, "evaluate_before.RData"))
@@ -86,6 +102,19 @@ results_correct <- foreach(i = 1:N) %dopar% {
                             diagnostics = FALSE, 
                             verbose = FALSE)
   
+  phylo <- phyloseq::phyloseq(
+    phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
+    sample_data(df_metadata)) %>%
+    transform_sample_counts(MMUPHin:::tss) %>%
+    prune_taxaSamples()
+  D <- distance(phylo, method = "bray")
+  R2_exposure <- vegan::adonis(D ~ exposure,
+                              data = sample_data2(phylo),
+                              permutations = 2)$aov.tab["exposure", "R2"]
+  R2_batch <- vegan::adonis(D ~ batch,
+                            data = sample_data2(phylo),
+                            permutations = 2)$aov.tab["batch", "R2"]
+  
   fit_lm.meta <- MMUPHin::lm.meta(feature.count = mat_otu,
                                   batch = "batch",
                                   exposure = "exposure",
@@ -102,7 +131,9 @@ results_correct <- foreach(i = 1:N) %dopar% {
     directory = paste0(dir_output, "MMUPHin_after/", i, "/all/")
   )
   return(list(MMUPHin = fit_lm.meta$meta.results,
-              naive = fit_Maaslin2))
+              naive = fit_Maaslin2,
+              R2 = c("exposure" = R2_exposure,
+                     "batch" = R2_batch)))
 }
 stopImplicitCluster()
 save(results_correct, file = paste0(dir_output, "evaluate_after.RData"))
