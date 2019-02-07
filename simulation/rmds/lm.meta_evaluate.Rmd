@@ -93,14 +93,14 @@ results_correct <- foreach(i = 1:N) %dopar% {
                                   data = df_metadata,
                                   normalization = "TSS",
                                   transform = "AST",
-                                  directory = paste0(dir_output, "MMUPHin_before/", i, "/"),
+                                  directory = paste0(dir_output, "MMUPHin_after/", i, "/"),
                                   forest.plots = FALSE,
                                   verbose = FALSE)
   fit_Maaslin2 <- MMUPHin:::Maaslin2.wrapper(
     feature.count = mat_otu,
     data = df_metadata,
     exposure = "exposure",
-    directory = paste0(dir_output, "MMUPHin_before/", i, "/all/")
+    directory = paste0(dir_output, "MMUPHin_after/", i, "/all/")
   )
   return(list(MMUPHin = fit_lm.meta$meta.results,
               naive = fit_Maaslin2))
