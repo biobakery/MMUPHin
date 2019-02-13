@@ -67,7 +67,7 @@ results <- foreach(i = 1:N) %dopar% {
   return(list(R2 = c("batch" = R2_batch,
                      "positive_control1" = R2_positive_control1,
                      "positive_control2" = R2_positive_control2,
-                     "negative_control" = negative_control))
+                     "negative_control" = R2_negative_control))
   )
 }
 stopImplicitCluster()
@@ -118,7 +118,7 @@ results_correct <- foreach(i = 1:N) %dopar% {
   return(list(R2 = c("batch" = R2_batch,
                      "positive_control1" = R2_positive_control1,
                      "positive_control2" = R2_positive_control2,
-                     "negative_control" = negative_control))
+                     "negative_control" = R2_negative_control))
   )
 }
 stopImplicitCluster()
