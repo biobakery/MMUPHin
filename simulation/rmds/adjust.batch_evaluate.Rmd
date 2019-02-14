@@ -219,6 +219,7 @@ results_qnorm <- foreach(i = 1:N) %dopar% {
     as.matrix()
   i_simSetup <- tb_sim[i, ]
   df_metadata <- i_simSetup$df_metadata[[1]]
+  mat_otu <- mat_otu[rownames(df_metadata), ]
   
   phylo <- phyloseq::phyloseq(
     phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
