@@ -128,7 +128,7 @@ stopImplicitCluster()
 save(results_correct, file = paste0(dir_output, "evaluate_after.RData"))
 ```
 
-```{r batch adjustment}
+```{r ComBat}
 registerDoParallel(ncores)
 results_ComBat <- foreach(i = 1:N) %dopar% {
   cat(i, "\n", file = paste0(dir_output, "evaluate_ComBat_progress.txt"), append = TRUE)
