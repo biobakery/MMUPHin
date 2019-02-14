@@ -30,7 +30,7 @@ load(paste0(dir_output, "tb_sim.RData"))
 
 ```{r calculate R2 before adjustment}
 N <- nrow(tb_sim)
-N <- 3
+# N <- 3
 # registerDoParallel(ncores)
 # results <- foreach(i = 1:N) %dopar% {
 #   cat(i, "\n", file = paste0(dir_output, "evaluate_before_progress.txt"), append = TRUE)
