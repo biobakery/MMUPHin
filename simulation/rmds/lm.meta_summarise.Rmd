@@ -24,267 +24,236 @@ dir.create(dir_output, recursive = TRUE, showWarnings = TRUE)
 ```
 
 ```{r load data for summary}
-load(paste0(dir_output, "tb_simCont.RData"))
-load(paste0(dir_output, "tb_simDisc.RData"))
-l_tb_sim <- list(
-  cont = tb_simCont,
-  disc = tb_simDisc
-) %>% 
-  purrr::map(function(tb_tmp) {
-    tb_tmp %>% 
-      dplyr::mutate(
-        i = 1:n(),
-        effect_batch = effectSize %>% 
-          purrr::map_dbl("batch"), 
-        effect_exposure = effectSize %>% 
-          purrr::map_dbl("exposure"),
-        features_TP = 
-          purrr::map2(spikein.mt, nBatch, 
-                      function(i_df_spikein, i_nBatch) 
-                        i_df_spikein %>% 
-                        dplyr::filter(metadata == i_nBatch * 2 - 1) %>% 
-                        dplyr::pull(feature) %>% 
-                        paste0("Feature", .)
-          )
-      )
+load(paste0(dir_output, "tb_sim.RData"))
+load(paste0(dir_output, "evaluate_before.RData"))
+load(paste0(dir_output, "evaluate_after.RData"))
+```
+
+```{r arrange parameters}
+tb_sim <- tb_sim %>% 
+  dplyr::mutate(effect_exposure = effectSize %>% 
+                  purrr::map_dbl("exposure"),
+                # effect_batch = effectSize %>% 
+                #   purrr::map_dbl("batch"),
+                effect_batch = batch_sd,
+                exposure_type = metadata_type %>% 
+                  purrr::map_chr("exposure") %>% 
+                  dplyr::recode("factor" = "discrete",
+                                "numeric" = "continuous") %>% 
+                  factor(levels = c("discrete", "continuous")),
+                i = 1:n()) %>% 
+  dplyr::select(-`1:n()`)
+
+tb_sim <- tb_sim %>% 
+  dplyr::group_by(effect_exposure, effect_batch, exposure_type,
+                  nBatch, nSample, nMicrobe, spikeMicrobes) %>%
+  dplyr::mutate(i_rep = i[1])
+
+tb_sim <- tb_sim %>% 
+  dplyr::arrange(dplyr::desc(nSample), nBatch) %>% 
+  dplyr::mutate(nSample_nBatch = paste0("nSample = ", nSample, ", ",
+                                        "nBatch = ", nBatch) %>% 
+                  factor(levels = unique(.)))
+
+tb_sim <- tb_sim %>% 
+  dplyr::arrange(nMicrobe, spikeMicrobes) %>% 
+  dplyr::mutate(nMicrobe_percSpike = paste0("nFeature = ", nMicrobe, ", ",
+                                            spikeMicrobes*100, "% spiked") %>% 
+                  factor(levels = unique(.)))
+
+
+tb_sim <- tb_sim %>% 
+  dplyr::group_by(i) %>% 
+  dplyr::mutate(features_TP = spikein.mt[[1]] %>% 
+                  dplyr::filter(!(metadata %in% (1:(2*nBatch)))) %>% 
+                  dplyr::pull(feature) %>% 
+                  unique() %>% 
+                  list(),
+                logical_TP = list((1:nMicrobe) %in% features_TP[[1]]))
+
+#sanity check
+tb_sim %>%
+  dplyr::mutate(n_feature_TP_true = logical_TP %>%
+                  purrr::map_dbl(sum),
+                n_feature_TP_theory = nMicrobe * spikeMicrobes *
+                  ifelse(exposure_type == "discrete", 4, 1)) %>%
+  dplyr::filter(exposure_type == "continuous") %>% 
+  ggplot(aes(x = n_feature_TP_true, n_feature_TP_theory)) +
+  geom_point()
+```
+
+```{r sanity check}
+tb_R2 <- list(results, results_correct) %>% 
+  purrr::map2_dfr(names(colors_simulation_unsupervised), 
+                  ~ .x %>% 
+                    purrr::imap_dfr(~ data.frame(R2_exposure = .x$R2["exposure"],
+                                                 R2_batch = .x$R2["batch"],
+                                                 i = .y)) %>% 
+                    data.frame(Data = .y)) %>% 
+  dplyr::mutate(Data = factor(Data, levels = names(colors_simulation_unsupervised)))
+
+ps_R2_batch <- c("discrete", "continuous") %>% 
+  purrr::map(function(i_exposure) {
+    tb_R2 %>% 
+      dplyr::left_join(tb_sim, by = "i") %>% 
+      dplyr::filter(exposure_type == i_exposure) %>%
+      dplyr::filter(!(effect_batch == 0 & Data == "MMUPHin corrected")) %>% 
+      ggplot(aes(x = as.factor(effect_exposure), y = R2_batch, 
+                 alpha = as.factor(effect_batch),
+                 color = Data)) +
+      geom_boxplot() +
+      facet_grid(nSample_nBatch ~ nMicrobe_percSpike) +
+      ggtitle(paste0("Exposure is ", i_exposure)) +
+      scale_color_manual(values = colors_simulation_unsupervised)
   })
-
-ll_lm.meta_before <- list()
-load(paste0(dir_output, "lm.meta_disc_before.RData"))
-ll_lm.meta_before[["disc"]] <- l_lm.meta_before
-load(paste0(dir_output, "lm.meta_cont_before.RData"))
-ll_lm.meta_before[["cont"]] <- l_lm.meta_before
-
-ll_lm.meta_after <- list()
-load(paste0(dir_output, "lm.meta_disc_after.RData"))
-ll_lm.meta_after[["disc"]] <- l_lm.meta_after
-load(paste0(dir_output, "lm.meta_cont_after.RData"))
-ll_lm.meta_after[["cont"]] <- l_lm.meta_after
+cowplot::plot_grid(plotlist = ps_R2_batch, nrow = 1) %>% 
+  ggsave(filename = paste0(dir_output, "R2_batch.pdf"), ., width = 30, height = 15)
+ps_R2_exposure <- c("discrete", "continuous") %>% 
+  purrr::map(function(i_exposure) {
+    tb_R2 %>% 
+      dplyr::left_join(tb_sim, by = "i") %>% 
+      dplyr::filter(exposure_type == i_exposure) %>%
+      dplyr::filter(!(effect_batch == 0 & Data == "MMUPHin corrected")) %>% 
+      ggplot(aes(x = as.factor(effect_exposure), y = R2_exposure, 
+                 alpha = as.factor(effect_batch),
+                 color = Data)) +
+      geom_boxplot() +
+      facet_grid(nSample_nBatch ~ nMicrobe_percSpike) +
+      ggtitle(paste0("Exposure is ", i_exposure)) +
+      scale_color_manual(values = colors_simulation_unsupervised)
+  })
+cowplot::plot_grid(plotlist = ps_R2_exposure, nrow = 1) %>% 
+  ggsave(filename = paste0(dir_output, "R2_exposure.pdf"), ., width = 30, height = 10)
 ```
 
 ```{r summarise results and plot}
-for(metadata_type in c("cont", "disc")) {
-  tb_results <- list(ll_lm.meta_before[[metadata_type]], 
-                     ll_lm.meta_after[[metadata_type]]) %>% 
-    purrr::map2_dfr(c("before", "after"),
-                    function(l_results, data) 
-                    {l_results %>% 
-                        purrr::imap_dfr(
-                          function(results, i) 
-                          {results %>% 
-                              dplyr::mutate(i = i)}) %>% 
-                        dplyr::mutate(data = data)})
-  tb_results <- l_tb_sim[[metadata_type]] %>% 
-    dplyr::right_join(tb_results, by = "i") %>% 
-    dplyr::mutate(TP = 
-                    purrr::map2_lgl(
-                      feature, features_TP,
-                      function(i_feature, i_features_TP)
-                        i_feature %in% i_features_TP))
-  tb_summarise <- tb_results %>% 
-    # dplyr::filter(i %in% 1:10) %>% 
-    dplyr::group_by(i, data) %>% 
-    dplyr::summarise(
-      power = sum(TP & pval < 0.05, na.rm = TRUE) / sum(TP),
-      FPR = sum(!TP & pval < 0.05, na.rm = TRUE) / sum(!TP),
-      AUC = pROC::auc(response = TP,
-                      predictor = 1 - pval)) %>% 
-    dplyr::ungroup()
-  tb_summarise <- tb_summarise %>% 
-    dplyr::left_join(l_tb_sim[[metadata_type]],
-                     by = "i") 
-  # tb_tmp <- tb_summarise %>% 
-  #   dplyr::filter(effect_exposure == 2, effect_batch == 5,
-  #                 spikeMicrobes == 0.1, nMicrobe == 300, 
-  #                 nBatch == 5, nSample_perBatch == 50)
-  # i <- 2751
-  # df_metadata <- tb_simCont[i, ]$df_metadata[[1]]
-  # data_before <- l_sparseDOSSA[[i]]
-  # data_after <- l_adjust.batch[[i]]
-  # D_before <- phyloseq::distance(data_before %>% 
-  #                                  phyloseq::otu_table(taxa_are_rows = TRUE) %>% 
-  #                                  phyloseq::transform_sample_counts(MMUPHin:::tss),
-  #                                method = "bray")
-  # D_after <- phyloseq::distance(data_after %>% 
-  #                                  phyloseq::otu_table(taxa_are_rows = TRUE) %>% 
-  #                                  phyloseq::transform_sample_counts(MMUPHin:::tss),
-  #                                method = "bray")
-  # vegan::adonis(D_before ~ batch, data = df_metadata, permutations = 2)
-  # vegan::adonis(D_before ~ exposure, data = df_metadata, permutations = 2)
-  # vegan::adonis(D_after ~ batch, data = df_metadata, permutations = 2)
-  # vegan::adonis(D_after ~ exposure, data = df_metadata, permutations = 2)
-  # test1 <- MMUPHin::lm.meta(data_before, batch = "batch", exposure = "exposure",
-  #                           data = df_metadata, directory = "results/lm.meta/tmp/")
-  # test2 <- MMUPHin::lm.meta(data_after, batch = "batch", exposure = "exposure",
-  #                           data = df_metadata, directory = "results/lm.meta/tmp/")
-  # features_TP <- l_tb_sim[[metadata_type]] %>% dplyr::filter(i == 2751) %>% 
-  #   dplyr::pull(features_TP) %>% extract2(1)
-  # sum(test1$meta.results$feature %in% features_TP & test1$meta.results$pval < 0.05) /
-  #   sum(test1$meta.results$feature %in% features_TP)
-  # sum(test2$meta.results$feature %in% features_TP & test2$meta.results$pval < 0.05) /
-  #   sum(test2$meta.results$feature %in% features_TP)
-  # abd1 <- (data_before %>% apply(2, MMUPHin:::tss))["Feature159", ]
-  # abd2 <- (data_after %>% apply(2, MMUPHin:::tss))["Feature159", ]
-  # cbind(abd1, df_metadata) %>% 
-  #   ggplot(aes(x = exposure, y = abd1)) +
-  #   geom_point() +
-  #   facet_grid(.~batch)
-  # ggsave(filename = paste0(dir_output, "scatter_before.pdf"),
-  #        width = 15, height = 4)
-  # cbind(abd2, df_metadata) %>% 
-  #   ggplot(aes(x = exposure, y = abd2)) +
-  #   geom_point() +
-  #   facet_grid(.~batch)
-  # ggsave(filename = paste0(dir_output, "scatter_after.pdf"),
-  #        width = 15, height = 4)
-  # rbind(test1$ind.results %>% 
-  #         purrr::imap_dfr(function(tb, batch) tb %>% dplyr::mutate(batch = batch)) %>% 
-  #         dplyr::mutate(data = "before"),
-  #       test2$ind.results %>% 
-  #         purrr::imap_dfr(function(tb, batch) tb %>% dplyr::mutate(batch = batch)) %>% 
-  #         dplyr::mutate(data = "after")) %>% 
-  #   dplyr::filter(feature == "Feature159") %>% 
-  #   ggplot(aes(x = batch, y = coef)) +
-  #   geom_point() +
-  #   geom_errorbar(aes(ymin = coef - 1.96*stderr, ymax = coef + 1.96*stderr)) +
-  #   facet_grid(.~data) 
-  # test2$ind.results %>% 
-  #   purrr::imap_dfr(function(tb, batch) tb %>% dplyr::mutate(batch = batch)) %>% 
-  #   dplyr::filter(feature == "Feature159") %>% 
-  #   ggplot(aes(x = batch, y = coef)) +
-  #   geom_point() +
-  #   geom_errorbar(aes(ymin = coef - 1.96*stderr, ymax = coef + 1.96*stderr)) +
-  #   coord_flip()
+tb_results <- tibble::tibble(results = results, Data = "Original", 
+                             i = 1:nrow(tb_sim)) %>% 
+  rbind(tibble::tibble(results = results_correct, Data = "MMUPHin corrected", 
+                       i = 1:nrow(tb_sim))) %>% 
+  dplyr::mutate(Data = factor(Data, levels = c("Original", "MMUPHin corrected")))
+
+tb_summarise_statistics <- c("MMUPHin", "naive") %>% 
+  purrr::map_dfr(function(model) {
+    tb_results %>% 
+      dplyr::left_join(tb_sim, by = "i") %>% 
+      dplyr::group_by(1:n()) %>% 
+      dplyr::mutate(power = sum(logical_TP[[1]] & 
+                                  results[[1]][[model]]$pval < 0.05, 
+                                na.rm = TRUE) / 
+                      sum(logical_TP[[1]]),
+                    FPR = sum(!logical_TP[[1]] & 
+                                results[[1]][[model]]$pval < 0.05, 
+                              na.rm = TRUE) / 
+                      sum(!logical_TP[[1]]),
+                    AUC = pROC::auc(response = logical_TP[[1]],
+                                    predictor = 1- results[[1]][[model]]$pval) %>% 
+                      as.numeric()
+      ) %>% 
+      dplyr::mutate(model = factor(model, levels = c("MMUPHin", "naive")))
+  })
+
+p_power <- tb_summarise_statistics %>% 
+  # dplyr::filter(effect_batch == 5) %>% 
+  dplyr::group_by(i_rep, model, Data) %>% 
+  dplyr::mutate(power_mean = mean(power),
+                power_sd = sd(power)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::filter(rep == 1) %>% 
+  ggplot(aes(x = effect_exposure,
+             y = power_mean,
+             color = model,
+             shape = as.factor(effect_batch))) +
+  geom_point(position = position_dodge(width = 0.5)) +
+  geom_line(aes(linetype = as.factor(effect_batch))) +
+  geom_errorbar(aes(ymin = power_mean - power_sd,
+                    ymax = power_mean + power_sd),
+                position = position_dodge(width = 0.5)) +
+  facet_grid(exposure_type ~ Data)
+ggsave(filename = paste0(dir_output, "power_", 
+                         metadata_type, ".pdf"), p_power, width = 20, height = 10)
+
+p_FPR <- tb_summarise_statistics %>% 
+  dplyr::filter(effect_batch == 5) %>% 
+  dplyr::group_by(i_rep, model, Data) %>% 
+  dplyr::mutate(FPR_mean = mean(FPR),
+                FPR_sd = sd(FPR)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::filter(rep == 1) %>% 
+  ggplot(aes(x = effect_exposure,
+             y = FPR_mean,
+             color = model,
+             shape = as.factor(effect_batch))) +
+  geom_point(position = position_dodge(width = 0.5)) +
+  geom_line(aes(linetype = as.factor(effect_batch))) +
+  geom_errorbar(aes(ymin = FPR_mean - FPR_sd,
+                    ymax = FPR_mean + FPR_sd),
+                position = position_dodge(width = 0.5)) +
+  facet_grid(exposure_type ~ Data)
+ggsave(filename = paste0(dir_output, "power_", 
+                         metadata_type, ".pdf"), p_power, width = 20, height = 10)
+p_AUC <- tb_summarise_statistics %>% 
+  dplyr::filter(Data == "Original", exposure_type == "continuous", effect_batch == 5) %>% 
+  dplyr::group_by(i_rep, model) %>% 
+  dplyr::mutate(AUC_mean = mean(AUC),
+                AUC_sd = sd(AUC)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::filter(rep == 1) %>% 
+  ggplot(aes(x = effect_exposure,
+             y = AUC_mean,
+             color = model,
+             shape = as.factor(effect_batch))) +
+  geom_point(position = position_dodge(width = 0.5)) +
+  geom_line(aes(linetype = as.factor(effect_batch))) +
+  geom_errorbar(aes(ymin = AUC_mean - AUC_sd,
+                    ymax = AUC_mean + AUC_sd),
+                position = position_dodge(width = 0.5)) +
+  facet_grid(nSample_nBatch ~ nMicrobe_percSpike)
+```
+
+```{r check individual studies}
+tb_summarise_statistics %>% 
+  dplyr::filter(effect_batch == 5,
+                effect_exposure == 5,
+                exposure_type == "discrete",
+                Data == "Original") %>% 
+  dplyr::select(i, rep, power, FPR, model) %>% 
+  dplyr::arrange(i)
+is <- tb_summarise_statistics %>% 
+  dplyr::filter(effect_batch == 5,
+                effect_exposure == 5,
+                exposure_type == "discrete",
+                Data == "Original") %>% 
+  dplyr::select(i, rep, power, FPR, model) %>% 
+  extract2("i") %>% unique()
+for(i in is) {
+  mat_otu <- read.table(paste0("results/lm.meta/sparseDOSSA_sets/", i, ".tsv"),
+                        sep = "\t", header = TRUE, row.names = 1) %>% as.matrix
+  results_diff <- tb_sim$logical_TP[[i]] &
+    results[[i]]$MMUPHin$pval > 0.05 &
+    results[[i]]$naive$pval < 0.05
+  mat_otu <- mat_otu %>% 
+    apply(2, MMUPHin:::tss)
+  tb_long <- mat_otu %>% 
+    as.data.frame() %>% 
+    tibble::rownames_to_column("Feature") %>% 
+    tidyr::gather(key=Sample, value=RA, -Feature) %>% 
+    dplyr::left_join(tb_sim$df_metadata[[i]] %>% 
+                       tibble::rownames_to_column("Sample"),
+                     by = "Sample") %>% 
+    dplyr::mutate(feature_TP = Feature %in% paste0("Feature", (1:200)[results_diff]))
   
-  p_power <- tb_summarise %>% 
-    dplyr::filter(nMicrobe == 300, spikeMicrobes != 0.5) %>% 
-    dplyr::arrange(nBatch, nSample_perBatch) %>% 
-    dplyr::mutate(nBatch_nSample_perBatch = 
-                    paste0("nBatch=", nBatch, ";",
-                           "nSample_perBatch=", nSample_perBatch) %>% 
-                    factor %>% forcats::fct_inorder()) %>% 
-    dplyr::arrange(nMicrobe, spikeMicrobes) %>% 
-    dplyr::mutate(nMicrobe_percMicrobe = 
-                    paste0("nMicrobe=", nMicrobe, ";",
-                           "percSpike=", spikeMicrobes) %>% 
-                    factor %>% forcats::fct_inorder()) %>% 
-    dplyr::arrange(effect_exposure) %>% 
-    dplyr::mutate(effect_exposure = effect_exposure %>% factor %>% forcats::fct_inorder()) %>%
-    dplyr::arrange(desc(effect_batch)) %>% 
-    dplyr::mutate(effect_batch = effect_batch %>% factor %>% forcats::fct_inorder()) %>%
-    dplyr::mutate(data = factor(data, levels = c("before", "after"))) %>% 
-    ggplot(aes(x = effect_batch,
-               y = power,
-               fill = effect_exposure,
-               alpha = data)) +
-    geom_boxplot(position = position_dodge()) +
-    facet_grid(nMicrobe_percMicrobe ~ nBatch_nSample_perBatch)
-  ggsave(filename = paste0(dir_output, "power_", 
-                           metadata_type, ".pdf"), p_power, width = 20, height = 10)
-  p_FPR <- tb_summarise %>% 
-    dplyr::filter(nMicrobe == 300, spikeMicrobes != 0.5) %>% 
-    dplyr::arrange(nBatch, nSample_perBatch) %>% 
-    dplyr::mutate(nBatch_nSample_perBatch = 
-                    paste0("nBatch=", nBatch, ";",
-                           "nSample_perBatch=", nSample_perBatch) %>% 
-                    factor %>% forcats::fct_inorder()) %>% 
-    dplyr::arrange(nMicrobe, spikeMicrobes) %>% 
-    dplyr::mutate(nMicrobe_percMicrobe = 
-                    paste0("nMicrobe=", nMicrobe, ";",
-                           "percSpike=", spikeMicrobes) %>% 
-                    factor %>% forcats::fct_inorder()) %>% 
-    dplyr::arrange(effect_exposure) %>% 
-    dplyr::mutate(effect_exposure = effect_exposure %>% factor %>% forcats::fct_inorder()) %>%
-    dplyr::arrange(desc(effect_batch)) %>% 
-    dplyr::mutate(effect_batch = effect_batch %>% factor %>% forcats::fct_inorder()) %>%
-    dplyr::mutate(data = factor(data, levels = c("before", "after"))) %>% 
-    ggplot(aes(x = effect_batch,
-               y = FPR,
-               fill = effect_exposure,
-               alpha = data)) +
-    geom_boxplot(position = position_dodge()) +
-    facet_grid(nMicrobe_percMicrobe ~ nBatch_nSample_perBatch)
-  ggsave(filename = paste0(dir_output, "FPR_", 
-                           metadata_type, ".pdf"), p_FPR, width = 20, height = 10)
-  
-  p_AUC <- tb_summarise %>% 
-    dplyr::filter(nMicrobe == 300, spikeMicrobes != 0.5) %>% 
-    dplyr::arrange(nBatch, nSample_perBatch) %>% 
-    dplyr::mutate(nBatch_nSample_perBatch = 
-                    paste0("nBatch=", nBatch, ";",
-                           "nSample_perBatch=", nSample_perBatch) %>% 
-                    factor %>% forcats::fct_inorder()) %>% 
-    dplyr::arrange(nMicrobe, spikeMicrobes) %>% 
-    dplyr::mutate(nMicrobe_percMicrobe = 
-                    paste0("nMicrobe=", nMicrobe, ";",
-                           "percSpike=", spikeMicrobes) %>% 
-                    factor %>% forcats::fct_inorder()) %>% 
-    dplyr::arrange(effect_exposure) %>% 
-    dplyr::mutate(effect_exposure = effect_exposure %>% factor %>% forcats::fct_inorder()) %>%
-    dplyr::arrange(desc(effect_batch)) %>% 
-    dplyr::mutate(effect_batch = effect_batch %>% factor %>% forcats::fct_inorder()) %>%
-    dplyr::mutate(data = factor(data, levels = c("before", "after"))) %>% 
-    ggplot(aes(x = effect_batch,
-               y = AUC,
-               fill = effect_exposure,
-               alpha = data)) +
-    geom_boxplot(position = position_dodge()) +
-    facet_grid(nMicrobe_percMicrobe ~ nBatch_nSample_perBatch)
-  ggsave(filename = paste0(dir_output, "AUC_", 
-                           metadata_type, ".pdf"), p_AUC, width = 20, height = 10)
-  
-  p_se <- tb_results %>% 
-    dplyr::filter(nMicrobe == 300, spikeMicrobes != 0.5) %>% 
-    dplyr::arrange(nBatch, nSample_perBatch) %>% 
-    dplyr::mutate(nBatch_nSample_perBatch = 
-                    paste0("nBatch=", nBatch, ";",
-                           "nSample_perBatch=", nSample_perBatch) %>% 
-                    factor %>% forcats::fct_inorder()) %>% 
-    dplyr::arrange(nMicrobe, spikeMicrobes) %>% 
-    dplyr::mutate(nMicrobe_percMicrobe = 
-                    paste0("nMicrobe=", nMicrobe, ";",
-                           "percSpike=", spikeMicrobes) %>% 
-                    factor %>% forcats::fct_inorder()) %>% 
-    dplyr::arrange(effect_exposure) %>% 
-    dplyr::mutate(effect_exposure = effect_exposure %>% factor %>% forcats::fct_inorder()) %>%
-    dplyr::arrange(desc(effect_batch)) %>% 
-    dplyr::mutate(effect_batch = effect_batch %>% factor %>% forcats::fct_inorder()) %>%
-    dplyr::mutate(data = factor(data, levels = c("before", "after"))) %>% 
-    ggplot(aes(x = effect_batch,
-               y = se,
-               fill = effect_exposure,
-               alpha = data)) +
-    geom_boxplot(position = position_dodge()) +
-    facet_grid(nMicrobe_percMicrobe ~ nBatch_nSample_perBatch)
-  ggsave(filename = paste0(dir_output, "se_", 
-                           metadata_type, ".pdf"), p_se, width = 20, height = 10)
-  
-  p_I2 <- tb_results %>% 
-    dplyr::filter(nMicrobe == 300, spikeMicrobes != 0.5) %>% 
-    dplyr::arrange(nBatch, nSample_perBatch) %>% 
-    dplyr::mutate(nBatch_nSample_perBatch = 
-                    paste0("nBatch=", nBatch, ";",
-                           "nSample_perBatch=", nSample_perBatch) %>% 
-                    factor %>% forcats::fct_inorder()) %>% 
-    dplyr::arrange(nMicrobe, spikeMicrobes) %>% 
-    dplyr::mutate(nMicrobe_percMicrobe = 
-                    paste0("nMicrobe=", nMicrobe, ";",
-                           "percSpike=", spikeMicrobes) %>% 
-                    factor %>% forcats::fct_inorder()) %>% 
-    dplyr::arrange(effect_exposure) %>% 
-    dplyr::mutate(effect_exposure = effect_exposure %>% factor %>% forcats::fct_inorder()) %>%
-    dplyr::arrange(desc(effect_batch)) %>% 
-    dplyr::mutate(effect_batch = effect_batch %>% factor %>% forcats::fct_inorder()) %>%
-    dplyr::mutate(data = factor(data, levels = c("before", "after"))) %>% 
-    ggplot(aes(x = effect_batch,
-               y = I2,
-               fill = effect_exposure,
-               alpha = data)) +
-    geom_boxplot(position = position_dodge()) +
-    facet_grid(nMicrobe_percMicrobe ~ nBatch_nSample_perBatch)
-  ggsave(filename = paste0(dir_output, "I2_", 
-                           metadata_type, ".pdf"), p_I2, width = 20, height = 10)
+  plots <- tb_long %>% 
+    dplyr::filter(feature_TP) %>% 
+    ggplot(aes(x = batch, y = RA, color = exposure)) +
+    geom_boxplot() +
+    facet_wrap(~Feature)
 }
+tb_sim$spikein.mt[[i]] %>% dplyr::filter(feature == 57)
+tb_sim[i, ]$features_TP
+tb_sim[i, ]$df_metadata[[1]]$batch
+test <- results[[i]]$MMUPHin %>% dplyr::filter(tb_sim[i, ]$logical_TP[[1]])
+test_naive <- results[[i]]$naive %>% dplyr::filter(tb_sim[i, ]$logical_TP[[1]])
 ```
 
 

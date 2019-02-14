@@ -119,11 +119,85 @@ for(i in is) {
                                "sparseDOSSA_sets/",
                                i, ".tsv"),
                         header = TRUE,
-                        sep = "\t",
-                        row.names = 1) %>% 
+                        sep = "\t") %>% 
     as.matrix
+  row.names(mat_otu) <- paste0("Feature", 1:nrow(mat_otu))
   i_simSetup <- tb_sim[i, ]
   df_metadata <- tb_sim[i, ]$df_metadata[[1]]
+  
+  phylo <- phyloseq::phyloseq(
+    phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
+    sample_data(df_metadata)) %>%
+    transform_sample_counts(MMUPHin:::tss) %>%
+    prune_taxaSamples()
+  
+  mat_otu_adj <- mat_otu %>% 
+    MMUPHin::adjust.batch(batch = "batch", 
+                          data = df_metadata,
+                          diagnostics = FALSE, 
+                          verbose = FALSE)
+  phylo_adj <- phyloseq::phyloseq(
+    phyloseq::otu_table(mat_otu_adj, taxa_are_rows = TRUE),
+    sample_data(df_metadata)) %>%
+    transform_sample_counts(MMUPHin:::tss) %>%
+    prune_taxaSamples()
+  
+  l_p <- list(phylo, phylo_adj) %>% 
+    purrr::map2(c("Original", "MMUPHin adjusted"), function(phylo, Data) {
+      ordination <- phyloseq::ordinate(phylo, method = "MDS", distance = "bray")
+      list(cluster = plot_ordination(phylo, ordination = ordination, color = "score") +
+             ggtitle(Data),
+           batch = plot_ordination(phylo, ordination = ordination, color = "batch") +
+             ggtitle(Data))
+    })
+  
+  cowplot::plot_grid(plotlist = list(l_p[[1]]$cluster, l_p[[2]]$cluster,
+                                     l_p[[1]]$batch, l_p[[2]]$batch), nrow = 2) %>% 
+    ggsave(filename = paste0(dir_output, "example_ordination_", i, ".pdf"),
+           .,
+           width = 10, height = 8)
+  
+  loading_before <- results[[i]]$fit.continuous$fit.continuous$consensus.loading
+  loading_after <- results_correct[[i]]$fit.continuous$fit.continuous$consensus.loading
+  score_learned_before <- otu_table2(phylo) %>% sqrt() %>% asin() %>% t() %>% 
+    `%*%`(loading_before)
+  score_learned_after <- otu_table2(phylo_adj) %>% sqrt() %>% asin() %>% t() %>% 
+    `%*%`(loading_after)
+  ps_score <- list(score_learned_before, score_learned_after) %>% 
+    purrr::map2(c("Original", "MMUPHin corrected"),
+                function(score, data) {
+                  tibble::tibble(`Score (Truth)` = df_metadata$score,
+                                 `Score (Learned)` = score[, 1]) %>% 
+                    ggplot(aes(x = `Score (Truth)`, y = `Score (Learned)`)) +
+                    geom_point() +
+                    xlab("Score (Truth)") + ylab("Score (Learned)") +
+                    ggtitle(data)
+                })
+  cowplot::plot_grid(plotlist = ps_score, nrow = 2) %>% 
+    ggsave(filename = paste0(dir_output, "Score_", i, ".pdf"),
+           .,
+           width = 5, height = 10)
+  
+  prcomp_before <- prcomp(otu_table2(phylo) %>% sqrt() %>% asin() %>% t())$x[, 1]
+  prcomp_after <- prcomp(otu_table2(phylo_adj) %>% sqrt() %>% asin() %>% t())$x[, 1]
+  ggplot(data.frame())
+  plot(prcomp_after, df_metadata$score)
+}
+is <- tb_sim %>% 
+  dplyr::filter(effect_batch == 0, effect_score == 10,
+                nBatch == 4, nSample == 1000) %>% 
+  extract2("i")
+for(i in is) {
+  mat_otu <- read.table(paste0(dir_output,
+                               "sparseDOSSA_sets/",
+                               i, ".tsv"),
+                        header = TRUE,
+                        sep = "\t") %>% 
+    as.matrix
+  row.names(mat_otu) <- paste0("Feature", 1:nrow(mat_otu))
+  i_simSetup <- tb_sim[i, ]
+  df_metadata <- tb_sim[i, ]$df_metadata[[1]]
+  
   
   phylo <- phyloseq::phyloseq(
     phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
@@ -153,8 +227,20 @@ for(i in is) {
   
   cowplot::plot_grid(plotlist = list(l_p[[1]]$cluster, l_p[[2]]$cluster,
                                      l_p[[1]]$batch, l_p[[2]]$batch), nrow = 2) %>% 
-    ggsave(filename = paste0(dir_output, "example_ordination_", i, ".pdf"),
+    ggsave(filename = paste0(dir_output, "example_ordination_", i, "_null.pdf"),
            .,
            width = 10, height = 8)
+  
+  loading_before <- results[[i]]$fit.continuous$fit.continuous$consensus.loading
+  score_learned_before <- otu_table2(phylo) %>% sqrt() %>% asin() %>% t() %>% 
+    `%*%`(loading_before)
+  p_before <- tibble::tibble(`Score (Truth)` = df_metadata$score,
+                         `Score (Learned)` = score_learned_before[, 1]) %>% 
+    ggplot(aes(x = `Score (Truth)`, y = `Score (Learned)`)) +
+    geom_point() +
+    xlab("Score (Truth)") + ylab("Score (Learned)")
+  ggsave(filename = paste0(dir_output, "Score_", i, "_null.pdf"),
+           p_before,
+           width = 5, height = 5)
 }
 ```

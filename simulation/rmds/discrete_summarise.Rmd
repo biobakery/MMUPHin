@@ -157,9 +157,9 @@ for(i in is) {
                                "sparseDOSSA_sets/",
                                i, ".tsv"),
                         header = TRUE,
-                        sep = "\t",
-                        row.names = 1) %>% 
+                        sep = "\t") %>% 
     as.matrix
+  rownames(mat_otu) <- paste0("Feature", 1:nrow(mat_otu))
   i_simSetup <- tb_sim[i, ]
   df_metadata <- tb_sim[i, ]$df_metadata[[1]]
   
@@ -192,6 +192,53 @@ for(i in is) {
   cowplot::plot_grid(plotlist = list(l_p[[1]]$cluster, l_p[[2]]$cluster,
                                      l_p[[1]]$batch, l_p[[2]]$batch), nrow = 2) %>% 
     ggsave(filename = paste0(dir_output, "example_ordination_", i, ".pdf"),
+           .,
+           width = 10, height = 8)
+}
+is <- tb_sim %>% 
+  dplyr::filter(nCluster == 3, effect_batch == 0, effect_cluster == 10,
+                nBatch == 2, nSample == 1000) %>% 
+  extract2("i")
+for(i in is) {
+  mat_otu <- read.table(paste0(dir_output,
+                               "sparseDOSSA_sets/",
+                               i, ".tsv"),
+                        header = TRUE,
+                        sep = "\t") %>% 
+    as.matrix
+  rownames(mat_otu) <- paste0("Feature", 1:nrow(mat_otu))
+  i_simSetup <- tb_sim[i, ]
+  df_metadata <- tb_sim[i, ]$df_metadata[[1]]
+  
+  phylo <- phyloseq::phyloseq(
+    phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
+    sample_data(df_metadata)) %>%
+    transform_sample_counts(MMUPHin:::tss) %>%
+    prune_taxaSamples()
+  
+  mat_otu_adj <- mat_otu %>% 
+      MMUPHin::adjust.batch(batch = "batch", 
+                            data = df_metadata,
+                            diagnostics = FALSE, 
+                            verbose = FALSE)
+  phylo_adj <- phyloseq::phyloseq(
+    phyloseq::otu_table(mat_otu_adj, taxa_are_rows = TRUE),
+    sample_data(df_metadata)) %>%
+    transform_sample_counts(MMUPHin:::tss) %>%
+    prune_taxaSamples()
+  
+  l_p <- list(phylo, phylo_adj) %>% 
+    purrr::map2(c("Original", "MMUPHin adjusted"), function(phylo, Data) {
+      ordination <- phyloseq::ordinate(phylo, method = "MDS", distance = "bray")
+      list(cluster = plot_ordination(phylo, ordination = ordination, color = "cluster") +
+             ggtitle(Data),
+           batch = plot_ordination(phylo, ordination = ordination, color = "batch") +
+             ggtitle(Data))
+    })
+  
+  cowplot::plot_grid(plotlist = list(l_p[[1]]$cluster, l_p[[2]]$cluster,
+                                     l_p[[1]]$batch, l_p[[2]]$batch), nrow = 2) %>% 
+    ggsave(filename = paste0(dir_output, "example_ordination_", i, "_null.pdf"),
            .,
            width = 10, height = 8)
 }
