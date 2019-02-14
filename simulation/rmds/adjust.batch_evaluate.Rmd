@@ -30,7 +30,7 @@ load(paste0(dir_output, "tb_sim.RData"))
 
 ```{r calculate R2 before adjustment}
 N <- nrow(tb_sim)
-# N <- 3
+N <- 3
 # registerDoParallel(ncores)
 # results <- foreach(i = 1:N) %dopar% {
 #   cat(i, "\n", file = paste0(dir_output, "evaluate_before_progress.txt"), append = TRUE)
@@ -75,84 +75,150 @@ N <- nrow(tb_sim)
 ```
 
 ```{r batch adjustment}
-registerDoParallel(ncores)
-results_correct <- foreach(i = 1:N) %dopar% {
-  cat(i, "\n", file = paste0(dir_output, "evaluate_after_progress.txt"), append = TRUE)
-  mat_otu <- read.table(paste0(dir_output,
-                               "sparseDOSSA_sets/",
-                               i, ".tsv"),
-                        header = TRUE,
-                        sep = "\t",
-                        row.names = 1) %>% 
-    as.matrix
-  i_simSetup <- tb_sim[i, ]
-  df_metadata <- i_simSetup$df_metadata[[1]]
-  
-  mat_otu <- mat_otu %>% 
-    MMUPHin::adjust.batch(batch = "batch", 
-                          covariates = c("positive_control1",
-                                         "positive_control2",
-                                         "negative_control"),
-                          data = df_metadata,
-                          diagnostics = FALSE, 
-                          verbose = FALSE)
-  
-  phylo <- phyloseq::phyloseq(
-    phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
-    sample_data(df_metadata)) %>%
-    transform_sample_counts(MMUPHin:::tss) %>%
-    prune_taxaSamples()
-  D <- distance(phylo, method = "bray")
-  D <- distance(phylo, method = "bray")
-  R2_batch <- vegan::adonis(D ~ batch,
-                            data = sample_data2(phylo),
-                            permutations = 2)$aov.tab["batch", "R2"]
-  R2_positive_control1 <- vegan::adonis(D ~ positive_control1,
-                                        data = sample_data2(phylo),
-                                        permutations = 2)$aov.tab["positive_control1", "R2"]
-  R2_positive_control2 <- vegan::adonis(D ~ positive_control2,
-                                        data = sample_data2(phylo),
-                                        permutations = 2)$aov.tab["positive_control2", "R2"]
-  R2_negative_control <- vegan::adonis(D ~ negative_control,
-                                       data = sample_data2(phylo),
-                                       permutations = 2)$aov.tab["negative_control", "R2"]
-  
-  
-  return(list(R2 = c("batch" = R2_batch,
-                     "positive_control1" = R2_positive_control1,
-                     "positive_control2" = R2_positive_control2,
-                     "negative_control" = R2_negative_control))
-  )
-}
-stopImplicitCluster()
-save(results_correct, file = paste0(dir_output, "evaluate_after.RData"))
+# registerDoParallel(ncores)
+# results_correct <- foreach(i = 1:N) %dopar% {
+#   cat(i, "\n", file = paste0(dir_output, "evaluate_after_progress.txt"), append = TRUE)
+#   mat_otu <- read.table(paste0(dir_output,
+#                                "sparseDOSSA_sets/",
+#                                i, ".tsv"),
+#                         header = TRUE,
+#                         sep = "\t",
+#                         row.names = 1) %>% 
+#     as.matrix
+#   i_simSetup <- tb_sim[i, ]
+#   df_metadata <- i_simSetup$df_metadata[[1]]
+#   
+#   mat_otu <- mat_otu %>% 
+#     MMUPHin::adjust.batch(batch = "batch", 
+#                           covariates = c("positive_control1",
+#                                          "positive_control2",
+#                                          "negative_control"),
+#                           data = df_metadata,
+#                           diagnostics = FALSE, 
+#                           verbose = FALSE)
+#   
+#   phylo <- phyloseq::phyloseq(
+#     phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
+#     sample_data(df_metadata)) %>%
+#     transform_sample_counts(MMUPHin:::tss) %>%
+#     prune_taxaSamples()
+#   D <- distance(phylo, method = "bray")
+#   D <- distance(phylo, method = "bray")
+#   R2_batch <- vegan::adonis(D ~ batch,
+#                             data = sample_data2(phylo),
+#                             permutations = 2)$aov.tab["batch", "R2"]
+#   R2_positive_control1 <- vegan::adonis(D ~ positive_control1,
+#                                         data = sample_data2(phylo),
+#                                         permutations = 2)$aov.tab["positive_control1", "R2"]
+#   R2_positive_control2 <- vegan::adonis(D ~ positive_control2,
+#                                         data = sample_data2(phylo),
+#                                         permutations = 2)$aov.tab["positive_control2", "R2"]
+#   R2_negative_control <- vegan::adonis(D ~ negative_control,
+#                                        data = sample_data2(phylo),
+#                                        permutations = 2)$aov.tab["negative_control", "R2"]
+#   
+#   
+#   return(list(R2 = c("batch" = R2_batch,
+#                      "positive_control1" = R2_positive_control1,
+#                      "positive_control2" = R2_positive_control2,
+#                      "negative_control" = R2_negative_control))
+#   )
+# }
+# stopImplicitCluster()
+# save(results_correct, file = paste0(dir_output, "evaluate_after.RData"))
 ```
 
 ```{r ComBat}
+# registerDoParallel(ncores)
+# results_ComBat <- foreach(i = 1:N) %dopar% {
+#   cat(i, "\n", file = paste0(dir_output, "evaluate_ComBat_progress.txt"), append = TRUE)
+#   mat_otu <- read.table(paste0(dir_output,
+#                                "sparseDOSSA_sets/",
+#                                i, ".tsv"),
+#                         header = TRUE,
+#                         sep = "\t",
+#                         row.names = 1) %>% 
+#     as.matrix
+#   i_simSetup <- tb_sim[i, ]
+#   df_metadata <- i_simSetup$df_metadata[[1]]
+#   
+#   mat_otu <- mat_otu %>% 
+#     MMUPHin::adjust.batch(
+#       batch = "batch",
+#       covariates = c("positive_control1",
+#                      "positive_control2",
+#                      "negative_control"),
+#       data = df_metadata,
+#       zero.inflation = FALSE,
+#       diagnostics = FALSE,
+#       verbose = FALSE
+#     )
+#   
+#   phylo <- phyloseq::phyloseq(
+#     phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
+#     sample_data(df_metadata)) %>%
+#     transform_sample_counts(MMUPHin:::tss) %>%
+#     prune_taxaSamples()
+#   D <- distance(phylo, method = "bray")
+#   D <- distance(phylo, method = "bray")
+#   R2_batch <- vegan::adonis(D ~ batch,
+#                             data = sample_data2(phylo),
+#                             permutations = 2)$aov.tab["batch", "R2"]
+#   R2_positive_control1 <- vegan::adonis(D ~ positive_control1,
+#                                         data = sample_data2(phylo),
+#                                         permutations = 2)$aov.tab["positive_control1", "R2"]
+#   R2_positive_control2 <- vegan::adonis(D ~ positive_control2,
+#                                         data = sample_data2(phylo),
+#                                         permutations = 2)$aov.tab["positive_control2", "R2"]
+#   R2_negative_control <- vegan::adonis(D ~ negative_control,
+#                                        data = sample_data2(phylo),
+#                                        permutations = 2)$aov.tab["negative_control", "R2"]
+#   
+#   
+#   return(list(R2 = c("batch" = R2_batch,
+#                      "positive_control1" = R2_positive_control1,
+#                      "positive_control2" = R2_positive_control2,
+#                      "negative_control" = R2_negative_control))
+#   )
+# }
+# stopImplicitCluster()
+# save(results_ComBat, file = paste0(dir_output, "evaluate_ComBat.RData"))
+```
+
+```{r quantile norm}
+# mat_otu <- read.table("results/adjust.batch/sparseDOSSA_sets/1.tsv",
+#                       header = TRUE,
+#                       sep = "\t",
+#                       row.names = 1)
+# mat_otu_qnorm <- read.table("results/adjust.batch/qnorm/qnormed/1.tsv",
+#                             skip = 1,
+#                             sep = "\t",
+#                             comment.char = "", 
+#                             header = TRUE,
+#                             row.names = 1)
+# table <- mat_otu %>% 
+#   as.data.frame %>% 
+#   tibble::rownames_to_column("feature") %>% 
+#   tidyr::gather(key = sample,
+#                 value = count,
+#                 -feature) %>% 
+#   dplyr::group_by(feature) %>% 
+#   dplyr::summarise(not_zero = mean(count > 0),
+#                    mean_count = mean(count),
+#                    mean_count_notzero = mean(count[count > 0])) %>% 
+#   dplyr::mutate(in_qnorm = feature %in% rownames(mat_otu_qnorm))
 registerDoParallel(ncores)
-results_ComBat <- foreach(i = 1:N) %dopar% {
-  cat(i, "\n", file = paste0(dir_output, "evaluate_ComBat_progress.txt"), append = TRUE)
-  mat_otu <- read.table(paste0(dir_output,
-                               "sparseDOSSA_sets/",
-                               i, ".tsv"),
-                        header = TRUE,
-                        sep = "\t",
-                        row.names = 1) %>% 
-    as.matrix
+results_qnorm <- foreach(i = 1:N) %dopar% {
+  cat(i, "\n", file = paste0(dir_output, "evaluate_qnorm_progress.txt"), append = TRUE)
+  mat_otu <- read.table("results/adjust.batch/qnorm/qnormed/1.tsv",
+                            skip = 1,
+                            sep = "\t",
+                            comment.char = "", 
+                            header = TRUE,
+                            row.names = 1) %>% 
+    as.matrix()
   i_simSetup <- tb_sim[i, ]
   df_metadata <- i_simSetup$df_metadata[[1]]
-  
-  mat_otu <- mat_otu %>% 
-    MMUPHin::adjust.batch(
-      batch = "batch",
-      covariates = c("positive_control1",
-                     "positive_control2",
-                     "negative_control"),
-      data = df_metadata,
-      zero.inflation = FALSE,
-      diagnostics = FALSE,
-      verbose = FALSE
-    )
   
   phylo <- phyloseq::phyloseq(
     phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
@@ -182,5 +248,5 @@ results_ComBat <- foreach(i = 1:N) %dopar% {
   )
 }
 stopImplicitCluster()
-save(results_ComBat, file = paste0(dir_output, "evaluate_ComBat.RData"))
+save(results_qnorm, file = paste0(dir_output, "evaluate_qnorm.RData"))
 ```
