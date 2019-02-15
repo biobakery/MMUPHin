@@ -28,23 +28,22 @@ dir.create(paste0(dir_output, "sparseDOSSA_sets/"), recursive = TRUE, showWarnin
 # parallel computing
 ncores <- 20
 # sample size
-nBatch <- c(4)
-nSample <- c(1000)
+nBatch <- c(2, 4, 6, 8)
+nSample <- c(200, 1000)
 # feature size
-nMicrobe <- c(200)
-spikeMicrobes <- c(0.2)
+nMicrobe <- c(200, 1000)
+spikeMicrobes <- c(0.1, 0.2, 0.5)
 # metadata specification
 tb_metadataType <- tibble::tibble(
   metadata_type = list(c("batch" = "factor",
                          "exposure" = "factor"),
                        c("batch" = "factor",
                          "exposure" = "numeric")))
-tb_effectSize <- tidyr::crossing(batch = c(0),
+tb_effectSize <- tidyr::crossing(batch = c(0, 1, 2, 5),
                                  exposure = 1:5)
 effectSize <- tibble::tibble(effectSize = 
                                (1:nrow(tb_effectSize)) %>% 
                                purrr::map(function(i) unlist(tb_effectSize[i, ])))
-batch_sd <- c(0, 1, 2, 5)
 # replicates
 rep <- 1:5
 # metadata simulation
@@ -58,7 +57,6 @@ tb_simSetup <- tidyr::crossing(
   nBatch,
   nSample,
   nMicrobe,
-  batch_sd,
   spikeMicrobes,
   noZeroInflate,
   tb_metadataType,
@@ -81,19 +79,17 @@ tb_sim <- tb_simSetup %>%
                exposure = exposure(is_factor = metadata_type[[1]]["exposure"] == "factor",
                                    n = nSample),
                row.names = paste0("Sample", 1:nSample))),
-    rel.mean = list(rnorm(nBatch, 
-                             mean = 0,
-                             sd = batch_sd)),
-    spikein.mt = list(create_spikein.mt(
-      number_features = nMicrobe,
-      percent_spiked = spikeMicrobes,
-      effectSize = 
+    spikein.mt = 
         create_effectSize(effectSize = effectSize[[1]],
                           df_metadata = df_metadata[[1]],
                           metadata_type = metadata_type[[1]],
                           fDummyData = fDummyData,
-                          fDummyDirection = fDummyDirection),
-      seed = rep))) %>% 
+                          fDummyDirection = fDummyDirection) %>% 
+        create_spikein.mt(number_features = nMicrobe,
+                        percent_spiked = spikeMicrobes,
+                        effectSize = .,
+                        seed = `1:n()`) %>%
+      list()) %>% 
   dplyr::ungroup()
 
 # sanity_check <- tb_sim %>% 
@@ -114,10 +110,8 @@ l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
     number_features = i_simSetup$nMicrobe,
     number_samples = i_simSetup$nSample,
     UserMetadata = 
-      create_metadataMatrix_RE(df_metadata = i_simSetup$df_metadata[[1]],
+      create_metadataMatrix(df_metadata = i_simSetup$df_metadata[[1]],
                             metadata_type = i_simSetup$metadata_type[[1]],
-                            batch = "batch", exposure = "exposure",
-                            rel.mean = i_simSetup$rel.mean[[1]],
                             fDummyData = fDummyData,
                             fDummyDirection = fDummyDirection),
     spikein.mt = i_simSetup$spikein.mt[[1]] %>% 
@@ -128,7 +122,7 @@ l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
       dplyr::ungroup(),
     noZeroInflate = i_simSetup$noZeroInflate,
     percent_spiked = i_simSetup$spikeMicrobes,
-    seed = i_simSetup$rep,
+    seed = i_simSetup$`1:n()`,
     minLevelPercent = 0,
     write_table = FALSE,
     verbose = FALSE) %>%
