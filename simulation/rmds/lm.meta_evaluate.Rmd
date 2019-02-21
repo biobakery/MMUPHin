@@ -51,8 +51,8 @@ results <- foreach(i = 1:N) %dopar% {
     prune_taxaSamples()
   D <- distance(phylo, method = "bray")
   R2_exposure <- vegan::adonis(D ~ exposure,
-                              data = sample_data2(phylo),
-                              permutations = 2)$aov.tab["exposure", "R2"]
+                               data = sample_data2(phylo),
+                               permutations = 2)$aov.tab["exposure", "R2"]
   R2_batch <- vegan::adonis(D ~ batch,
                             data = sample_data2(phylo),
                             permutations = 2)$aov.tab["batch", "R2"]
@@ -66,11 +66,17 @@ results <- foreach(i = 1:N) %dopar% {
                                   directory = paste0(dir_output, "MMUPHin_before/", i, "/"),
                                   forest.plots = FALSE,
                                   verbose = FALSE)
+  # fit_Maaslin2 <- MMUPHin:::Maaslin2.wrapper(
+  #   feature.count = mat_otu,
+  #   data = df_metadata,
+  #   exposure = "exposure",
+  #   covariates.random = "batch",
+  #   directory = paste0(dir_output, "MMUPHin_before/", i, "/all/")
+  # )
   fit_Maaslin2 <- MMUPHin:::Maaslin2.wrapper(
     feature.count = mat_otu,
     data = df_metadata,
     exposure = "exposure",
-    covariates.random = "batch",
     directory = paste0(dir_output, "MMUPHin_before/", i, "/all/")
   )
   return(list(MMUPHin = fit_lm.meta$meta.results,
@@ -97,11 +103,11 @@ results_correct <- foreach(i = 1:N) %dopar% {
   df_metadata <- i_simSetup$df_metadata[[1]]
   
   mat_otu <- mat_otu %>% 
-      MMUPHin::adjust.batch(batch = "batch",
-                            covariates = "exposure",
-                            data = df_metadata,
-                            diagnostics = FALSE, 
-                            verbose = FALSE)
+    MMUPHin::adjust.batch(batch = "batch",
+                          covariates = "exposure",
+                          data = df_metadata,
+                          diagnostics = FALSE, 
+                          verbose = FALSE)
   
   phylo <- phyloseq::phyloseq(
     phyloseq::otu_table(mat_otu, taxa_are_rows = TRUE),
@@ -110,8 +116,8 @@ results_correct <- foreach(i = 1:N) %dopar% {
     prune_taxaSamples()
   D <- distance(phylo, method = "bray")
   R2_exposure <- vegan::adonis(D ~ exposure,
-                              data = sample_data2(phylo),
-                              permutations = 2)$aov.tab["exposure", "R2"]
+                               data = sample_data2(phylo),
+                               permutations = 2)$aov.tab["exposure", "R2"]
   R2_batch <- vegan::adonis(D ~ batch,
                             data = sample_data2(phylo),
                             permutations = 2)$aov.tab["batch", "R2"]
@@ -125,11 +131,17 @@ results_correct <- foreach(i = 1:N) %dopar% {
                                   directory = paste0(dir_output, "MMUPHin_after/", i, "/"),
                                   forest.plots = FALSE,
                                   verbose = FALSE)
+  # fit_Maaslin2 <- MMUPHin:::Maaslin2.wrapper(
+  #   feature.count = mat_otu,
+  #   data = df_metadata,
+  #   exposure = "exposure",
+  #   covariates.random = "batch",
+  #   directory = paste0(dir_output, "MMUPHin_after/", i, "/all/")
+  # )
   fit_Maaslin2 <- MMUPHin:::Maaslin2.wrapper(
     feature.count = mat_otu,
     data = df_metadata,
     exposure = "exposure",
-    covariates.random = "batch",
     directory = paste0(dir_output, "MMUPHin_after/", i, "/all/")
   )
   return(list(MMUPHin = fit_lm.meta$meta.results,
