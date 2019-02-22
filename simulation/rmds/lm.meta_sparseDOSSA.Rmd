@@ -40,10 +40,11 @@ spikeMicrobes <- 0.2
 # metadata specification
 tb_metadataType <- tibble::tibble(
   metadata_type = list(c("batch" = "factor",
-                         "exposure" = "factor"),
-                       c("batch" = "factor",
-                         "exposure" = "numeric")))
-tb_effectSize <- tidyr::crossing(batch = c(0, 1, 2, 5),
+                         "exposure" = "factor")
+                       # c("batch" = "factor",
+                       #   "exposure" = "numeric"))
+  ))
+tb_effectSize <- tidyr::crossing(batch = c(0, 2, 4, 6, 8, 10),
                                  exposure = seq(2, 10, by = 2))
 effectSize <- tibble::tibble(effectSize = 
                                (1:nrow(tb_effectSize)) %>% 
