@@ -26,15 +26,15 @@ dir.create(paste0(dir_output, "sparseDOSSA_sets/"), recursive = TRUE, showWarnin
 
 ```{r simulation parameters}
 # parallel computing
-ncores <- 20
+ncores <- 6
 # sample size
 # nBatch <- c(2, 4, 6, 8)
 nBatch <- 4
 # nSample <- c(200, 1000)
-nSample <- 1000
+nSample <- 200
 # feature size
 # nMicrobe <- c(200, 1000)
-nMicrobe <- 1000
+nMicrobe <- 200
 # spikeMicrobes <- c(0.1, 0.2, 0.5)
 spikeMicrobes <- 0.2
 # metadata specification
@@ -71,8 +71,7 @@ tb_simSetup <- tidyr::crossing(
 ```{r simulate metadata}
 set.seed(1)
 exposure <- function(is_factor, n) { # helper funciton for simulating exposure metadata
-  if(is_factor) return(rbinom(n = n, size = 1, prob = 0.5) %>% 
-                                   as.factor())
+  if(is_factor) return(rbinom(n = n, size = 1, prob = 0.5))
   else return(runif(n = n, min = -1, max = 1))
 }
 tb_sim <- tb_simSetup %>% 
@@ -81,12 +80,13 @@ tb_sim <- tb_simSetup %>%
     data.frame(batch = sample.int(nBatch, size = nSample, replace = TRUE) %>%
                  as.factor(),
                exposure = exposure(is_factor = metadata_type[[1]]["exposure"] == "factor",
-                                   n = nSample),
+                                   n = nSample) %>% as.numeric(),
                row.names = paste0("Sample", 1:nSample))),
     spikein.mt = 
         create_effectSize(effectSize = effectSize[[1]],
                           df_metadata = df_metadata[[1]],
-                          metadata_type = metadata_type[[1]],
+                          metadata_type = c("batch" = "factor",
+                                            "exposure" = "numeric"),
                           fDummyData = fDummyData,
                           fDummyDirection = fDummyDirection) %>% 
         create_spikein.mt(number_features = nMicrobe,
@@ -115,7 +115,8 @@ l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
     number_samples = i_simSetup$nSample,
     UserMetadata = 
       create_metadataMatrix(df_metadata = i_simSetup$df_metadata[[1]],
-                            metadata_type = i_simSetup$metadata_type[[1]],
+                            metadata_type = c("batch" = "factor",
+                                              "exposure" = "numeric"),
                             fDummyData = fDummyData,
                             fDummyDirection = fDummyDirection),
     spikein.mt = i_simSetup$spikein.mt[[1]] %>% 
