@@ -18,6 +18,41 @@ create_spikein.mt <- function(number_features,
   return(Reduce("rbind", l_spikein.mt))
 }
 
+# this is to make exposure confounded with batch
+create_spikein.mt_lm.meta <- function(number_features,
+                                      percent_spiked,
+                                      effectSize,
+                                      seed) {
+  set.seed(seed)
+  nFeatureSpiked <- floor(number_features * percent_spiked)
+  if(nFeatureSpiked == 0)
+    stop("No features are spiked in with current configuration!")
+  effect_batch <- effectSize[stringr::str_detect(names(effectSize), "batch")]
+  effect_exposure <- effectSize[stringr::str_detect(names(effectSize), "exposure")]
+  if(!setequal(names(effectSize), c(names(effect_batch),
+                                    names(effect_exposure))))
+    stop("Something's wrong!")
+  l_spikein.mt_batch <- lapply(1:length(effect_batch), function(i) {
+    features_spike <- sample.int(n = number_features, size = nFeatureSpiked)
+    data.frame(feature = features_spike,
+               metadata = i,
+               strength = effectSize[i],
+               stringsAsFactors = FALSE, row.names = NULL)
+  })
+  features_batch <- l_spikein.mt_batch %>%
+    purrr::map("feature") %>%
+    unlist() %>%
+    unique()
+  l_spikein.mt_exposure <- lapply(1:length(effect_exposure), function(i) {
+    features_spike <- sample(x = features_batch, size = nFeatureSpiked, replace = FALSE)
+    data.frame(feature = features_spike,
+               metadata = i,
+               strength = effectSize[i],
+               stringsAsFactors = FALSE, row.names = NULL)
+  })
+  return(Reduce("rbind", c(l_spikein.mt_batch, l_spikein.mt_exposure)))
+}
+
 extract_sparseDOSSA <- function(sparseDOSSA_fit) {
 
   # metadata + feature data

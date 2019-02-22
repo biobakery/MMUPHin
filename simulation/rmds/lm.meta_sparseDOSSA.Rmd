@@ -26,7 +26,7 @@ dir.create(paste0(dir_output, "sparseDOSSA_sets/"), recursive = TRUE, showWarnin
 
 ```{r simulation parameters}
 # parallel computing
-ncores <- 6
+ncores <- 20
 # sample size
 # nBatch <- c(2, 4, 6, 8)
 nBatch <- 4
@@ -89,10 +89,10 @@ tb_sim <- tb_simSetup %>%
                                             "exposure" = "numeric"),
                           fDummyData = fDummyData,
                           fDummyDirection = fDummyDirection) %>% 
-        create_spikein.mt(number_features = nMicrobe,
-                        percent_spiked = spikeMicrobes,
-                        effectSize = .,
-                        seed = `1:n()`) %>%
+      create_spikein.mt_lm.meta(number_features = nMicrobe,
+                                percent_spiked = spikeMicrobes,
+                                effectSize = .,
+                                seed = `1:n()`) %>%
       list()) %>% 
   dplyr::ungroup()
 
