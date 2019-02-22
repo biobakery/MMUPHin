@@ -36,7 +36,7 @@ create_spikein.mt_lm.meta <- function(number_features,
     features_spike <- sample.int(n = number_features, size = nFeatureSpiked)
     data.frame(feature = features_spike,
                metadata = i,
-               strength = effectSize[i],
+               strength = effect_batch[i],
                stringsAsFactors = FALSE, row.names = NULL)
   })
   features_batch <- l_spikein.mt_batch %>%
@@ -46,8 +46,8 @@ create_spikein.mt_lm.meta <- function(number_features,
   l_spikein.mt_exposure <- lapply(1:length(effect_exposure), function(i) {
     features_spike <- sample(x = features_batch, size = nFeatureSpiked, replace = FALSE)
     data.frame(feature = features_spike,
-               metadata = i,
-               strength = effectSize[i],
+               metadata = i + length(l_spikein.mt_batch),
+               strength = effect_exposure[i],
                stringsAsFactors = FALSE, row.names = NULL)
   })
   return(Reduce("rbind", c(l_spikein.mt_batch, l_spikein.mt_exposure)))
