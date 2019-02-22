@@ -50,7 +50,12 @@ create_spikein.mt_lm.meta <- function(number_features,
                strength = effect_exposure[i],
                stringsAsFactors = FALSE, row.names = NULL)
   })
-  return(Reduce("rbind", c(l_spikein.mt_batch, l_spikein.mt_exposure)))
+  features_exposure <- l_spikein.mt_exposure %>%
+    purrr::map("feature") %>%
+    unlist() %>%
+    unique()
+  return(Reduce("rbind", c(l_spikein.mt_batch, l_spikein.mt_exposure)) %>%
+           dplyr::filter(feature %in% features_exposure))
 }
 
 extract_sparseDOSSA <- function(sparseDOSSA_fit) {
