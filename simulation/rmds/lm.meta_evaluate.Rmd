@@ -57,14 +57,11 @@ results <- foreach(i = 1:N) %dopar% {
                             data = sample_data2(phylo),
                             permutations = 2)$aov.tab["batch", "R2"]
   
-  mat_otu <- (mat_otu + 0.5) %>% 
-    apply(2, MMUPHin:::tss) %>% 
-    log
   fit_lm.meta <- MMUPHin::lm.meta(feature.count = mat_otu,
                                   batch = "batch",
                                   exposure = "exposure",
                                   data = df_metadata,
-                                  normalization = "NONE",
+                                  normalization = "TSS",
                                   transform = "NONE",
                                   rma_method = "FE",
                                   directory = paste0(dir_output, "MMUPHin_before/", i, "/"),
@@ -128,14 +125,11 @@ results_correct <- foreach(i = 1:N) %dopar% {
                             data = sample_data2(phylo),
                             permutations = 2)$aov.tab["batch", "R2"]
   
-  mat_otu <- (mat_otu + 0.5) %>% 
-    apply(2, MMUPHin:::tss) %>% 
-    log
   fit_lm.meta <- MMUPHin::lm.meta(feature.count = mat_otu,
                                   batch = "batch",
                                   exposure = "exposure",
                                   data = df_metadata,
-                                  normalization = "NONE",
+                                  normalization = "TSS",
                                   transform = "NONE",
                                   rma_method = "FE",
                                   directory = paste0(dir_output, "MMUPHin_after/", i, "/"),
