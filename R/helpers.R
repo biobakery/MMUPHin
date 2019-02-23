@@ -90,12 +90,12 @@ Maaslin2.wrapper <- function(feature.count,
                                   covariates.rename,
                                   covariates.random.rename))
   # subset so that don't run into issues with all-zero features
-  ind.feature <- apply(feature.count.rename > 0, 1, any)
+  # ind.feature <- apply(feature.count.rename > 0, 1, any)
 
   # Run Maaslin2
   log.Maaslin <- suppressWarnings(
     capture.output(
-      res.rename <- Maaslin2::Maaslin2(input_data = feature.count.rename[ind.feature, , drop = FALSE],
+      res.rename <- Maaslin2::Maaslin2(input_data = feature.count.rename,
                                        input_metadata = data.rename,
                                        output = directory,
                                        min_abundance = 0,
