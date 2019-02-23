@@ -91,6 +91,7 @@ Maaslin2.wrapper <- function(feature.count,
                                   covariates.random.rename))
   # subset so that don't run into issues with all-zero features
   # ind.feature <- apply(feature.count.rename > 0, 1, any)
+  min_abundance <- min(feature.count.rename) - 1
 
   # Run Maaslin2
   log.Maaslin <- suppressWarnings(
@@ -98,7 +99,7 @@ Maaslin2.wrapper <- function(feature.count,
       res.rename <- Maaslin2::Maaslin2(input_data = feature.count.rename,
                                        input_metadata = data.rename,
                                        output = directory,
-                                       min_abundance = 0,
+                                       min_abundance = min_abundance,
                                        min_prevalence = 0,
                                        normalization = normalization,
                                        transform = transform,
