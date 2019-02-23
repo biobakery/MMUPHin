@@ -78,7 +78,7 @@ results <- foreach(i = 1:N) %dopar% {
     feature.count = mat_otu,
     data = df_metadata,
     exposure = "exposure",
-    normalization = "NONE",
+    normalization = "TSS",
     transform = "NONE",
     directory = paste0(dir_output, "MMUPHin_before/", i, "/all/")
   )
@@ -146,7 +146,7 @@ results_correct <- foreach(i = 1:N) %dopar% {
     feature.count = mat_otu,
     data = df_metadata,
     exposure = "exposure",
-    normalization = "NONE",
+    normalization = "TSS",
     transform = "NONE",
     directory = paste0(dir_output, "MMUPHin_after/", i, "/all/")
   )
