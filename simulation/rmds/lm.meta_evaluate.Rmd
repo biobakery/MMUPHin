@@ -57,12 +57,15 @@ results <- foreach(i = 1:N) %dopar% {
                             data = sample_data2(phylo),
                             permutations = 2)$aov.tab["batch", "R2"]
   
+  mat_otu <- (mat_otu + 0.5) %>% 
+    apply(2, MMUPHin:::tss) %>% 
+    log
   fit_lm.meta <- MMUPHin::lm.meta(feature.count = mat_otu,
                                   batch = "batch",
                                   exposure = "exposure",
                                   data = df_metadata,
-                                  normalization = "TSS",
-                                  transform = "AST",
+                                  normalization = "NONE",
+                                  transform = "NONE",
                                   rma_method = "FE",
                                   directory = paste0(dir_output, "MMUPHin_before/", i, "/"),
                                   forest.plots = FALSE,
@@ -78,6 +81,8 @@ results <- foreach(i = 1:N) %dopar% {
     feature.count = mat_otu,
     data = df_metadata,
     exposure = "exposure",
+    normalization = "NONE",
+    transform = "NONE",
     directory = paste0(dir_output, "MMUPHin_before/", i, "/all/")
   )
   return(list(MMUPHin = fit_lm.meta$meta.results,
@@ -123,12 +128,15 @@ results_correct <- foreach(i = 1:N) %dopar% {
                             data = sample_data2(phylo),
                             permutations = 2)$aov.tab["batch", "R2"]
   
+  mat_otu <- (mat_otu + 0.5) %>% 
+    apply(2, MMUPHin:::tss) %>% 
+    log
   fit_lm.meta <- MMUPHin::lm.meta(feature.count = mat_otu,
                                   batch = "batch",
                                   exposure = "exposure",
                                   data = df_metadata,
-                                  normalization = "TSS",
-                                  transform = "AST",
+                                  normalization = "NONE",
+                                  transform = "NONE",
                                   rma_method = "FE",
                                   directory = paste0(dir_output, "MMUPHin_after/", i, "/"),
                                   forest.plots = FALSE,
@@ -144,6 +152,8 @@ results_correct <- foreach(i = 1:N) %dopar% {
     feature.count = mat_otu,
     data = df_metadata,
     exposure = "exposure",
+    normalization = "NONE",
+    transform = "NONE",
     directory = paste0(dir_output, "MMUPHin_after/", i, "/all/")
   )
   return(list(MMUPHin = fit_lm.meta$meta.results,
