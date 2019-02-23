@@ -29,12 +29,12 @@ dir.create(paste0(dir_output, "sparseDOSSA_sets/"), recursive = TRUE, showWarnin
 ncores <- 20
 # sample size
 # nBatch <- c(2, 4, 6, 8)
-nBatch <- 4
+nBatch <- c(4, 8)
 # nSample <- c(200, 1000)
-nSample <- 200
+nSample <- 1000
 # feature size
 # nMicrobe <- c(200, 1000)
-nMicrobe <- 200
+nMicrobe <- 1000
 # spikeMicrobes <- c(0.1, 0.2, 0.5)
 spikeMicrobes <- 0.2
 # metadata specification
