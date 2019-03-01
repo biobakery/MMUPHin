@@ -128,7 +128,7 @@ l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
       dplyr::ungroup(),
     noZeroInflate = i_simSetup$noZeroInflate,
     percent_spiked = i_simSetup$spikeMicrobes,
-    scalePercentZeros = 0,
+    noZeroInflate = TRUE,
     seed = i_simSetup$`1:n()`,
     minLevelPercent = 0,
     write_table = FALSE,
