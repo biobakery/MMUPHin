@@ -44,8 +44,8 @@ tb_metadataType <- tibble::tibble(
                        # c("batch" = "factor",
                        #   "exposure" = "numeric"))
   ))
-tb_effectSize <- tidyr::crossing(batch = c(0, 2, 4, 6, 8, 10),
-                                 exposure = seq(2, 10, by = 2))
+tb_effectSize <- tidyr::crossing(batch = c(0, 1, 2, 3, 4, 5),
+                                 exposure = seq(1, 2, 3, 4, 5))
 effectSize <- tibble::tibble(effectSize = 
                                (1:nrow(tb_effectSize)) %>% 
                                purrr::map(function(i) unlist(tb_effectSize[i, ])))
@@ -55,7 +55,8 @@ rep <- 1:10
 fDummyData <- TRUE
 fDummyDirection <- TRUE
 # additional setup
-noZeroInflate <- TRUE
+noZeroInflate <- FALSE
+scalePercentZeros <- c(0.5)
 
 tb_simSetup <- tidyr::crossing(
   rep,
@@ -64,6 +65,7 @@ tb_simSetup <- tidyr::crossing(
   nMicrobe,
   spikeMicrobes,
   noZeroInflate,
+  scalePercentZeros,
   tb_metadataType,
   effectSize
 )
@@ -127,6 +129,7 @@ l_sparseDOSSA <- foreach(i = 1:N) %dopar% {
       dplyr::slice(1) %>%  
       dplyr::ungroup(),
     noZeroInflate = i_simSetup$noZeroInflate,
+    scalePercentZeros = i_simSetup$scalePercentZeros,
     percent_spiked = i_simSetup$spikeMicrobes,
     seed = i_simSetup$`1:n()`,
     minLevelPercent = 0,
