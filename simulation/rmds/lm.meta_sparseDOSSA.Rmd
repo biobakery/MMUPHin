@@ -29,7 +29,7 @@ dir.create(paste0(dir_output, "sparseDOSSA_sets/"), recursive = TRUE, showWarnin
 ncores <- 20
 # sample size
 # nBatch <- c(2, 4, 6, 8)
-nBatch <- c(2)
+nBatch <- c(4)
 # nSample <- c(200, 1000)
 nSample <- 200
 # feature size
@@ -56,7 +56,7 @@ fDummyData <- TRUE
 fDummyDirection <- TRUE
 # additional setup
 noZeroInflate <- FALSE
-scalePercentZeros <- c(0.1, 0.2, 0.3)
+scalePercentZeros <- c(0.1, 0.5, 1)
 
 tb_simSetup <- tidyr::crossing(
   rep,
