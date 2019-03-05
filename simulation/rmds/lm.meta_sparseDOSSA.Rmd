@@ -31,10 +31,10 @@ ncores <- 20
 # nBatch <- c(2, 4, 6, 8)
 nBatch <- c(2)
 # nSample <- c(200, 1000)
-nSample <- 1000
+nSample <- 200
 # feature size
 # nMicrobe <- c(200, 1000)
-nMicrobe <- 1000
+nMicrobe <- 200
 # spikeMicrobes <- c(0.1, 0.2, 0.5)
 spikeMicrobes <- 0.2
 # metadata specification
