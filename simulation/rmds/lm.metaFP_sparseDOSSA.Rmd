@@ -84,7 +84,9 @@ tb_sim <- tb_simSetup %>%
     data.frame(batch = sample.int(nBatch, size = nSample, replace = TRUE) %>%
                  as.factor(),
                row.names = paste0("Sample", 1:nSample)) %>% 
-      dplyr::mutate(exposure = exposure(batch, disparity) %>% as.numeric())),
+      tibble::rownames_to_column("Sample") %>% 
+      dplyr::mutate(exposure = exposure(batch, disparity) %>% as.numeric()) %>% 
+      tibble::column_to_rownames("Sample")),
     spikein.mt = 
         create_effectSize(effectSize = effectSize[[1]],
                           df_metadata = df_metadata[[1]][, "batch", drop = FALSE],
