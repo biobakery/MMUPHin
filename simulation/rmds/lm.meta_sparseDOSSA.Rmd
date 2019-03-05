@@ -45,7 +45,7 @@ tb_metadataType <- tibble::tibble(
                        #   "exposure" = "numeric"))
   ))
 tb_effectSize <- tidyr::crossing(batch = c(0, 1, 2, 3, 4, 5),
-                                 exposure = seq(1, 2, 3, 4, 5))
+                                 exposure = c(1, 2, 3, 4, 5))
 effectSize <- tibble::tibble(effectSize = 
                                (1:nrow(tb_effectSize)) %>% 
                                purrr::map(function(i) unlist(tb_effectSize[i, ])))
