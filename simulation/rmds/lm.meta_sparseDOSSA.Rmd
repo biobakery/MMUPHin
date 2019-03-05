@@ -44,8 +44,8 @@ tb_metadataType <- tibble::tibble(
                        # c("batch" = "factor",
                        #   "exposure" = "numeric"))
   ))
-tb_effectSize <- tidyr::crossing(batch = c(0, 1, 2, 3, 4, 5),
-                                 exposure = c(1, 2, 3, 4, 5))
+tb_effectSize <- tidyr::crossing(batch = c(0, 2, 4, 6, 8, 10),
+                                 exposure = c(2, 4, 6, 8, 10))
 effectSize <- tibble::tibble(effectSize = 
                                (1:nrow(tb_effectSize)) %>% 
                                purrr::map(function(i) unlist(tb_effectSize[i, ])))
@@ -56,7 +56,7 @@ fDummyData <- TRUE
 fDummyDirection <- TRUE
 # additional setup
 noZeroInflate <- FALSE
-scalePercentZeros <- c(0.5)
+scalePercentZeros <- c(0.1, 0.5)
 
 tb_simSetup <- tidyr::crossing(
   rep,
