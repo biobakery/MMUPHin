@@ -31,7 +31,7 @@ ncores <- 20
 # nBatch <- c(2, 4, 6, 8)
 nBatch <- c(2)
 # nSample <- c(200, 1000)
-nSample <- c(50, 200)
+nSample <- c(50, 200, 1000)
 # feature size
 # nMicrobe <- c(200, 1000)
 nMicrobe <- 200
