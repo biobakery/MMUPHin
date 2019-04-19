@@ -1,3 +1,91 @@
+## Utilities for normalization/transformation
+## These are modified from Maaslin2
+
+#' Normalize feature abundance table
+#'
+#' @param features feature*sample abundance table.
+#' @param normalization normalization method.
+#' @param pseudo.count pseudo count to be added to abundances before normalization.
+#'
+#' @return normalized feature*sample abundance table.
+normalizeFeatures <- function(features,
+                              normalization = "NONE",
+                              pseudo.count = 0) {
+  features <- features + pseudo.count
+  if (normalization=='TSS')
+  {
+    features<-apply(features, 2, tss)
+  }
+  if (normalization=='NONE')
+  {
+    features<-features
+  }
+  return(features)
+}
+
+#' Transform feature abunadnce table
+#'
+#' @param features feature*sample abundance table.
+#' @param transform transformation method.
+#' @param pseudo.count pseudo count to be added to abundances before normalization.
+#' @return transformed feature*sample abundance table.
+transformFeatures <- function(features,
+                              transform = "NONE",
+                              pseudo.count = 0) {
+  features <- features + pseudo.count
+  if (transform =='LOG')   {
+    features <- apply(features, 2, LOG)
+  }
+  if (transform =='AST')   {
+    features <- apply(features, 2, AST)
+  }
+  if (transform =='NONE')   {
+    features <- features
+  }
+  return(features)
+}
+
+#' TSS normalization
+#'
+#' @param x vector of abundance to be normalized.
+#'
+#' @return normalized vector of abundance.
+tss <- function(x) {
+  if(all(x == 0)) return(x)
+  return(x / sum(x))
+}
+
+#' AST transformation
+#'
+#' @param x vector of abundance to be transformed.
+#'
+#' @return transformed vector of abundance.
+AST<-function(x){
+  return(sign(x)*asin(sqrt(abs(x))))
+}
+
+#' LOG transformation. This differs from Maaslin2
+#'
+#' @param x vector of abundance to be transformed.
+#'
+#' @return transformed vector of abundance.
+LOG<-function(x){
+  return(log2(x))
+}
+
+## Utlities for empirical Bayes estimation for batch.adj
+## These are modified from sva
+
+#' Centralize (by design matrix) and standardize (by pooled variance across all batches)
+#' feature abundances for empirical Bayes fit
+#' @param y vector of non-zero abundance of a single feature (if zero-inflated is true).
+#' @param i.design design matrix for the feature; samples with zeros are taken out
+#' (if zero-inflated is true).
+#' @param n.batch number of batches in the data.
+#'
+#' @return a list with component: y.stand for vector of centralized and standardized feature
+#' abundance, and stand.mean/varpooled for the location and scale factor (these are used
+#' later to back transform the batch-shrinked feature abundance).
 standardize.feature <- function(y,
                                 i.design,
                                 n.batch) {
@@ -23,6 +111,7 @@ aprior <- function(gamma.hat, na.rm = FALSE) {
   s2 <- var(gamma.hat, na.rm = na.rm)
   (2*s2 + m^2) / s2
 }
+
 bprior <- function(gamma.hat, na.rm = FALSE){
   m <- mean(gamma.hat, na.rm = na.rm)
   s2 <- var(gamma.hat, na.rm = na.rm)
@@ -66,38 +155,51 @@ postvar <- function(sum2,n,a,b){
   (.5*sum2 + b) / (n/2 + a - 1)
 }
 
-Maaslin2.wrapper <- function(feature.count,
+#' Wrapper function for Maaslin2
+#'
+#' @param feature.abd feature*sample matrix of feature abundance.
+#' @param data data frame of metadata.
+#' @param exposure name of exposure variable.
+#' @param covariates name of covariates.
+#' @param covariates.random name of random covariates.
+#' @param output directory for Maaslin2.
+#' @param normalization normalization parameter for Maaslin2.
+#' @param transform transformation parameter for Maaslin2.
+#' @param analysis_method analysis method parameter for Maaslin2.
+#'
+#' @return a data frame recording per-feature coefficients, p-values, etc. from running Maaslin2.
+Maaslin2.wrapper <- function(feature.abd,
                              data,
                              exposure,
                              covariates = NULL,
                              covariates.random = NULL,
-                             directory = "./",
+                             output = "./",
                              normalization = "TSS",
                              transform = "AST",
                              analysis_method = "LM") {
   # Create temporary feature/sample/covariate names to avoid
   # Weird scenarios
-  feature.count.rename <- feature.count
+  feature.abd.rename <- feature.abd
   data.rename <- data[, c(exposure, covariates, covariates.random), drop = FALSE]
-  features.rename <- rename.Maaslin(rownames(feature.count.rename), prefix = "T")
-  samples.rename <- rename.Maaslin(colnames(feature.count.rename), prefix = "S")
+  features.rename <- rename.Maaslin(rownames(feature.abd.rename), prefix = "T")
+  samples.rename <- rename.Maaslin(colnames(feature.abd.rename), prefix = "S")
   exposure.rename <- rename.Maaslin(exposure, prefix = "E")
   covariates.rename <- rename.Maaslin(covariates, prefix = "X")
   covariates.random.rename <- rename.Maaslin(covariates.random, prefix = "RX")
-  dimnames(feature.count.rename) <- list(features.rename, samples.rename)
+  dimnames(feature.abd.rename) <- list(features.rename, samples.rename)
   dimnames(data.rename) <- list(samples.rename,
                                 c(exposure.rename,
                                   covariates.rename,
                                   covariates.random.rename))
   # subset so that don't run into issues with all-zero features
-  ind.feature <- apply(feature.count.rename > 0, 1, any)
+  ind.feature <- apply(feature.abd.rename > 0, 1, any)
 
   # Run Maaslin2
   log.Maaslin <- suppressWarnings(
     capture.output(
-      res.rename <- Maaslin2::Maaslin2(input_data = feature.count.rename,
+      res.rename <- Maaslin2::Maaslin2(input_data = feature.abd.rename,
                                        input_metadata = data.rename,
-                                       output = directory,
+                                       output = output,
                                        min_abundance = 0,
                                        min_prevalence = 0,
                                        normalization = normalization,
@@ -111,7 +213,7 @@ Maaslin2.wrapper <- function(feature.count,
                                        plot_scatter = FALSE)$results
     ))
   # cat(paste(log.Maaslin, collapse = "\n"),
-  #     file = file.path(directory, "Maaslin2_warnings.log"))
+  #     file = file.path(output, "Maaslin2_warnings.log"))
 
   # Read Maaslin results
   lvl.exposure <- NULL
@@ -137,6 +239,14 @@ Maaslin2.wrapper <- function(feature.count,
   return(res)
 }
 
+#' Utility for temporarily renaming samples/features for Maaslin2 run to bypass the rare
+#' cases where unconventional names can cause exceptions
+#'
+#' @param old.names vector of names.
+#' @param prefix prefix for the replacement (new numbered names).
+#'
+#' @return vector of new names - numbered vector with same length as old names and with the specified
+#' prefix.
 rename.Maaslin <- function(old.names, prefix) {
   if(is.null(old.names) | length(old.names) == 0) return(NULL)
   new.names <- paste0(prefix, seq_along(old.names))
@@ -144,6 +254,14 @@ rename.Maaslin <- function(old.names, prefix) {
   return(new.names)
 }
 
+#' Utility for generating empty Maaslin2 results table
+#'
+#' @param features name of the features fitted to Maaslin2.
+#' @param exposure the exposure variable.
+#' @param lvl.exposure levels of the exposure variable, if a factor.
+#'
+#' @return a table for each feature-exposure value pai; reference level of exposure, if a factor,
+#' is taken out because is absorbed into the intercept term in Maaslin2 regression.
 create.table.Maaslin <- function(features, exposure, lvl.exposure) {
   if(is.null(lvl.exposure))
     values.exposure <- exposure
@@ -154,8 +272,17 @@ create.table.Maaslin <- function(features, exposure, lvl.exposure) {
   return(table.Maaslin)
 }
 
+#' Wrapper for fitting fixed/random effects meta-analysis model using metafor
+#'
+#' @param l.Maaslin.fit list of Maaslin2 result data frames, outputted from Maaslin2.wrapper.
+#' @param method meta-analysis model to run, options provided in metafor::rma.
+#' @param forest.plots should forest plots be generated (for the significant associations).
+#' @param output directory for the output forest plots.
+#'
+#' @return a data frame recording per-feature meta-analysis association results.
+#' (coefficients, p-values, etc.)
 rma.wrapper <- function(l.Maaslin.fit, method = "REML",
-                        forest.plots = TRUE, directory) {
+                        forest.plots = TRUE, output) {
   lvl.batch <- names(l.Maaslin.fit)
   n.batch <- length(lvl.batch)
   exposure <- unique(l.Maaslin.fit[[1]]$metadata)
@@ -181,7 +308,7 @@ rma.wrapper <- function(l.Maaslin.fit, method = "REML",
     i.result$feature <- features
     i.result$exposure <- value.exposure
     rownames(i.result) <- i.result$feature
-    if(forest.plots) pdf(paste0(directory, exposure, "_", value.exposure, ".pdf"),
+    if(forest.plots) pdf(paste0(output, exposure, "_", value.exposure, ".pdf"),
                          width = 6,
                          height = 4 + ifelse(n.batch > 4,
                                              (n.batch - 4) * 0.5,
@@ -266,7 +393,19 @@ rma.wrapper <- function(l.Maaslin.fit, method = "REML",
   return(results)
 }
 
-rma.mod.wrapper <- function(l.Maaslin.fit, data.moderator,
+## This interface could be opened up in future versions?
+#' Wrapper for fitting rma models with a moderator parameter. This allows to
+#' analyze an interaction model with meta-analysis effects
+#'
+#' @param l.Maaslin.fit list of Maaslin2 result data frames, outputted from Maaslin2.wrapper.
+#' @param data.moderator data frame recording the moderator variables. Each row corresponds to
+#' a single study, and should have the same number of rows as l.Maaslin.fit.
+#' @param method meta-analysis model to run, options provided in metafor::rma.
+#'
+#' @return a data frame recording per-feature/moderator value meta-analysis association results.
+#' (coefficients, p-values, etc.)
+rma.mod.wrapper <- function(l.Maaslin.fit,
+                            data.moderator,
                             method = "REML"){
   lvl.batch <- names(l.Maaslin.fit)
   if(!all(lvl.batch %in% rownames(data.moderator)))
@@ -336,6 +475,14 @@ rma.mod.wrapper <- function(l.Maaslin.fit, data.moderator,
   results$R2[is.na(results$R2) & !is.na(results$tau2)] <- 0
   return(results)
 }
+
+#' Utility for shorter names
+#' Useful when plotting per-feature figures where feature names could be cutoff
+#'
+#' @param x vector of names
+#' @param cutoff number of maximum string length before start cutting off the middle
+#'
+#' @return vector of new names with ... replacing the middle part if name is longer than cutoff
 shorten.name <- function(x, cutoff) {
   x_sub <- x
   stringr::str_sub(x_sub[stringr::str_length(x) > cutoff],
@@ -343,38 +490,3 @@ shorten.name <- function(x, cutoff) {
                    end = -(round(cutoff/2) + 1)) <- "..."
   return(x_sub)
 }
-# These functions are imported from Maaslin2
-normalizeFeatures <- function(features, normalization) {
-  if (normalization=='TSS')
-  {
-    features<-apply(features, 2, tss)
-  }
-  if (normalization=='NONE')
-  {
-    features<-features
-  }
-  return(features)
-}
-transformFeatures <- function(features, transformation) {
-  if (transformation =='LOG')   {
-    features <- apply(features, 2, LOG)
-  }
-  if (transformation =='AST')   {
-    features <- apply(features, 2, AST)
-  }
-  if (transformation =='NONE')   {
-    features <- features
-  }
-  return(features)
-}
-tss <- function(x) {
-  if(all(x == 0)) return(x)
-  return(x / sum(x))
-}
-AST<-function(x){
-  return(sign(x)*asin(sqrt(abs(x))))
-}
-LOG<-function(x){
-  return(log(x+1))
-}
-
