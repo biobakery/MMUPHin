@@ -1,39 +1,35 @@
-
-#' Zero-inflated Empirical Bayes Adjustment of Batch Effect in Feature Abundance Data
+#' Zero-inflated empirical Bayes adjustment of batch effect in compositional feature
+#' abundance data
 #'
-#' @param feature.count Feature x sample matrix of feature abundance (counts)
-#' @param batch Name of batch variable
-#' @param covariates Character variables for additional covariates for adjustment
-#' in the batch correction model
-#' @param data Data frame for metadata.
-#' @param zero.inflation Flag for whether or not a zero-inflated model should be run.
+#' @param feature.abd feature*sample matrix of feature abundance (counts preferred).
+#' @param batch name of the batch variable.
+#' @param covariates name(s) of additional covariates to adjust for
+#' in the batch correction model.
+#' @param data data frame of metadata, must contain batch and covariates (if present).
+#' @param zero.inflation TRUE/FALSE for whether or not a zero-inflated model should be run
 #' Default to TRUE (zero-inflated model). If set to FALSE then vanilla ComBat
 #' (with parametric adjustment) will be performed.
-#' @param pseudo.count Pseudo count to add to the count table before log-transformation. Default
-#' to 0.5.
-#' @param diagnostics Flag for whether or not diagnostic figures should be generated.
-#' Deafault to TRUE.
-#' @param verbose Flag for whether or not verbose modelling information should be printed.
-#' Default to yes.
+#' @param pseudo.count pseudo count to add to the count table before log-transformation. Default
+#' to 0.5. This should be changed for relative abundance (will automatically set to half of minimal
+#' non-zero value if not specified).
+#' @param diagnostics should diagnostic plots be generated? Deafault to FALSE.
+#' @param verbose should verbose modelling information should be printed? Default to TRUE.
 #'
-#' @return A feature x sample matrix of adjusted feature abundance.
+#' @return feature x sample matrix of adjusted feature abundance.
 #' @export
-#'
-#' @examples
-adjust.batch <- function(feature.count,
+adjust.batch <- function(feature.abd,
                          batch,
                          covariates = NULL,
                          data,
                          zero.inflation = TRUE,
                          pseudo.count = 0.5,
-                         diagnostics = TRUE,
+                         diagnostics = FALSE,
                          verbose = TRUE) {
-
-  ## Ensure data formatts are as expected
-  feature.count <- as.matrix(feature.count)
-  if(any(feature.count < 0, na.rm = TRUE))
+  # Ensure data formats are as expected
+  feature.abd <- as.matrix(feature.abd)
+  if(any(feature.abd < 0, na.rm = TRUE))
     stop("Found negative values in the feature table!")
-  if(any(is.na(feature.count)))
+  if(any(is.na(feature.abd)))
     stop("Found missing values in the feature table!")
   data <- as.data.frame(data)
   if(!all(c(batch, covariates) %in% names(data)))
@@ -42,28 +38,28 @@ adjust.batch <- function(feature.count,
   batch <- as.factor(batch)
   if(any(is.na(batch))) stop("Found missing values in the batch variable!")
 
-  ## Data dimensions need to agree with each other
-  if(ncol(feature.count) != nrow(data))
+  # Data dimensions need to agree with each other
+  if(ncol(feature.abd) != nrow(data))
     stop("Dimensions of feature table and metadata table do not agree!")
 
-  ## Check that sample names agree between the feature and metadata table
-  ## And assign row and column names if emppty
-  ## Shouldn't happen if the data is imported through interface
-  if(is.null(colnames(feature.count))) colnames(feature.count) <-
+  # Check that sample names agree between the feature and metadata table
+  # And assign row and column names if emppty
+  # Shouldn't happen if the data is imported through interface
+  if(is.null(colnames(feature.abd))) colnames(feature.abd) <-
     paste0("Sample",
-           1:ncol(feature.count))
-  if(is.null(rownames(feature.count))) rownames(feature.count) <-
+           1:ncol(feature.abd))
+  if(is.null(rownames(feature.abd))) rownames(feature.abd) <-
     paste0("Feature",
-           1:nrow(feature.count))
+           1:nrow(feature.abd))
   if(is.null(rownames(data))) rownames(data) <-
     paste0("Sample",
-           1:ncol(feature.count))
-  if(any(colnames(feature.count) != rownames(data)))
-    stop("Sample names in feature.count and data don't agree!")
+           1:ncol(feature.abd))
+  if(any(colnames(feature.abd) != rownames(data)))
+    stop("Sample names in feature.abd and data don't agree!")
 
-  ## If specified, construct covariate adjustment table
+  # If specified, construct covariate adjustment table
   mod <- NULL
-  ind.sample <- rep(TRUE, ncol(feature.count))
+  ind.sample <- rep(TRUE, ncol(feature.abd))
   if(!is.null(covariates)) {
     mod <- model.matrix(~.,
                         model.frame(~., data[, covariates, drop = FALSE], na.action = na.pass))
@@ -71,33 +67,41 @@ adjust.batch <- function(feature.count,
     ind.sample <- !apply(is.na(mod), 1, any)
   }
 
-  ## Construct batch adjustment model
+  # Construct batch adjustment model
   n.batch <- length(unique(batch[ind.sample]))
   if(n.batch < 2) stop("Batch variable has only one level!")
   if(verbose) message("Found ", n.batch, " batches")
   batchmod <- model.matrix(~ -1 + batch)
 
-  ## Construct design matrix
+  # Construct design matrix
   design <- cbind(batchmod, mod)
-  ## Check for intercept, or covariates not meaningful after missing value removal, remove if present
+  # Check for intercept, or covariates not meaningful after missing value removal, remove if present
   check <- apply(design[ind.sample, ], 2, function(x) all(x == 1) | all(x == 0))
   design <- design[, !check]
   batchmod <- design[, 1:n.batch]
-  ## Number of covariates or covariate levels
+  # Number of covariates or covariate levels
   if(verbose) message("Adjusting for ", ncol(design) - n.batch, " covariate(s) or covariate level(s).")
 
-  ## Transform data for ComBat fit
-  lib.size <- apply(feature.count, 2, sum)
-  if(all(lib.size <= 1)) {
-    warning("Feature table appears to be on the relative abundance scale. ",
-            "Setting pseudo.count to be min(feature.count)/2! ")
-    pseudo.count <- min(setdiff(feature.count, 0)) / 2
+  # Transform data for ComBat fit
+  read.depth <- apply(feature.abd, 2, sum)
+  if(all(read.depth <= 1)) {
+    warning("Feature table appears to be on the relative abundance scale!")
+    if(pseudo.count == 0.5) {
+      warning("pseudo.count was set to 0.5 which is only appropriate to count data,",
+              " setting pseudo.count to be min(feature.abd)/2.")
+      pseudo.count <- min(setdiff(feature.abd, 0)) / 2
+    }
+    # In this case don't renormalize the feature
+    log.data <- transformFeatures(feature.abd,
+                                  transform = "LOG",
+                                  pseudo.count = pseudo.count)
   }
-  log.data <- log(apply(feature.count + pseudo.count,
-                        2,
-                        function(x) x / sum(x)))
+  log.data <- transformFeatures(normalizeFeatures(feature.abd,
+                                                  normalization = "TSS",
+                                                  pseudo.count = pseudo.count),
+                                transform = "LOG")
 
-  ## Check if the design is confounded
+  # Check if the design is confounded
   if(qr(design[ind.sample, ])$rank < ncol(design[ind.sample, ])) {
       if(qr(design[ind.sample, -c(1:n.batch)])$rank <
          ncol(design[ind.sample, -c(1:n.batch)])) {
@@ -107,14 +111,14 @@ adjust.batch <- function(feature.count,
       }
   }
 
-  ## Identify data to adjust for
-  ind.data <- matrix(TRUE, nrow(feature.count), ncol(feature.count)) # which non-missing feature table values are zero
+  # Identify data to adjust for
+  ind.data <- matrix(TRUE, nrow(feature.abd), ncol(feature.abd)) # which non-missing feature table values are zero
   ind.data[, !ind.sample] <- FALSE
-  ind.gamma <- matrix(TRUE, nrow(feature.count), n.batch) # which feature x batch pairs are adjustable
+  ind.gamma <- matrix(TRUE, nrow(feature.abd), n.batch) # which feature x batch pairs are adjustable
   ind.mod <- rep(TRUE, ncol(design) - n.batch) # covariates are always adjusted for
   if(zero.inflation) {
-    ind.data[feature.count == 0] <- FALSE
-    for(i.feature in 1:nrow(feature.count)) {
+    ind.data[feature.abd == 0] <- FALSE
+    for(i.feature in 1:nrow(feature.abd)) {
       i.design <- design[ind.data[i.feature, ], , drop = FALSE]
       i.check.batch <- apply(i.design[, 1:n.batch, drop = FALSE] == 1, 2, any)
       i.design <- i.design[, c(i.check.batch, ind.mod), drop = FALSE]
@@ -126,12 +130,12 @@ adjust.batch <- function(feature.count,
       } else ind.gamma[i.feature, ] <- FALSE
     }
   }
-  ## Batch has to have more than one adjustable feature to make EB estimates
+  # Batch has to have more than one adjustable feature to make EB estimates
   ind.gamma[, apply(ind.gamma, 2, sum) < 2] <- FALSE # FIXME?
   ind.feature <- apply(ind.gamma, 1, any)
   if(verbose) message("(After filtering) adjusting for ", sum(ind.feature), " feature(s).")
 
-  ## Standardize data across features
+  # Standardize data across features
   if(verbose) message("Standardizing Data across features.")
   s.data <- log.data
   l.standFit <- list()
@@ -140,7 +144,7 @@ adjust.batch <- function(feature.count,
       i.design <- design[ind.data[i.feature, ],
                          c(ind.gamma[i.feature, ], ind.mod),
                          drop = FALSE] # FIXME
-      ## For debugging, this shouldn't happen
+      # For debugging, this shouldn't happen
       if(nrow(i.design) <= 1 | ncol(i.design) <= 1) stop("Something wrong happened!" ) # FIXME
       standFit <- standardize.feature(y = s.data[i.feature, ind.data[i.feature, ]],
                                       i.design = i.design,
@@ -150,7 +154,7 @@ adjust.batch <- function(feature.count,
     } else l.standFit[[i.feature]] <- NULL
   }
 
-  ## Estimate per-batch mean/variance
+  # Estimate per-batch mean/variance
   if(verbose) message("Estimating batch difference parameters and EB priors.")
   gamma.hat <-
     delta.hat <-
@@ -162,7 +166,7 @@ adjust.batch <- function(feature.count,
       i.s.data.batch <- s.data[i.feature, ind.data[i.feature, ]] *
         batchmod[ind.data[i.feature, ], ind.gamma[i.feature, ],
                  drop = FALSE] # FIXME
-      ## For debugging, this shouldn't happen
+      # For debugging, this shouldn't happen
       if(nrow(batchmod[ind.data[i.feature, ], ind.gamma[i.feature, ],
                        drop = FALSE]) <= 1 |
          ncol(batchmod[ind.data[i.feature, ], ind.gamma[i.feature, ],
@@ -185,7 +189,7 @@ adjust.batch <- function(feature.count,
      any(apply(!is.na(delta.hat), 2, sum) < 2))
     stop("One batch has only one feature with valid parameter estimate!") # FIXME
 
-  ## Shrink per-batch mean/variance
+  # Shrink per-batch mean/variance
   if(verbose) message("Performing shrinkage adjustments on batch difference parameters.")
   results <- lapply(1:n.batch, function(i.batch) {
     i.s.data <- s.data
@@ -208,7 +212,7 @@ adjust.batch <- function(feature.count,
     delta.star[, i.batch] <- results[[i.batch]]$delta.star
   }
 
-  ## Adjust the data
+  # Adjust the data
   if(verbose) message("Performing batch corrections.")
   adj.data <- s.data
   for (i.batch in 1:n.batch){
@@ -240,60 +244,20 @@ adjust.batch <- function(feature.count,
   if(any(is.na(adj.data)))
     stop("There are missing values in the adjusted data!") # FIXME
 
-  adj.data <- exp(adj.data)
-  adj.data[feature.count == 0] <- 0
-  adj.data <- apply(adj.data, 2, tss)
-  adj.feature.count <- t(t(adj.data) * lib.size)
-  dimnames(adj.feature.count) <- dimnames(feature.count)
+  adj.data <- 2^adj.data
+  adj.data[feature.abd == 0] <- 0
+  adj.data <- normalizeFeatures(adj.data, normalization = "TSS")
+  adj.feature.abd <- t(t(adj.data) * read.depth)
+  dimnames(adj.feature.abd) <- dimnames(feature.abd)
 
-  ## If required, generate diagnostic plots
-  if(diagnostics) {
-    df.plot <- data.frame(gamma.hat = as.vector(gamma.hat),
-                          gamma.star = as.vector(gamma.star))
-    plot1 <- ggplot2::ggplot(df.plot, ggplot2::aes(x = gamma.hat, y = gamma.star)) +
-      ggplot2::geom_point() +
-      ggplot2::geom_abline(intercept = 0, slope = 1) +
-      ggplot2::theme_bw() +
-      ggplot2::ggtitle("Shrinkage of batch mean parameters")
+  # If required, generate diagnostic plots
+  if(diagnostics)
+    diagnostics.adjust.batch(feature.abd = feature.abd,
+                             feature.abd.adj = feature.abd.adj,
+                             batch = batch,
+                             gamma.hat = gamma.hat,
+                             gamma.star = gamma.star)
 
-    df.ra <- as.data.frame(t(apply(feature.count, 2, function(x) x / sum(x))))
-    df.ra$Sample <- rownames(df.ra)
-    df.ra$Adjustment <- "Original"
-    df.ra.norm <- as.data.frame(t(apply(adj.feature.count, 2, function(x) x / sum(x))))
-    df.ra.norm$Sample <- rownames(df.ra.norm)
-    df.ra.norm$Adjustment <- "Adjusted"
-    df.plot <- tidyr::gather(rbind(df.ra, df.ra.norm),
-                             key = "feature",
-                             value = "relative abundance",
-                             -Sample, -Adjustment)
-    df.batch <- data.frame(batch = batch,
-                           Sample = df.ra$Sample,
-                           stringsAsFactors = FALSE)
-    df.plot <- dplyr::left_join(df.plot, df.batch, by = "Sample")
-    df.plot <- dplyr::ungroup(dplyr::mutate(dplyr::group_by(df.plot, feature),
-                                            `Overall Mean` = mean(`relative abundance`[Adjustment == "Original"])))
-    df.plot <- dplyr::ungroup(dplyr::summarise(dplyr::group_by(df.plot, Adjustment, feature, batch, `Overall Mean`),
-                                               `Batch Mean` = mean(`relative abundance`)))
-    df.plot$Adjustment <- factor(df.plot$Adjustment, levels = c("Original", "Adjusted"))
-    plot2 <- ggplot2::ggplot(df.plot, ggplot2::aes(x = `Overall Mean`,
-                                                   y = `Batch Mean`)) +
-      ggplot2::geom_point(ggplot2::aes(group = paste0(Adjustment, feature),
-                                       color = Adjustment),
-                          position = ggplot2::position_dodge(width = max(df.plot$`Overall Mean`) / 100)) +
-      ggplot2::geom_line(ggplot2::aes(group = paste0(Adjustment, feature),
-                                      color = Adjustment),
-                         position = ggplot2::position_dodge(width = max(df.plot$`Overall Mean`) / 100)) +
-      ggplot2::geom_abline(intercept = 0, slope = 1) +
-      ggplot2::scale_color_manual(values = c("Original" = "black", "Adjusted" = "red")) +
-      ggplot2::theme_bw() +
-      ggplot2::theme(legend.position=c(0, 1),
-                     legend.justification=c(0, 1),
-                     legend.direction="horizontal") +
-      ggplot2::ggtitle("Batch mean relative abundance for all features")
-    suppressWarnings(plot <- cowplot::plot_grid(plot1, plot2, nrow = 1)) # Because missing values
-    print(plot)
-  }
-
-  return(adj.feature.count)
+  return(adj.feature.abd)
 }
 
