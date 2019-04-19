@@ -1,55 +1,72 @@
 #' Main function for continuous structure discovery
 #'
-#' @param feature.count Feature x sample matrix of feature abundance
-#' @param batch Name of batch variable
-#' @param data data frame
-#' @param normalization normalization, consistent with Maaslin2
-#' @param transform transformation, consistent with Maaslin2
-#' @param var.perc.cutoff percentage variance cutoff for top PCs
-#' @param cor.cutoff correlation cutoff for constructing graph
-#' @param directory output directory for figures
-#' @param diagnostics logical. Should diagnostics be plotted?
-#' @param verbose logical. Verbose?
-#' @return A list of MMUPHin continuous score discovery object
+#' @param feature.abd feature*sample matrix of feature abundance (counts preferred if transform
+#' is specified as LOG).
+#' @param batch name of the batch variable.
+#' @param data  data frame of metadata, must contain batch.
+#' @param normalization normalization parameter.
+#' @param transform transformation parameter.
+#' @param pseudo.count pseudo count to add to the count table before log-transformation. Default
+#' to 0.5. This should be changed for relative abundance (will automatically set to half of minimal
+#' non-zero value if not specified).
+#' @param var.perc.cutoff percentage variance explained cutoff to choose the top PCs.
+#' @param cor.cutoff correlation cutoff to construct edges for the PC network.
+#' @param plot.clustered.network should the clustered PC network be visualized? Deafault to TRUE.
+#' @param plot.size.cutoff cluster size cutoff (for cluster to be included in the visualized
+#' PC network.)
+#' @param diagnostics should diagnostic plots be generated? Deafault to FALSE.
+#' @param verbose should verbose modelling information should be printed? Default to TRUE.
+#'
+#' @return a list of continuous structure discovery results, including the following components:
+#' consensus.loading: matrix of the identified consensus loadings, each column for one identified
+#' PC loading cluster.
+#' scores: matrix of the identified continuous scores for all samples, each column for one identified
+#' PC loading cluster.
+#' membership: list of PC loading members for each identified cluster.
+#' mat.vali: matrix of validation correlations of the identified consensus loadings, each column for
+#' one identified PC loading cluster.
+#' clustered.network: list for the the constructed PC network and community discovery results
+#'
 #' @export
-continuous.discover <- function(feature.count,
+continuous.discover <- function(feature.abd,
                                 batch,
                                 data,
                                 normalization = "TSS",
                                 transform = "AST",
+                                pseudo.count = 0.5,
                                 var.perc.cutoff = 0.8,
-                                cor.cutoff = 0.707,
-                                network = TRUE,
-                                diagnostics = TRUE,
-                                directory = "./",
+                                cor.cutoff = 0.5,
+                                plot.clustered.network = TRUE,
+                                plot.size.cutoff = 2,
+                                diagnostics = FALSE,
                                 verbose = TRUE) {
-  ## Ensure data formatts are as expected
-  feature.count <- as.matrix(feature.count)
-  if(any(is.na(feature.count)))
+  # Ensure data formatts are as expected
+  feature.abd <- as.matrix(feature.abd)
+  if(any(is.na(feature.abd)))
     stop("Found missing values in the feature table!")
-  if(any(feature.count < 0))
+  if(any(feature.abd < 0))
     stop("Found negative values in the feature table!")
   data <- as.data.frame(data, stringsAsFactors = FALSE)
   if(!(batch%in% names(data)))
     stop("Batch/covariate variable not found in data.")
 
-  ## Data dimensions need to agree with each other
-  if(ncol(feature.count) != nrow(data))
+  # Data dimensions need to agree with each other
+  if(ncol(feature.abd) != nrow(data))
     stop("Dimensions of feature table and metadata table do not agree!")
 
-  ## Check that sample names agree between the feature and metadata table
-  ## And assign row and column names if emppty
-  if(is.null(colnames(feature.count))) colnames(feature.count) <-
+  # Check that sample names agree between the feature and metadata table
+  # And assign row and column names if emppty
+  if(is.null(colnames(feature.abd))) colnames(feature.abd) <-
     paste0("Sample",
-           1:ncol(feature.count))
-  if(is.null(rownames(feature.count))) rownames(feature.count) <-
+           1:ncol(feature.abd))
+  if(is.null(rownames(feature.abd))) rownames(feature.abd) <-
     paste0("Feature",
-           1:nrow(feature.count))
+           1:nrow(feature.abd))
   if(is.null(rownames(data))) rownames(data) <-
     paste0("Sample",
-           1:ncol(feature.count))
-  if(any(colnames(feature.count) != rownames(data)))
-    stop("Sample names in feature.count and data don't agree!")
+           1:ncol(feature.abd))
+  if(any(colnames(feature.abd) != rownames(data)))
+    stop("Sample names in feature.abd and data don't agree!")
 
   # Check batch variable and identify groups
   batch <- data[, batch]
@@ -60,9 +77,28 @@ continuous.discover <- function(feature.count,
   if(verbose) message("Found ", n.batch, " batches")
   lvl.batch <- levels(batch)
 
-  ## Transform sample counts
-  feature.pca <- normalizeFeatures(feature.count, normalization = normalization)
-  feature.pca <- transformFeatures(feature.pca, transformation = transform)
+  # Normalize and transform sample counts
+  if(transform == "LOG") {
+    if(all(apply(feature.abd, 2, sum) <= 1)) {
+      warning("Feature table appears to be on the relative abundance scale!")
+      if(pseudo.count == 0.5) {
+        warning("pseudo.count was set to 0.5 which is only appropriate to count data,",
+                " setting pseudo.count to be min(feature.abd)/2.")
+        pseudo.count <- min(setdiff(feature.abd, 0)) / 2
+      }
+      # In this case don't renormalize the feature
+      feature.pca <- transformFeatures(feature.abd,
+                                       transform = transform,
+                                       pseudo.count = pseudo.count)
+    }
+    feature.pca <- transformFeatures(normalizeFeatures(feature.abd,
+                                                       normalization = normalization,
+                                                       pseudo.count = pseudo.count),
+                                     transform = transform)
+  } else {
+    feature.pca <- normalizeFeatures(feature.abd, normalization = normalization)
+    feature.pca <- transformFeatures(feature.pca, transform = transform)
+  }
 
   # Calculate PC for the training sets
   if(verbose) message("Performing PCA in individual datasets...")
@@ -114,7 +150,7 @@ continuous.discover <- function(feature.count,
   dimnames(edge.matrix) <- dimnames(cor.matrix)
   edge.matrix[abs(cor.matrix) < cor.cutoff] <- 0
   if(sum(edge.matrix) == nrow(edge.matrix)) {
-    warning("No clusters found in the PC network (all edges are filtered out)!\n",
+    warning("All edges are filtered out in the PC network!\n",
             "Consider lowering the value of cor.cutoff.")
     return(NULL)
   }
@@ -153,59 +189,35 @@ continuous.discover <- function(feature.count,
                              })
   colnames(mat.cons.loading) <- paste0("Cluster_", names(size.communities)[ind.consensus.loading])
 
-  # Visualize clustered network
-  pc.graph.sub <-  igraph::delete.vertices(pc.graph,
-                                           igraph::V(pc.graph)[membership.loading %in%
-                                                                 as.numeric(names(size.communities)[
-                                                                   size.communities <= 2])])
-  list.membership.sub <- membership.loading[names(igraph::V(pc.graph.sub))]
-  list.membership.sub <- lapply(unique(list.membership.sub),
-                                function(x) names(list.membership.sub)[list.membership.sub == x])
-  # Visualization
-  if(length(igraph::V(pc.graph.sub)) > 0 & network) {
-    pdf(paste0(directory, "network_communities.pdf"),
-        width = 10,
-        height = 10)
-    igraph::plot.igraph(pc.graph.sub, mark.groups = list.membership.sub,
-                        vertex.size = igraph::degree(pc.graph.sub) / max(igraph::degree(pc.graph.sub)) * 15,
-                        edge.width = igraph::E(pc.graph.sub)$weight * 10)
-    dev.off()
-  }
-
   # Internal validation
-  mat.cor.vali <- sapply(data.loadings, function(loadings) {
+  mat.vali <- t(sapply(data.loadings, function(loadings) {
     apply(abs(t(mat.cons.loading) %*% loadings), 1, max)
-  })
-  mat.cor.vali <- matrix(mat.cor.vali, nrow = ncol(mat.cons.loading))
+  }))
+  colnames(mat.vali) <- names(size.communities)
+  rownames(mat.vali) <- lvl.batch
+
+  # If required, visualize the clustered network
+  if(plot.clustered.network) {
+    visualize.continuous.discover(pc.graph = pc.graph,
+                                  membership.loading = membership.loading,
+                                  size.communities = size.communities,
+                                  plot.size.cutoff = plot.size.cutoff)
+  }
+  # If required, generate diagnostic plots
   if(diagnostics) {
-    df.cor.vali <- data.frame(mat.cor.vali)
-    colnames(df.cor.vali) <- lvl.batch
-    df.cor.vali$community <- factor(1:nrow(df.cor.vali))
-    df.plot <- tidyr::gather(df.cor.vali,
-                             key = dataset,
-                             value = correlation,
-                             -community)
-    plot.diagnostic <- ggplot2::ggplot(df.plot,
-                                       ggplot2::aes(x = community,
-                                                    y = correlation)) +
-      ggplot2::geom_boxplot(outlier.shape = NA) +
-      ggplot2::geom_point(position = ggplot2::position_jitter()) +
-      ggplot2::geom_text(ggplot2::aes(label = dataset), size = 3) +
-      ggplot2::theme_bw()
-    if(!is.null(cor.cutoff))
-      plot.diagnostic <- plot.diagnostic +
-      ggplot2::geom_hline(yintercept = cor.cutoff,
-                          color = "red")
-    ggsave(filename = paste0(directory, "diagnostic.pdf"),
-           plot.diagnostic,
-           width = min(20, sum(size.communities > 1)),
-           height = 4)
+    diagnostics.continuous.discover(mat.vali = mat.vali,
+                                    lvl.batch = lvl.batch)
   }
 
-  list(
-    consensus.loading = mat.cons.loading,
-    membership = lapply((1:length(size.communities))[size.communities > 1],
-                        function(i) colnames(mat.data.loading)[igraph::membership(pc.cluster) == i]),
-    mat.cor = mat.cor.vali
-  )
+  return(
+    list(consensus.loading = mat.cons.loading,
+         scores = t(feature.pca) %*% consensus.loading,
+         membership = lapply((1:length(size.communities))[ind.consensus.loading],
+                             function(i) colnames(mat.data.loading)[
+                               igraph::membership(pc.cluster) == i
+                               ]),
+         mat.vali = mat.vali,
+         clustered.network = list(pc.graph = pc.graph,
+                                  communities = pc.cluster)
+    ))
 }
