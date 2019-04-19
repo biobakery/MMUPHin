@@ -2,44 +2,47 @@
 % Please edit documentation in R/lm.meta.R
 \name{lm.meta}
 \alias{lm.meta}
-\title{Main function for batch effect adjustment}
+\title{Covariate-adjusted meta-analysis of per-feature associations in compositional data}
 \usage{
-lm.meta(feature.count, batch, exposure, covariates = NULL,
+lm.meta(feature.abd, exposure, batch, covariates = NULL,
   covariates.random = NULL, data, normalization = "TSS",
-  transform = "AST", analysis_method = "LM", rma_method = "REML",
-  forest.plots = TRUE, directory = "./MMUPHin_lm.meta/",
-  verbose = TRUE)
+  transform = "AST", analysis_method = "LM", rma.method = "REML",
+  forest.plots = TRUE, output = "./MMUPHin_lm.meta/", verbose = TRUE)
 }
 \arguments{
-\item{feature.count}{Feature x sample matrix of feature abundance}
+\item{feature.abd}{feature*sample matrix of feature abundance (counts preferred).}
 
-\item{batch}{Name of the batch variable}
+\item{exposure}{name of the exposure of interest variable.}
 
-\item{exposure}{Name of the primary exposure of interest variable}
+\item{batch}{name of the batch variable.}
 
-\item{covariates}{Additional covariates for adjustment in individual regressions}
+\item{covariates}{name(s) of additional covariates to adjust for in the Maaslin2 model.}
 
-\item{covariates.random}{Group indicator for random effects}
+\item{covariates.random}{name(s) of random covariates in the Maaslin2 model.}
 
-\item{data}{Data frame for metadata.}
+\item{data}{data frame of metadata, must contain exposure, batch, covariates (if present),
+and covariates.random (if present).}
 
-\item{normalization}{Normalization parameter for Maaslin2}
+\item{normalization}{normalization parameter for Maaslin2.}
 
-\item{transform}{Transformation parameter for Maaslin2}
+\item{transform}{transformation parameter for Maaslin2.}
 
-\item{analysis_method}{Model parameter for Maaslin2}
+\item{analysis_method}{analysis method parameter for Maaslin2.}
 
-\item{forest.plots}{Flag for whether or not forest plots figures should be generated.
+\item{rma.method}{method parameter for rma.}
+
+\item{forest.plots}{should the function generate forest plots for significant results?
 Deafault to TRUE.}
 
-\item{directory}{Directory for Maaslin output/generated forest plots}
+\item{output}{output directory (for Maaslin2 output and forest plots).}
 
-\item{verbose}{Flag for whether or not verbose modelling information should be printed.
-Default to yes.}
+\item{verbose}{should verbose modelling information should be printed? Default to TRUE.}
 }
 \value{
-a list
+a list with component meta.results for per-feature meta-analysis results, and
+component l.Maaslin.fit which itself is a list of results from fitting Maaslin2 in
+individual studies.
 }
 \description{
-Main function for batch effect adjustment
+Covariate-adjusted meta-analysis of per-feature associations in compositional data
 }

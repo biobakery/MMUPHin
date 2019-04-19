@@ -2,38 +2,45 @@
 % Please edit documentation in R/discrete.discover.R
 \name{discrete.discover}
 \alias{discrete.discover}
-\title{Main function for discrete structure discovery}
+\title{Internal evaluation and external validation of discrete clustering structures}
 \usage{
-discrete.discover(distance, batch, data, k.max = 10,
-  cluster.method = fpc::claraCBI, classify.method = "centroid",
-  M = 10, nnk = 1, diagnostics = TRUE, verbose = TRUE, ...)
+discrete.discover(D, batch, data, k.max = 10,
+  cluster.function = fpc::claraCBI,
+  internal.metric = "prediction.strength",
+  classify.method = "centroid", M = 30, nnk = 1,
+  diagnostics = FALSE, verbose = TRUE)
 }
 \arguments{
-\item{distance}{dissimilarity object}
+\item{D}{a dissimilarity object.}
 
-\item{batch}{Name of batch variable}
+\item{batch}{name of the batch variable.}
 
-\item{data}{data frame}
+\item{data}{data frame of metadata, must contain batch.}
 
-\item{k.max}{max k for testing}
+\item{k.max}{max number of clusters to test for}
 
-\item{cluster.method}{method for clustering. consistent with fpc}
+\item{cluster.function}{clustering function. Should be consistent with fpc, i.e.,}
 
-\item{classify.method}{method for classification. consistent with fpc}
+\item{internal.metric}{internal evaluation metric for clustering structures. Currently only
+"prediction.strength" and "silhouette.width" are supported.}
 
-\item{M}{number of folds validations during internal validation}
+\item{classify.method}{method for classification (used for external validation and if
+internal.metric="prediction.strength"). Currently only "centroid" and "knn" are supported.}
 
-\item{nnk}{number of k nearest neighbors, if method is KNN}
+\item{M}{number of validation folds (for if internal.metric="prediction.strength").}
 
-\item{diagnostics}{logical. Should diagnostics be plotted?}
+\item{nnk}{number of k nearest neighbors (for if classify.method="knn").}
 
-\item{verbose}{logical. Verbose?}
+\item{diagnostics}{should diagnostic plots be generated? Deafault to FALSE.}
 
-\item{...}{additional parameters for clsutering. consistent with fpc}
+\item{verbose}{should verbose modelling information should be printed? Default to TRUE.}
 }
 \value{
-A list of MMUPHin continuous score discovery object
+a list of four summary statistics from internal evaluation and external validation of
+clustering structures in the data. These are means and standard errors of
+internal and external metrics for each number of cluster-batch combination. So each component
+(mean/standard error, internal/external) is a (k.max - 1)*(number of batches) numeric matrix.
 }
 \description{
-Main function for discrete structure discovery
+Internal evaluation and external validation of discrete clustering structures
 }

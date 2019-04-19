@@ -2,38 +2,39 @@
 % Please edit documentation in R/adjust.batch.R
 \name{adjust.batch}
 \alias{adjust.batch}
-\title{Zero-inflated Empirical Bayes Adjustment of Batch Effect in Feature Abundance Data}
+\title{Zero-inflated empirical Bayes adjustment of batch effect in compositional feature
+abundance data}
 \usage{
-adjust.batch(feature.count, batch, covariates = NULL, data,
-  zero.inflation = TRUE, pseudo.count = 0.5, diagnostics = TRUE,
+adjust.batch(feature.abd, batch, covariates = NULL, data,
+  zero.inflation = TRUE, pseudo.count = 0.5, diagnostics = FALSE,
   verbose = TRUE)
 }
 \arguments{
-\item{feature.count}{Feature x sample matrix of feature abundance (counts)}
+\item{feature.abd}{feature*sample matrix of feature abundance (counts preferred).}
 
-\item{batch}{Name of batch variable}
+\item{batch}{name of the batch variable.}
 
-\item{covariates}{Character variables for additional covariates for adjustment
-in the batch correction model}
+\item{covariates}{name(s) of additional covariates to adjust for
+in the batch correction model.}
 
-\item{data}{Data frame for metadata.}
+\item{data}{data frame of metadata, must contain batch and covariates (if present).}
 
-\item{zero.inflation}{Flag for whether or not a zero-inflated model should be run.
+\item{zero.inflation}{TRUE/FALSE for whether or not a zero-inflated model should be run
 Default to TRUE (zero-inflated model). If set to FALSE then vanilla ComBat
 (with parametric adjustment) will be performed.}
 
-\item{pseudo.count}{Pseudo count to add to the count table before log-transformation. Default
-to 0.5.}
+\item{pseudo.count}{pseudo count to add to the count table before log-transformation. Default
+to 0.5. This should be changed for relative abundance (will automatically set to half of minimal
+non-zero value if not specified).}
 
-\item{diagnostics}{Flag for whether or not diagnostic figures should be generated.
-Deafault to TRUE.}
+\item{diagnostics}{should diagnostic plots be generated? Deafault to FALSE.}
 
-\item{verbose}{Flag for whether or not verbose modelling information should be printed.
-Default to yes.}
+\item{verbose}{should verbose modelling information should be printed? Default to TRUE.}
 }
 \value{
-A feature x sample matrix of adjusted feature abundance.
+feature x sample matrix of adjusted feature abundance.
 }
 \description{
-Zero-inflated Empirical Bayes Adjustment of Batch Effect in Feature Abundance Data
+Zero-inflated empirical Bayes adjustment of batch effect in compositional feature
+abundance data
 }

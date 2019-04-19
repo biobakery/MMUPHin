@@ -4,33 +4,50 @@
 \alias{continuous.discover}
 \title{Main function for continuous structure discovery}
 \usage{
-continuous.discover(feature.count, batch, data, normalization = "TSS",
-  transform = "AST", var.perc.cutoff = 0.8, cor.cutoff = 0.707,
-  directory = "./", diagnostics = TRUE, verbose = TRUE)
+continuous.discover(feature.abd, batch, data, normalization = "TSS",
+  transform = "AST", pseudo.count = 0.5, var.perc.cutoff = 0.8,
+  cor.cutoff = 0.5, plot.clustered.network = TRUE,
+  plot.size.cutoff = 2, diagnostics = FALSE, verbose = TRUE)
 }
 \arguments{
-\item{feature.count}{Feature x sample matrix of feature abundance}
+\item{feature.abd}{feature*sample matrix of feature abundance (counts preferred if transform
+is specified as LOG).}
 
-\item{batch}{Name of batch variable}
+\item{batch}{name of the batch variable.}
 
-\item{data}{data frame}
+\item{data}{data frame of metadata, must contain batch.}
 
-\item{normalization}{normalization, consistent with Maaslin2}
+\item{normalization}{normalization parameter.}
 
-\item{transform}{transformation, consistent with Maaslin2}
+\item{transform}{transformation parameter.}
 
-\item{var.perc.cutoff}{percentage variance cutoff for top PCs}
+\item{pseudo.count}{pseudo count to add to the count table before log-transformation. Default
+to 0.5. This should be changed for relative abundance (will automatically set to half of minimal
+non-zero value if not specified).}
 
-\item{cor.cutoff}{correlation cutoff for constructing graph}
+\item{var.perc.cutoff}{percentage variance explained cutoff to choose the top PCs.}
 
-\item{directory}{output directory for figures}
+\item{cor.cutoff}{correlation cutoff to construct edges for the PC network.}
 
-\item{diagnostics}{logical. Should diagnostics be plotted?}
+\item{plot.clustered.network}{should the clustered PC network be visualized? Deafault to TRUE.}
 
-\item{verbose}{logical. Verbose?}
+\item{plot.size.cutoff}{cluster size cutoff (for cluster to be included in the visualized
+PC network.)}
+
+\item{diagnostics}{should diagnostic plots be generated? Deafault to FALSE.}
+
+\item{verbose}{should verbose modelling information should be printed? Default to TRUE.}
 }
 \value{
-A list of MMUPHin continuous score discovery object
+a list of continuous structure discovery results, including the following components:
+consensus.loading: matrix of the identified consensus loadings, each column for one identified
+PC loading cluster.
+scores: matrix of the identified continuous scores for all samples, each column for one identified
+PC loading cluster.
+membership: list of PC loading members for each identified cluster.
+mat.vali: matrix of validation correlations of the identified consensus loadings, each column for
+one identified PC loading cluster.
+clustered.network: list for the the constructed PC network and community discovery results
 }
 \description{
 Main function for continuous structure discovery
