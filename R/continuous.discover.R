@@ -211,8 +211,8 @@ continuous.discover <- function(feature.abd,
 
   return(
     list(consensus.loading = mat.cons.loading,
-         scores = t(feature.pca) %*% consensus.loading,
-         membership = lapply((1:length(size.communities))[ind.consensus.loading],
+         scores = t(feature.pca) %*% mat.cons.loading,
+         membership = lapply(as.integer(names(size.communities)[ind.consensus.loading]),
                              function(i) colnames(mat.data.loading)[
                                igraph::membership(pc.cluster) == i
                                ]),
