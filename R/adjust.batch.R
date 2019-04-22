@@ -247,8 +247,8 @@ adjust.batch <- function(feature.abd,
   adj.data <- 2^adj.data
   adj.data[feature.abd == 0] <- 0
   adj.data <- normalizeFeatures(adj.data, normalization = "TSS")
-  adj.feature.abd <- t(t(adj.data) * read.depth)
-  dimnames(adj.feature.abd) <- dimnames(feature.abd)
+  feature.abd.adj <- t(t(adj.data) * read.depth)
+  dimnames(feature.abd.adj) <- dimnames(feature.abd)
 
   # If required, generate diagnostic plots
   if(diagnostics)
@@ -258,6 +258,6 @@ adjust.batch <- function(feature.abd,
                              gamma.hat = gamma.hat,
                              gamma.star = gamma.star)
 
-  return(adj.feature.abd)
+  return(feature.abd.adj)
 }
 

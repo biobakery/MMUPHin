@@ -25,21 +25,22 @@ diagnostics.adjust.batch <- function(feature.abd,
   df.ra <- as.data.frame(t(apply(feature.abd, 2, function(x) x / sum(x)))) %>%
     dplyr::mutate(Sample = colnames(feature.abd),
                   Adjustment = "Original")
-  df.ra.norm <- as.data.frame(t(apply(adj.feature.abd, 2, function(x) x / sum(x)))) %>%
-    dplyr::mutate(Sample = colnames(adj.feature.abd),
+  df.ra.norm <- as.data.frame(t(apply(feature.abd.adj, 2, function(x) x / sum(x)))) %>%
+    dplyr::mutate(Sample = colnames(feature.abd.adj),
                   Adjustment = "Adjusted")
   df.plot <- rbind(df.ra, df.ra.norm) %>%
-    tidyr::gather(rbind(df.ra, df.ra.norm),
-                  key = "feature",
+    tidyr::gather(key = "feature",
                   value = "relative abundance",
                   -Sample, -Adjustment) %>%
     dplyr::left_join(data.frame(batch = batch,
                                 Sample = df.ra$Sample,
-                                stringsAsFactors = FALSE)) %>%
+                                stringsAsFactors = FALSE),
+                     by = "Sample") %>%
     dplyr::group_by(feature) %>%
     dplyr::mutate(mean_overall = mean(`relative abundance`[Adjustment == "Original"])) %>%
-    dplyr::group_by(feature, batch, Adjustment, `Overall Mean`) %>%
+    dplyr::group_by(feature, batch, Adjustment, mean_overall) %>%
     dplyr::summarise(mean_batch = mean(`relative abundance`)) %>%
+    dplyr::ungroup() %>%
     dplyr::mutate(Adjustment = factor(Adjustment, levels = c("Original", "Adjusted")))
 
   p.mean <- ggplot(df.plot, aes(x = mean_overall,
@@ -55,7 +56,8 @@ diagnostics.adjust.batch <- function(feature.abd,
     theme_bw() +
     theme(legend.position=c(0, 1),
           legend.justification=c(0, 1),
-          legend.direction="horizontal") +
+          legend.direction="horizontal",
+          legend.background = element_blank()) +
     ggtitle("Original/adjusted mean abundance") +
     xlab("Overal mean") + ylab("Batch mean")
 
