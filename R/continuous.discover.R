@@ -190,9 +190,9 @@ continuous.discover <- function(feature.abd,
   colnames(mat.cons.loading) <- paste0("Cluster_", names(size.communities)[ind.consensus.loading])
 
   # Internal validation
-  mat.vali <- t(sapply(data.loadings, function(loadings) {
+  mat.vali <- t(matrix(sapply(data.loadings, function(loadings) {
     apply(abs(t(mat.cons.loading) %*% loadings), 1, max)
-  }))
+  }), nrow = ncol(mat.cons.loading)))
   colnames(mat.vali) <- names(size.communities)[ind.consensus.loading]
   rownames(mat.vali) <- lvl.batch
 
