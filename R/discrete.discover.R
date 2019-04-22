@@ -157,13 +157,17 @@ discrete.discover <- function(D,
 
   # compile results for output
   internal.mean <- t(sapply(stats.internal,
-                            sapply(k.stats, function(i.stat) i.stat["mean"])))
+                            function(k.stats)
+                              sapply(k.stats, function(i.stat) i.stat["mean"])))
   internal.se <- t(sapply(stats.internal,
-                          sapply(k.stats, function(i.stat) i.stat["sd"])))
+                          function(k.stats)
+                            sapply(k.stats, function(i.stat) i.stat["sd"])))
   external.mean <- t(sapply(stats.external,
-                            sapply(k.stats, function(i.stat) i.stat["mean"])))
+                            function(k.stats)
+                              sapply(k.stats, function(i.stat) i.stat["mean"])))
   external.se <- t(sapply(stats.external,
-                          sapply(k.stats, function(i.stat) i.stat["sd"])))
+                          function(k.stats)
+                            sapply(k.stats, function(i.stat) i.stat["sd"])))
   dimnames(internal.mean) <-
     dimnames(internal.se) <-
     dimnames(external.mean) <-
