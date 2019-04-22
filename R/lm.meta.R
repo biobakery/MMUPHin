@@ -169,13 +169,6 @@ lm.meta <- function(feature.abd,
   if(verbose) message("Fitting meta-analysis model.")
   meta.results <- rma.wrapper(l.Maaslin.fit, method = rma.method,
                               forest.plots = forest.plots, output = output)
-  if(!is.null(cbind(ind.covariate, ind.random))) {
-    meta.results.mod <- rma.mod.wrapper(l.Maaslin.fit, method = rma.method,
-                                        data.moderator = cbind(ind.covariate, ind.random))
-    meta.results <- dplyr::left_join(meta.results,
-                                     meta.results.mod,
-                                     by = c("feature", "exposure"),
-                                     suffix = c("", "_moderator"))
-  }
+
   return(list(meta.results = meta.results, ind.results = l.Maaslin.fit))
 }
