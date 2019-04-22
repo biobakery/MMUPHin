@@ -105,7 +105,7 @@ diagnostics.discrete.discover <- function(stats.internal,
                            width = 0.5) +
     ggplot2::facet_grid(.~batch) +
     ggplot2::theme_bw() +
-    ggplot2::xlab("K") + ggplot2::ylab("summary statistic") +
+    ggplot2::xlab("K") + ggplot2::ylab("Summary statistic") +
     ggtitle("Internal evaluation")
   p.external <- ggplot2::ggplot(df.external,
                                 ggplot2::aes(x = k, y = mean)) +
@@ -116,7 +116,7 @@ diagnostics.discrete.discover <- function(stats.internal,
                            width = 0.5) +
     ggplot2::facet_grid(.~batch) +
     ggplot2::theme_bw() +
-    ggplot2::xlab("K") + ggplot2::ylab("summary statistic") +
+    ggplot2::xlab("K") + ggplot2::ylab("Summary statistic") +
     ggtitle("External validation")
 
   plot <- cowplot::plot_grid(p.internal, p.external, nrow = 2)

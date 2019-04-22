@@ -112,7 +112,7 @@ discrete.discover <- function(D,
       }
       if(internal.metric == "silhouette.width") {
         sil.width <- cluster::silhouette(
-          clusterings[[i]],
+          clusterings[[i]]$partition,
           dist = as.dist(D.all[batch == i.batch, batch == i.batch]))[, "sil_width"]
         stats.internal[[k - 1]][[i]] <- c("mean" = mean(sil.width),
                                           "sd" = sd(sil.width))
