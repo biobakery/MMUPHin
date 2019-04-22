@@ -145,7 +145,7 @@ visualize.continuous.discover <- function(pc.graph,
   pc.graph.sub <-  delete.vertices(pc.graph,
                                    V(pc.graph)[membership.loading %in% clusters.sub])
   membership.sub <- membership.loading[names(V(pc.graph.sub))]
-  list.membership.sub <- lapply(clusters.sub,
+  list.membership.sub <- lapply(as.integer(names(size.communities)[ind.visualize]),
                                 function(x) names(membership.sub)[membership.sub == x])
 
   plot.igraph(pc.graph.sub,

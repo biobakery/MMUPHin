@@ -193,7 +193,7 @@ continuous.discover <- function(feature.abd,
   mat.vali <- t(sapply(data.loadings, function(loadings) {
     apply(abs(t(mat.cons.loading) %*% loadings), 1, max)
   }))
-  colnames(mat.vali) <- names(size.communities)
+  colnames(mat.vali) <- names(size.communities)[ind.consensus.loading]
   rownames(mat.vali) <- lvl.batch
 
   # If required, visualize the clustered network
