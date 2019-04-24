@@ -235,6 +235,8 @@ Maaslin2.wrapper <- function(feature.abd,
   res <- dplyr::select(res, -feature.rename, -name)
   res$metadata <- exposure
   if(all(res$value == exposure.rename)) res$value <- exposure
+  # Maaslin adjust p-values for all coefficients, modify to be for only the exposure
+  res$qval <- p.adjust(res$pval, method = "fdr")
 
   return(res)
 }
