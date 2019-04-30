@@ -197,7 +197,7 @@ Maaslin2.wrapper <- function(feature.abd,
   # Run Maaslin2
   log.Maaslin <- suppressWarnings(
     capture.output(
-      res.rename <- Maaslin2::Maaslin2(input_data = feature.abd.rename,
+      res.rename <- Maaslin2::Maaslin2(input_data = feature.abd.rename[ind.feature, , drop = TRUE],
                                        input_metadata = data.rename,
                                        output = output,
                                        min_abundance = 0,
