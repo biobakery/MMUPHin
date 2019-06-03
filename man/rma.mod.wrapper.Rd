@@ -5,7 +5,8 @@
 \title{Wrapper for fitting rma models with a moderator parameter. This allows to
 analyze an interaction model with meta-analysis effects}
 \usage{
-rma.mod.wrapper(l.Maaslin.fit, data.moderator, method = "REML")
+rma.mod.wrapper(l.Maaslin.fit, data.moderator, method = "REML",
+  rma.threshold = 1e-06, rma.maxiter = 1000)
 }
 \arguments{
 \item{l.Maaslin.fit}{list of Maaslin2 result data frames, outputted from Maaslin2.wrapper.}
@@ -14,6 +15,10 @@ rma.mod.wrapper(l.Maaslin.fit, data.moderator, method = "REML")
 a single study, and should have the same number of rows as l.Maaslin.fit.}
 
 \item{method}{meta-analysis model to run, options provided in metafor::rma.}
+
+\item{rma.threshold}{rma fit threshold control}
+
+\item{rma.maxiter}{rma fit maximum iteration control}
 }
 \value{
 a data frame recording per-feature/moderator value meta-analysis association results.

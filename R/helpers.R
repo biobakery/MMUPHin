@@ -280,6 +280,8 @@ create.table.Maaslin <- function(features, exposure, lvl.exposure) {
 #' @param method meta-analysis model to run, options provided in metafor::rma.
 #' @param forest.plots should forest plots be generated (for the significant associations).
 #' @param output directory for the output forest plots.
+#' @param rma.threshold rma fit threshold control
+#' @param rma.maxiter rma fit maximum iteration control
 #'
 #' @return a data frame recording per-feature meta-analysis association results.
 #' (coefficients, p-values, etc.)
@@ -405,6 +407,8 @@ rma.wrapper <- function(l.Maaslin.fit, method = "REML",
 #' @param data.moderator data frame recording the moderator variables. Each row corresponds to
 #' a single study, and should have the same number of rows as l.Maaslin.fit.
 #' @param method meta-analysis model to run, options provided in metafor::rma.
+#' @param rma.threshold rma fit threshold control
+#' @param rma.maxiter rma fit maximum iteration control
 #'
 #' @return a data frame recording per-feature/moderator value meta-analysis association results.
 #' (coefficients, p-values, etc.)

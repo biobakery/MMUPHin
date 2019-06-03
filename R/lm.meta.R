@@ -15,6 +15,8 @@
 #' Deafault to TRUE.
 #' @param verbose should verbose modelling information should be printed? Default to TRUE.
 #' @param output output directory (for Maaslin2 output and forest plots).
+#' @param rma.threshold rma fit threshold control
+#' @param rma.maxiter rma fit maximum iteration control
 #'
 #' @return a list with component meta.results for per-feature meta-analysis results, and
 #' component l.Maaslin.fit which itself is a list of results from fitting Maaslin2 in

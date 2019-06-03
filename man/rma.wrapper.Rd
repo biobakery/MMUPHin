@@ -5,7 +5,7 @@
 \title{Wrapper for fitting fixed/random effects meta-analysis model using metafor}
 \usage{
 rma.wrapper(l.Maaslin.fit, method = "REML", forest.plots = TRUE,
-  output)
+  output, rma.threshold = 1e-06, rma.maxiter = 1000)
 }
 \arguments{
 \item{l.Maaslin.fit}{list of Maaslin2 result data frames, outputted from Maaslin2.wrapper.}
@@ -15,6 +15,10 @@ rma.wrapper(l.Maaslin.fit, method = "REML", forest.plots = TRUE,
 \item{forest.plots}{should forest plots be generated (for the significant associations).}
 
 \item{output}{directory for the output forest plots.}
+
+\item{rma.threshold}{rma fit threshold control}
+
+\item{rma.maxiter}{rma fit maximum iteration control}
 }
 \value{
 a data frame recording per-feature meta-analysis association results.

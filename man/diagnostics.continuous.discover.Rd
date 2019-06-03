@@ -2,7 +2,7 @@
 % Please edit documentation in R/visualization.R
 \name{diagnostics.continuous.discover}
 \alias{diagnostics.continuous.discover}
-\title{Title}
+\title{Diagnostic visualization for continuous.discover function}
 \usage{
 diagnostics.continuous.discover(mat.vali, lvl.batch)
 }
@@ -16,5 +16,5 @@ top PC loadings from each batch}
 the invisble ggplot2 plot object
 }
 \description{
-Title
+Diagnostic visualization for continuous.discover function
 }

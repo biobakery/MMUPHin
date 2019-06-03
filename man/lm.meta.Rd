@@ -7,7 +7,8 @@
 lm.meta(feature.abd, exposure, batch, covariates = NULL,
   covariates.random = NULL, data, normalization = "TSS",
   transform = "AST", analysis_method = "LM", rma.method = "REML",
-  forest.plots = TRUE, output = "./MMUPHin_lm.meta/", verbose = TRUE)
+  forest.plots = TRUE, output = "./MMUPHin_lm.meta/", verbose = TRUE,
+  rma.threshold = 1e-06, rma.maxiter = 1000)
 }
 \arguments{
 \item{feature.abd}{feature*sample matrix of feature abundance (counts preferred).}
@@ -37,6 +38,10 @@ Deafault to TRUE.}
 \item{output}{output directory (for Maaslin2 output and forest plots).}
 
 \item{verbose}{should verbose modelling information should be printed? Default to TRUE.}
+
+\item{rma.threshold}{rma fit threshold control}
+
+\item{rma.maxiter}{rma fit maximum iteration control}
 }
 \value{
 a list with component meta.results for per-feature meta-analysis results, and

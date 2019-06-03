@@ -2,7 +2,7 @@
 % Please edit documentation in R/visualization.R
 \name{visualize.continuous.discover}
 \alias{visualize.continuous.discover}
-\title{Title}
+\title{Visualization of the clustered network for the continuous.discover function}
 \usage{
 visualize.continuous.discover(pc.graph, membership.loading,
   size.communities, plot.size.cutoff)
@@ -21,5 +21,5 @@ PC network.)}
 an invisible list of the subsetted network and memberships (to reproduce the plot)
 }
 \description{
-Title
+Visualization of the clustered network for the continuous.discover function
 }
