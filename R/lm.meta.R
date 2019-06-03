@@ -32,7 +32,9 @@ lm.meta <- function(feature.abd,
                     rma.method = "REML",
                     forest.plots = TRUE,
                     output = "./MMUPHin_lm.meta/",
-                    verbose = TRUE) {
+                    verbose = TRUE,
+                    rma.threshold = 1e-6,
+                    rma.maxiter = 1000) {
   # Ensure data formats are as expected
   feature.abd <- as.matrix(feature.abd)
   if(any(is.na(feature.abd)))
@@ -168,7 +170,9 @@ lm.meta <- function(feature.abd,
   # Fit fixed/random effects models
   if(verbose) message("Fitting meta-analysis model.")
   meta.results <- rma.wrapper(l.Maaslin.fit, method = rma.method,
-                              forest.plots = forest.plots, output = output)
+                              forest.plots = forest.plots, output = output,
+                              rma.threshold = rma.threshold,
+                              rma.maxiter = rma.maxiter)
 
   return(list(meta.results = meta.results, ind.results = l.Maaslin.fit))
 }
