@@ -284,7 +284,9 @@ create.table.Maaslin <- function(features, exposure, lvl.exposure) {
 #' @return a data frame recording per-feature meta-analysis association results.
 #' (coefficients, p-values, etc.)
 rma.wrapper <- function(l.Maaslin.fit, method = "REML",
-                        forest.plots = TRUE, output) {
+                        forest.plots = TRUE, output,
+                        rma.threshold = 1e-6,
+                        rma.maxiter = 1000) {
   lvl.batch <- names(l.Maaslin.fit)
   n.batch <- length(lvl.batch)
   exposure <- unique(l.Maaslin.fit[[1]]$metadata)
@@ -336,8 +338,8 @@ rma.wrapper <- function(l.Maaslin.fit, method = "REML",
                                             sei = sds[feature, ind.feature[feature, ]],
                                             slab = lvl.batch[ind.feature[feature, ]],
                                             method = method,
-                                            control = list(threshold = 1e-10,
-                                                           maxiter = 1000)),
+                                            control = list(threshold = rma.threshold,
+                                                           maxiter = rma.maxiter)),
 
                            silent = TRUE) # FIXME
         if("try-error" %in% class(tmp.rma.fit))
@@ -408,7 +410,9 @@ rma.wrapper <- function(l.Maaslin.fit, method = "REML",
 #' (coefficients, p-values, etc.)
 rma.mod.wrapper <- function(l.Maaslin.fit,
                             data.moderator,
-                            method = "REML"){
+                            method = "REML",
+                            rma.threshold = 1e-6,
+                            rma.maxiter = 1000){
   lvl.batch <- names(l.Maaslin.fit)
   if(!all(lvl.batch %in% rownames(data.moderator)))
     stop("data.moderator must have all the batches fitted in Maaslin!")
@@ -449,8 +453,8 @@ rma.mod.wrapper <- function(l.Maaslin.fit,
                                               data = data.moderator[ind.feature[feature, ], ,
                                                                     drop = FALSE],
                                               method = method,
-                                              control = list(threshold = 1e-10,
-                                                             maxiter = 1000)),
+                                              control = list(threshold = rma.threshold,
+                                                             maxiter = rma.maxiter)),
                              silent = TRUE)) # FIXME
       if("try-error" %in% class(tmp.rma.fit))
         next
