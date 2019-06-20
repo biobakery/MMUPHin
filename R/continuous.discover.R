@@ -36,6 +36,7 @@ continuous.discover <- function(feature.abd,
                                 pseudo.count = 0.5,
                                 var.perc.cutoff = 0.8,
                                 cor.cutoff = 0.5,
+                                cluster_function = igraph::cluster_optimal,
                                 plot.clustered.network = TRUE,
                                 plot.size.cutoff = 2,
                                 diagnostics = FALSE,
@@ -163,7 +164,7 @@ continuous.discover <- function(feature.abd,
                                                   diag = FALSE)
   # Perform graph community detection
   if(verbose) message("Performing network clustering...")
-  pc.cluster <- igraph::cluster_edge_betweenness(pc.graph)
+  pc.cluster <- cluster_function(pc.graph)
   size.communities <- igraph::sizes(pc.cluster)
   size.communities <- sort(size.communities, decreasing = TRUE)
   if(all(size.communities < 2)) {
