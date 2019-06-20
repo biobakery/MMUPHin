@@ -149,6 +149,7 @@ continuous.discover <- function(feature.abd,
   # edge.matrix <- cor.matrix
   dimnames(edge.matrix) <- dimnames(cor.matrix)
   edge.matrix[abs(cor.matrix) < cor.cutoff] <- 0
+  edge.matrix[abs(cor.matrix) >= cor.cutoff] <- 1
   if(sum(edge.matrix) == nrow(edge.matrix)) {
     warning("All edges are filtered out in the PC network!\n",
             "Consider lowering the value of cor.cutoff.")
