@@ -177,7 +177,11 @@ continuous.discover <- function(feature.abd,
   if(verbose) message("Calculating consensus loadings...")
   mat.cons.loading <- sapply(as.integer(names(size.communities)[ind.consensus.loading]),
                              function(i) {
-                               loading.tmp <- mat.data.loading[, membership.loading == i]
+                               # reorder the nodes in a clsuter so that the highest degree one comes first
+                               degrees.tmp <- igraph::degree(pc.graph,
+                                                             v = igraph::V(pc.graph)[membership.loading == i])
+                               order.degrees.tmp <- order(degrees.tmp, decreasing = TRUE)
+                               loading.tmp <- mat.data.loading[, membership.loading == i][, order.degrees.tmp]
                                for(j in (2:ncol(loading.tmp))) {
                                  if (loading.tmp[, 1] %*% loading.tmp[, j] < 0)
                                    loading.tmp[, j] <- -loading.tmp[, j]
