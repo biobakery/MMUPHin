@@ -150,7 +150,6 @@ continuous.discover <- function(feature.abd,
   # edge.matrix <- cor.matrix
   dimnames(edge.matrix) <- dimnames(cor.matrix)
   edge.matrix[abs(cor.matrix) < cor.cutoff] <- 0
-  edge.matrix[abs(cor.matrix) >= cor.cutoff] <- 1
   if(sum(edge.matrix) == nrow(edge.matrix)) {
     warning("All edges are filtered out in the PC network!\n",
             "Consider lowering the value of cor.cutoff.")
@@ -224,6 +223,7 @@ continuous.discover <- function(feature.abd,
                                ]),
          mat.vali = mat.vali,
          clustered.network = list(pc.graph = pc.graph,
-                                  communities = pc.cluster)
+                                  communities = pc.cluster),
+         cor.matrix = cor.matrix
     ))
 }
