@@ -26,6 +26,7 @@
 #' mat.vali: matrix of validation correlations of the identified consensus loadings, each column for
 #' one identified PC loading cluster.
 #' clustered.network: list for the the constructed PC network and community discovery results
+#' mat.cosine all-versus-all matrix of cosine coefficients between PC loadings used to construct the network
 #'
 #' @export
 continuous.discover <- function(feature.abd,
@@ -145,11 +146,11 @@ continuous.discover <- function(feature.abd,
 
   # Calculate correlation matrix of loadings across datasets
   if(verbose) message("Calculating correlation between PCs across datasets...")
-  cor.matrix <- t(mat.data.loading) %*% mat.data.loading
-  edge.matrix <- matrix(1, nrow = nrow(cor.matrix), ncol = ncol(cor.matrix))
-  # edge.matrix <- cor.matrix
-  dimnames(edge.matrix) <- dimnames(cor.matrix)
-  edge.matrix[abs(cor.matrix) < cor.cutoff] <- 0
+  cosine.matrix <- t(mat.data.loading) %*% mat.data.loading
+  edge.matrix <- matrix(1, nrow = nrow(cosine.matrix), ncol = ncol(cosine.matrix))
+  # edge.matrix <- cosine.matrix
+  dimnames(edge.matrix) <- dimnames(cosine.matrix)
+  edge.matrix[abs(cosine.matrix) < cor.cutoff] <- 0
   if(sum(edge.matrix) == nrow(edge.matrix)) {
     warning("All edges are filtered out in the PC network!\n",
             "Consider lowering the value of cor.cutoff.")
@@ -224,6 +225,6 @@ continuous.discover <- function(feature.abd,
          mat.vali = mat.vali,
          clustered.network = list(pc.graph = pc.graph,
                                   communities = pc.cluster),
-         cor.matrix = cor.matrix
+         mat.cosine = cosine.matrix
     ))
 }
