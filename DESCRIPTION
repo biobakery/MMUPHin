@@ -4,8 +4,11 @@ Title: Meta-analysis Methods with Uniform Pipeline for Heterogeneity in Microbio
 Version: 0.1.0
 Author: Siyuan Ma
 Maintainer: Siyuan MA <sim653@mail.harvard.edu>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Description: MMUPHin is an R package for meta-analysis tasks of microbiome cohorts. It has function interfaces for 
+a) covariate-controlled batch- and cohort effect adjustment, 
+b) meta-analysis differential abundance testing, 
+c) meta-analysis unsupervised discrete structure (clustering) discovery, and 
+d) meta-analysis unsupervised continuous structure discovery.
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true

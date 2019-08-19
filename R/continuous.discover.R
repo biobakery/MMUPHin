@@ -11,6 +11,7 @@
 #' non-zero value if not specified).
 #' @param var.perc.cutoff percentage variance explained cutoff to choose the top PCs.
 #' @param cor.cutoff correlation cutoff to construct edges for the PC network.
+#' @param cluster_function function used to perform network community structure discovery.
 #' @param plot.clustered.network should the clustered PC network be visualized? Deafault to TRUE.
 #' @param plot.size.cutoff cluster size cutoff (for cluster to be included in the visualized
 #' PC network.)

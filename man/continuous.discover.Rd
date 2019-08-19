@@ -6,8 +6,9 @@
 \usage{
 continuous.discover(feature.abd, batch, data, normalization = "TSS",
   transform = "AST", pseudo.count = 0.5, var.perc.cutoff = 0.8,
-  cor.cutoff = 0.5, plot.clustered.network = TRUE,
-  plot.size.cutoff = 2, diagnostics = FALSE, verbose = TRUE)
+  cor.cutoff = 0.5, cluster_function = igraph::cluster_optimal,
+  plot.clustered.network = TRUE, plot.size.cutoff = 2,
+  diagnostics = FALSE, verbose = TRUE)
 }
 \arguments{
 \item{feature.abd}{feature*sample matrix of feature abundance (counts preferred if transform
@@ -29,6 +30,8 @@ non-zero value if not specified).}
 
 \item{cor.cutoff}{correlation cutoff to construct edges for the PC network.}
 
+\item{cluster_function}{function used to perform network community structure discovery.}
+
 \item{plot.clustered.network}{should the clustered PC network be visualized? Deafault to TRUE.}
 
 \item{plot.size.cutoff}{cluster size cutoff (for cluster to be included in the visualized
@@ -48,6 +51,7 @@ membership: list of PC loading members for each identified cluster.
 mat.vali: matrix of validation correlations of the identified consensus loadings, each column for
 one identified PC loading cluster.
 clustered.network: list for the the constructed PC network and community discovery results
+mat.cosine all-versus-all matrix of cosine coefficients between PC loadings used to construct the network
 }
 \description{
 Main function for continuous structure discovery
