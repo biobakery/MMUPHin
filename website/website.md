@@ -10,7 +10,7 @@ MMUPHin is an R package for meta-analysis tasks of microbiome cohorts. It has fu
 
 A manuscript describing MMUPHin, with its application in a collection of inflammatory bowel disease studies is currently in prep:
 
-|Siyuan Ma, Dmitry Shungin, Himel Mallick, Melanie Schirmer, Long Nguyen, Raivo Kolde, Eric Franzosa, Hera Vlamakis, Ramnik Xavier, Curtis Huttenhower *The landscape of novel lateral gene transfer events in the human microbiome.*|
+|Siyuan Ma, Dmitry Shungin, Himel Mallick, Melanie Schirmer, Long Nguyen, Raivo Kolde, Eric Franzosa, Hera Vlamakis, Ramnik Xavier, Curtis Huttenhower *Population Structure Discovery in Meta-Analyzed Microbial Communities and Inflammatory Bowel Disease.*|
 |---|
 
 In the meantime, if you use MMUPHin in your work, please cite this website: http://huttenhower.sph.harvard.edu/mmuphin.
