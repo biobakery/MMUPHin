@@ -22,7 +22,7 @@
 #' component l.Maaslin.fit which itself is a list of results from fitting Maaslin2 in
 #' individual studies.
 #' @export
-lm.meta <- function(feature.abd,
+lm_meta <- function(feature.abd,
                     exposure,
                     batch,
                     covariates = NULL,
