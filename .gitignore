@@ -1,6 +1,7 @@
 .Rproj.user
-.Rproj
+MMUPHin.Rproj
 .Rbuildignore
 .Rhistory
 .DS_Store
 .Renviron
+dependencies/*
