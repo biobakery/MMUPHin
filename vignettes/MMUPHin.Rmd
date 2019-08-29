@@ -1,0 +1,38 @@
+---
+title: "Performing meta-analyses of microbiome cohorts with MMUPHin"
+author: 
+- name: "Siyuan Ma"
+  affiliation: 
+  - Harvard T.H. Chan School of Public Health
+  - Broad Institute
+  email: siyuanma@g.harvard.edu
+package: MMUPHin
+date: "8/28/2019"
+output: 
+  BiocStyle::html_document
+vignette: >
+  %\VignetteIndexEntry{Performing meta-analyses of microbiome cohorts with MMUPHin}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}  
+---
+
+```{r load data from curatedMetagenomicData}
+library(curatedMetagenomicData)
+datasets <- curatedMetagenomicData(
+  c("FengQ_2015.metaphlan_bugs_list.stool"  ,
+    "HanniganGD_2017.metaphlan_bugs_list.stool",
+    "VogtmannE_2016.metaphlan_bugs_list.stool",
+    "YuJ_2015.metaphlan_bugs_list.stool"      ,
+    "ZellerG_2014.metaphlan_bugs_list.stool"), 
+  dryrun = FALSE)
+eSet <- mergeData(datasets)
+mat_abd <- exprs(eSet)
+mat_abd <- mat_abd[grepl("s__", rownames(mat_abd), fixed = TRUE) &
+                     !grepl("t__", rownames(mat_abd), fixed = TRUE), ]
+mat_count <- round(sweep(mat_abd, 2, eSet$number_reads / 100, "*"))
+df_meta <- pData(eSet)
+```
+
+```{r}
+test <- adjust_batch(mat_count, batch = "studyID", data = df_meta)
+```

@@ -1,73 +1,73 @@
 #' Covariate-adjusted meta-analysis of per-feature associations in compositional data
 #'
-#' @param feature.abd feature*sample matrix of feature abundance (counts preferred).
+#' @param feature_abd feature*sample matrix of feature abundance (counts preferred).
 #' @param exposure name of the exposure of interest variable.
 #' @param batch  name of the batch variable.
 #' @param covariates name(s) of additional covariates to adjust for in the Maaslin2 model.
-#' @param covariates.random name(s) of random covariates in the Maaslin2 model.
+#' @param covariates_random name(s) of random covariates in the Maaslin2 model.
 #' @param data data frame of metadata, must contain exposure, batch, covariates (if present),
-#' and covariates.random (if present).
+#' and covariates_random (if present).
 #' @param normalization normalization parameter for Maaslin2.
 #' @param transform transformation parameter for Maaslin2.
 #' @param analysis_method analysis method parameter for Maaslin2.
-#' @param rma.method method parameter for rma.
-#' @param forest.plots should the function generate forest plots for significant results?
+#' @param rma_method method parameter for rma.
+#' @param forest_plots should the function generate forest plots for significant results?
 #' Deafault to TRUE.
 #' @param verbose should verbose modelling information should be printed? Default to TRUE.
 #' @param output output directory (for Maaslin2 output and forest plots).
-#' @param rma.threshold rma fit threshold control
-#' @param rma.maxiter rma fit maximum iteration control
+#' @param rma_threshold rma fit threshold control
+#' @param rma_maxiter rma fit maximum iteration control
 #'
 #' @return a list with component meta.results for per-feature meta-analysis results, and
 #' component l.Maaslin.fit which itself is a list of results from fitting Maaslin2 in
 #' individual studies.
 #' @export
-lm_meta <- function(feature.abd,
+lm_meta <- function(feature_abd,
                     exposure,
                     batch,
                     covariates = NULL,
-                    covariates.random = NULL,
+                    covariates_random = NULL,
                     data,
                     normalization = "TSS",
                     transform = "AST",
                     analysis_method = "LM",
-                    rma.method = "REML",
-                    forest.plots = TRUE,
+                    rma_method = "REML",
+                    forest_plots = TRUE,
                     output = "./MMUPHin_lm.meta/",
                     verbose = TRUE,
-                    rma.threshold = 1e-6,
-                    rma.maxiter = 1000) {
+                    rma_threshold = 1e-6,
+                    rma_maxiter = 1000) {
   # Ensure data formats are as expected
-  feature.abd <- as.matrix(feature.abd)
-  if(any(is.na(feature.abd)))
+  feature_abd <- as.matrix(feature_abd)
+  if(any(is.na(feature_abd)))
     stop("Found missing values in the feature table!")
-  if(any(feature.abd < 0))
+  if(any(feature_abd < 0))
     stop("Found negative values in the feature table!")
   data <- as.data.frame(data, stringsAsFactors = FALSE)
-  if(!all(c(batch, exposure, covariates, covariates.random) %in% names(data)))
+  if(!all(c(batch, exposure, covariates, covariates_random) %in% names(data)))
     stop("Batch/covariate variable not found in data.")
-  if(!all(apply(data[, c(batch, exposure, covariates, covariates.random),
+  if(!all(apply(data[, c(batch, exposure, covariates, covariates_random),
                      drop = FALSE],
                 2, class) %in% c("character", "numeric")))
     stop("Covariates must be of either character or numeric class!")
 
   # Data dimensions need to agree with each other
-  if(ncol(feature.abd) != nrow(data))
+  if(ncol(feature_abd) != nrow(data))
     stop("Dimensions of feature table and metadata table do not agree!")
 
   # Check that sample names agree between the feature and metadata table
   # And assign row and column names if emppty
-  if(is.null(colnames(feature.abd))) colnames(feature.abd) <-
+  if(is.null(colnames(feature_abd))) colnames(feature_abd) <-
     paste0("Sample",
-           1:ncol(feature.abd))
-  if(is.null(rownames(feature.abd))) rownames(feature.abd) <-
+           1:ncol(feature_abd))
+  if(is.null(rownames(feature_abd))) rownames(feature_abd) <-
     paste0("Feature",
-           1:nrow(feature.abd))
+           1:nrow(feature_abd))
   if(is.null(rownames(data))) rownames(data) <-
     paste0("Sample",
-           1:ncol(feature.abd))
-  if(any(colnames(feature.abd) != rownames(data)))
-    stop("Sample names in feature.abd and data don't agree!")
+           1:ncol(feature_abd))
+  if(any(colnames(feature_abd) != rownames(data)))
+    stop("Sample names in feature_abd and data don't agree!")
 
   # Check batch variable and identify groups
   batch <- data[, batch]
@@ -121,10 +121,10 @@ lm_meta <- function(feature.abd,
 
   # Check for random covariates
   ind.random <- NULL
-  if(!is.null(covariates.random)) {
-    if(length(covariates.random) > 1)
+  if(!is.null(covariates_random)) {
+    if(length(covariates_random) > 1)
       stop("Multiple random covariates currently not supported.\n")
-    ind.random <- sapply(covariates.random,
+    ind.random <- sapply(covariates_random,
                          function(covariate.random) {
                            tapply(data[, covariate.random, drop = TRUE],
                                   batch, function(x) {
@@ -148,18 +148,18 @@ lm_meta <- function(feature.abd,
     i.batch <- lvl.batch[i]
     if(!ind.exposure[i.batch]) next
     if(verbose) message("Fitting Maaslin2 on batch ", i.batch, "...")
-    i.feature.abd <- feature.abd[, batch == i.batch]
+    i.feature_abd <- feature_abd[, batch == i.batch]
     i.data <- data[batch == i.batch, ]
     i.covariates <- covariates[ind.covariate[i.batch, , drop = TRUE]]
-    i.covariates.random <- covariates.random[ind.random[i.batch, , drop = TRUE]]
+    i.covariates_random <- covariates_random[ind.random[i.batch, , drop = TRUE]]
     i.output.Maaslin <- paste0(output.Maaslin, i.batch)
     dir.create(i.output.Maaslin)
     i.Maaslin.fit <- Maaslin2.wrapper(
-      feature.abd = i.feature.abd,
+      feature_abd = i.feature_abd,
       data = i.data,
       exposure = exposure,
       covariates = i.covariates,
-      covariates.random = i.covariates.random,
+      covariates_random = i.covariates_random,
       output = i.output.Maaslin,
       normalization = normalization,
       transform = transform,
@@ -171,10 +171,10 @@ lm_meta <- function(feature.abd,
 
   # Fit fixed/random effects models
   if(verbose) message("Fitting meta-analysis model.")
-  meta.results <- rma.wrapper(l.Maaslin.fit, method = rma.method,
-                              forest.plots = forest.plots, output = output,
-                              rma.threshold = rma.threshold,
-                              rma.maxiter = rma.maxiter)
+  meta.results <- rma.wrapper(l.Maaslin.fit, method = rma_method,
+                              forest_plots = forest_plots, output = output,
+                              rma_threshold = rma_threshold,
+                              rma_maxiter = rma_maxiter)
 
   return(list(meta.results = meta.results, ind.results = l.Maaslin.fit))
 }
