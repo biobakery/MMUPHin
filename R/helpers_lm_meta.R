@@ -328,18 +328,3 @@ rma.mod.wrapper <- function(l.Maaslin.fit,
   results$R2[is.na(results$R2) & !is.na(results$tau2)] <- 0
   return(results)
 }
-
-#' Utility for shorter names
-#' Useful when plotting per-feature figures where feature names could be cutoff
-#'
-#' @param x vector of names
-#' @param cutoff number of maximum string length before start cutting off the middle
-#'
-#' @return vector of new names with ... replacing the middle part if name is longer than cutoff
-shorten.name <- function(x, cutoff) {
-  x_sub <- x
-  stringr::str_sub(x_sub[stringr::str_length(x) > cutoff],
-                   start = round(cutoff/2) + 1,
-                   end = -(round(cutoff/2) + 1)) <- "..."
-  return(x_sub)
-}

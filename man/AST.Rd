@@ -2,7 +2,7 @@
 % Please edit documentation in R/helpers.R
 \name{AST}
 \alias{AST}
-\title{AST transformation}
+\title{AST transformation (modified from Maaslin2 and is different)}
 \usage{
 AST(x)
 }
@@ -13,5 +13,5 @@ AST(x)
 transformed vector of abundance.
 }
 \description{
-AST transformation
+AST transformation (modified from Maaslin2 and is different)
 }

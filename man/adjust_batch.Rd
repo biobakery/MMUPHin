@@ -7,7 +7,7 @@ feature abundance data}
 \usage{
 adjust_batch(feature_abd, batch, covariates = NULL, data,
   zero_inflation = TRUE, pseudo_count = NULL, diagnostics = FALSE,
-  verbose = TRUE)
+  verbose = TRUE, control)
 }
 \arguments{
 \item{feature_abd}{feature-by-sample matrix of abundances (proportions or
@@ -34,6 +34,8 @@ not specified.}
 
 \item{verbose}{logical. Whether or not verbose modelling information is
 printed.}
+
+\item{control}{list of control parameters. See details.}
 }
 \value{
 feature-by-sample matrix of adjusted feature abundance.

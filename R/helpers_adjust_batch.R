@@ -13,6 +13,19 @@ construct_design <- function(data) {
   model.matrix(~ . - 1, data = data)
 }
 
+#' Check if a design matrix is full rank
+#'
+#' @param design design matrix.
+#'
+#' @return TRUE/FALSE for whether or not the design matrix is full rank.
+check_rank <- function(design) {
+  # a zero-column matrix is full rank
+  if(is.null(design)) return(TRUE)
+
+  qr(design)$rank == ncol(design)
+}
+
+
 #' Create indicator matrices for which feature/batch/samples to adjust. This is
 #' relevant for zero_inflation is TRUE and only non-zero values are adjusted.
 #'
@@ -83,7 +96,7 @@ fit_stand_feature <- function(s_data, design, l_ind) {
         y = s_data[i_feature, l_ind$ind_data[i_feature, ]],
         i_design = i_design,
         n_batch = sum(l_ind$ind_gamma[i_feature, ])
-        )
+      )
       s_data[i_feature, l_ind$ind_data[i_feature, ]] <- stand_fit$y_stand
       l_stand_feature[[i_feature]] <- stand_fit
     } else l_stand_feature[[i_feature]] <- NULL
@@ -155,18 +168,20 @@ fit_EB <- function(s_data, l_stand_feature, batchmod, n_batch, l_ind) {
       # For debugging, this shouldn't happen
       if(
         # less than two samples are non-zero to correct for the feature
-        nrow(batchmod[ind_data[i_feature, ], ind_gamma[i_feature, ],
-                       drop = FALSE]) <= 1 |
+        nrow(batchmod[l_ind$ind_data[i_feature, ],
+                      l_ind$ind_gamma[i_feature, ],
+                      drop = FALSE]) <= 1 |
         # less than two batches are eligible to correct for the feature
-         ncol(batchmod[ind_data[i_feature, ], ind_gamma[i_feature, ],
-                       drop = FALSE]) <= 1)
+        ncol(batchmod[l_ind$ind_data[i_feature, ],
+                      l_ind$ind_gamma[i_feature, ],
+                      drop = FALSE]) <= 1)
         stop("Something wrong happened!" ) ## FIXME
       i_gamma <- apply(i_s_data_batch, 2, mean)
       i_delta <- apply(i_s_data_batch, 2, sd)
       i_delta[is.na(i_delta)] <- 1
       i_delta[i_delta == 0] <- 1
-      gamma_hat[i_feature, ind_gamma[i_feature, ]] <- i_gamma
-      delta_hat[i_feature, ind_gamma[i_feature, ]] <- i_delta
+      gamma_hat[i_feature, l_ind$ind_gamma[i_feature, ]] <- i_gamma
+      delta_hat[i_feature, l_ind$ind_gamma[i_feature, ]] <- i_delta
     }
   }
 
@@ -192,27 +207,27 @@ fit_EB <- function(s_data, l_stand_feature, batchmod, n_batch, l_ind) {
               b_prior = b_prior))
 }
 
-#' EB prior estimation of scale parameters
+#' EB prior estimation for scale parameters
 #'
-#' @param gamma_hat
-#' @param na.rm
+#' @param delta_hat frequentist per-batch scale estimations.
+#' @param na.rm whether or not missing values should be removed.
 #'
-#' @return
-aprior <- function(gamma_hat, na.rm = FALSE) {
-  m <- mean(gamma_hat, na.rm = na.rm)
-  s2 <- var(gamma_hat, na.rm = na.rm)
+#' @return shape hyper parameter
+aprior <- function(delta_hat, na.rm = FALSE) {
+  m <- mean(delta_hat, na.rm = na.rm)
+  s2 <- var(delta_hat, na.rm = na.rm)
   (2*s2 + m^2) / s2
 }
 
-#' EB prior estimation of scale parameters
+#' EB prior estimation for scale parameters
 #'
-#' @param gamma_hat
-#' @param na.rm
+#' @param delta_hat frequentist per-batch location estimations.
+#' @param na.rm whether or not missing values should be removed.
 #'
-#' @return
-bprior <- function(gamma_hat, na.rm = FALSE){
-  m <- mean(gamma_hat, na.rm = na.rm)
-  s2 <- var(gamma_hat, na.rm = na.rm)
+#' @return scale hyper parameter
+bprior <- function(delta_hat, na.rm = FALSE){
+  m <- mean(delta_hat, na.rm = na.rm)
+  s2 <- var(delta_hat, na.rm = na.rm)
   (m*s2 + m^3) / s2
 }
 
@@ -260,6 +275,9 @@ fit_shrink <- function(s_data, l_params, batchmod, n_batch, l_ind, control) {
     gamma_star[, i_batch] <- results[[i_batch]]$gamma_star
     delta_star[, i_batch] <- results[[i_batch]]$delta_star
   }
+
+  return(list(gamma_star = gamma_star,
+              delta_star = delta_star))
 }
 
 #' Iteratively solve for one feature's shrinked location and scale parameters
@@ -312,4 +330,131 @@ postmean <- function(g_hat,g_bar,n,d_star,t2){
 
 postvar <- function(sum2,n,a,b){
   (.5*sum2 + b) / (n/2 + a - 1)
+}
+
+#' Perform batch adjustment on standardized feature abundances, based on EB
+#' shrinked per-batch location and scale parameters
+#'
+#' @param s_data feature-by-sample matrix of standardized abundances.
+#' @param l_params_shrink list of shrinked parameters, as returned by
+#' fit_shrink.
+#' @param l_stand_feature list of per-feature standardization fits, as returned
+#' by fit_stand_feature.
+#' @param batchmod design matrix for batch variables.
+#' @param n_batch number of batches in the data.
+#' @param l_ind list of indicator matrices, as returned by construct_ind.
+#'
+#' @return feature-by-sample matrix of batch-adjusted feature abundances.
+adjust_EB <- function(s_data, l_params_shrink, l_stand_feature,
+                      batchmod, n_batch,
+                      l_ind) {
+  if(n_batch != ncol(batchmod))
+    stop("n_batch does not agree with batchmod!")
+  if(n_batch != ncol(l_params_shrink[[1]]))
+    stop("n_batch does not agree with l_params_shrink!")
+
+  adj_data <- relocate_scale(s_data, l_params_shrink,
+                             batchmod, n_batch,
+                             l_ind)
+  adj_data <- add_back_covariates(adj_data, l_stand_feature,
+                                  l_ind)
+
+  return(adj_data)
+}
+
+#' Relocate and scale feature abundances to correct for batch effects, given
+#' shrinked per-batch location and scale parameters
+#'
+#' @param s_data feature-by-sample matrix of standardized abundances.
+#' @param l_params_shrink list of shrinked parameters, as returned by
+#' fit_shrink.
+#' @param batchmod design matrix for batch variables.
+#' @param n_batch number of batches in the data.
+#' @param l_ind list of indicator matrices, as returned by construct_ind.
+#'
+#' @return feature-by-sample matrix of batch-adjusted feature abundances
+#' (but without covariate effects).
+relocate_scale <- function(s_data, l_params_shrink,
+                           batchmod, n_batch,
+                           l_ind) {
+  adj_data <- s_data
+  for (i_batch in 1:n_batch) {
+    i_ind_feature <-
+      !is.na(l_params_shrink$gamma_star[, i_batch]) &
+      !is.na(l_params_shrink$delta_star[, i_batch])
+    # For debugging, this shouldn't happen
+    # Features with valid shrinked parameters in the batch should agree
+    # with the ones determined to be eligible for batch estimation in the
+    # first place
+    ## FIXME
+    if(!all(i_ind_feature == l_ind$ind_gamma[, i_batch]))
+      stop("Features determined to be eligible for batch estimation do not ",
+           "agree with the ones with valid per-batch shrinked parameters!")
+
+    for(i_feature in 1:nrow(adj_data)) {
+      if(i_ind_feature[i_feature]) {
+        i_ind_sample <-
+          l_ind$ind_data[i_feature, ] &
+          as.logical(batchmod[, i_batch])
+        # relocate and scale
+        adj_data[i_feature, i_ind_sample] <-
+          (adj_data[i_feature, i_ind_sample] -
+             l_params_shrink$gamma_star[i_feature, i_batch]) /
+          sqrt(l_params_shrink$delta_star[i_feature, i_batch])
+      }
+    }
+  }
+
+  return(adj_data)
+}
+
+#' Add back covariate effects to batch-corrected feature abundance data
+#'
+#' @param adj_data feature-by-sample matrix of batch-adjusted feature abundances
+#' (but without covariate effects), as returned by relocate_scale.
+#' @param l_stand_feature list of per-feature standardization fits, as returned
+#' by fit_stand_feature.
+#' @param l_ind list of indicator matrices, as returned by construct_ind.
+#'
+#' @return feature-by-sample matrix of batch-adjusted feature abundances
+#' with covariate effects retained.
+add_back_covariates <- function(adj_data, l_stand_feature,
+                                l_ind) {
+  for(i_feature in 1:nrow(adj_data)) {
+    if(l_ind$ind_feature[i_feature]) {
+      i_stand_feature <- l_stand_feature[[i_feature]]
+      adj_data[i_feature, l_ind$ind_data[i_feature, ]] <-
+        adj_data[i_feature, l_ind$ind_data[i_feature, ]] *
+        sqrt(i_stand_feature$var_pooled) +
+        i_stand_feature$stand_mean
+    }
+  }
+  return(adj_data)
+}
+
+#' Transform batch adjusted feature abundances back to the original scale in
+#' feature_abd
+#'
+#' @param adj_data feature-by-sample matrix of batch-adjusted feature abundances
+#' with covariate effects retained.
+#' @param feature_abd original feature-by-sample matrix of abundances
+#' (proportions or counts).
+#' @param type_feature_abd type of feature abundance table (counts or
+#' proportions). If counts, the final output will be rounded into counts as
+#' well.
+#'
+#' @return feature-by-sample matrix of batch-adjusted feature abundances,
+#' with covariate effects retained and scales consistent with original abundance
+#' matrix.
+back_transform_abd <- function(adj_data, feature_abd, type_feature_abd) {
+  adj_data <- 2^adj_data
+  adj_data[feature_abd == 0] <- 0
+  adj_data <- normalize_features(adj_data, normalization = "TSS")
+  adj_data <- t(t(adj_data) * apply(feature_abd, 2, sum))
+  dimnames(adj_data) <- dimnames(feature_abd)
+
+  if(type_feature_abd == "counts")
+    adj_data <- round(adj_data)
+
+  return(adj_data)
 }

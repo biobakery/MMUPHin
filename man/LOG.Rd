@@ -2,7 +2,7 @@
 % Please edit documentation in R/helpers.R
 \name{LOG}
 \alias{LOG}
-\title{LOG transformation. This differs from Maaslin2}
+\title{LOG transformation (modified from Maaslin2 and is different)}
 \usage{
 LOG(x)
 }
@@ -13,5 +13,5 @@ LOG(x)
 transformed vector of abundance.
 }
 \description{
-LOG transformation. This differs from Maaslin2
+LOG transformation (modified from Maaslin2 and is different)
 }

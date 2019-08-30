@@ -4,14 +4,14 @@
 \alias{lm_meta}
 \title{Covariate-adjusted meta-analysis of per-feature associations in compositional data}
 \usage{
-lm_meta(feature.abd, exposure, batch, covariates = NULL,
-  covariates.random = NULL, data, normalization = "TSS",
-  transform = "AST", analysis_method = "LM", rma.method = "REML",
-  forest.plots = TRUE, output = "./MMUPHin_lm.meta/", verbose = TRUE,
-  rma.threshold = 1e-06, rma.maxiter = 1000)
+lm_meta(feature_abd, exposure, batch, covariates = NULL,
+  covariates_random = NULL, data, normalization = "TSS",
+  transform = "AST", analysis_method = "LM", rma_method = "REML",
+  forest_plots = TRUE, output = "./MMUPHin_lm.meta/", verbose = TRUE,
+  rma_threshold = 1e-06, rma_maxiter = 1000)
 }
 \arguments{
-\item{feature.abd}{feature*sample matrix of feature abundance (counts preferred).}
+\item{feature_abd}{feature*sample matrix of feature abundance (counts preferred).}
 
 \item{exposure}{name of the exposure of interest variable.}
 
@@ -19,10 +19,10 @@ lm_meta(feature.abd, exposure, batch, covariates = NULL,
 
 \item{covariates}{name(s) of additional covariates to adjust for in the Maaslin2 model.}
 
-\item{covariates.random}{name(s) of random covariates in the Maaslin2 model.}
+\item{covariates_random}{name(s) of random covariates in the Maaslin2 model.}
 
 \item{data}{data frame of metadata, must contain exposure, batch, covariates (if present),
-and covariates.random (if present).}
+and covariates_random (if present).}
 
 \item{normalization}{normalization parameter for Maaslin2.}
 
@@ -30,18 +30,18 @@ and covariates.random (if present).}
 
 \item{analysis_method}{analysis method parameter for Maaslin2.}
 
-\item{rma.method}{method parameter for rma.}
+\item{rma_method}{method parameter for rma.}
 
-\item{forest.plots}{should the function generate forest plots for significant results?
+\item{forest_plots}{should the function generate forest plots for significant results?
 Deafault to TRUE.}
 
 \item{output}{output directory (for Maaslin2 output and forest plots).}
 
 \item{verbose}{should verbose modelling information should be printed? Default to TRUE.}
 
-\item{rma.threshold}{rma fit threshold control}
+\item{rma_threshold}{rma fit threshold control}
 
-\item{rma.maxiter}{rma fit maximum iteration control}
+\item{rma_maxiter}{rma fit maximum iteration control}
 }
 \value{
 a list with component meta.results for per-feature meta-analysis results, and

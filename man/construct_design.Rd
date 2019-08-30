@@ -7,10 +7,10 @@
 construct_design(data)
 }
 \arguments{
-\item{data}{metadata data frame}
+\item{data}{metadata data frame.}
 }
 \value{
-design matrix
+design matrix.
 }
 \description{
 Construct a non-intercept design model matrix given a metadata data frame

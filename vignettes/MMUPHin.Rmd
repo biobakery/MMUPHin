@@ -34,5 +34,5 @@ df_meta <- pData(eSet)
 ```
 
 ```{r}
-test <- adjust_batch(mat_count, batch = "studyID", data = df_meta)
+test <- adjust_batch(mat_count, batch = "studyID", data = df_meta, diagnostics = TRUE)
 ```

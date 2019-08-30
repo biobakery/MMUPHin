@@ -5,7 +5,7 @@
 \title{Utility for temporarily renaming samples/features for Maaslin2 run to bypass the rare
 cases where unconventional names can cause exceptions}
 \usage{
-rename.Maaslin(old.names, prefix)
+\method{rename}{Maaslin}(old.names, prefix)
 }
 \arguments{
 \item{old.names}{vector of names.}

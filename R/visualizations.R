@@ -1,67 +1,105 @@
-#' Diagnostic visualization for adj.batch function
+#' Diagnostic visualization for adj_batch function
 #'
-#' @param feature.abd feature*sample matrix of unadjusted abundance
-#' @param feature.abd.adj feature*sample matrix of adjusted abundance
-#' @param batch vector of batch variables
-#' @param gamma.hat estimated per feature-batch gamma parameters
-#' @param gamma.star shrinked per feature-batch gamma parameters
+#' @param feature_abd original feature-by-sample matrix of abundances
+#' (proportions or counts).
+#' @param feature_abd_adj ffeature-by-sample matrix of batch-adjusted feature
+#' abundances, with covariate effects retained and scales consistent with
+#' original abundance matrix.
+#' @param batch the batch variable (should be a factor).
+#' @param gamma_hat estimated per feature-batch gamma parameters.
+#' @param gamma_star shrinked per feature-batch gamma parameters
 #'
-#' @return the invisble ggplot2 plot object
+#' @return (invisbly) the ggplot2 plot object
 #' @import ggplot2
-#' @importFrom magrittr %>%
-diagnostics.adjust.batch <- function(feature.abd,
-                                     feature.abd.adj,
+diagnostics_adjust_batch <- function(feature_abd,
+                                     feature_abd_adj,
                                      batch,
-                                     gamma.hat,
-                                     gamma.star) {
-  df.plot <- data.frame(gamma.hat = as.vector(gamma.hat),
-                        gamma.star = as.vector(gamma.star))
-  p.shrinkage <- ggplot(df.plot, aes(x = gamma.hat, y = gamma.star)) +
+                                     gamma_hat,
+                                     gamma_star) {
+  feature_abd <- fill_dimnames(feature_abd, "Feature", "Sample")
+  dimnames(feature_abd_adj) <- dimnames(feature_abd)
+  if(!is.factor(batch))
+    stop("batch should be a factor!")
+
+  # Plot gamma (i.e. location) parameters before and after shrinkage
+  df_plot <- data.frame(gamma_hat = as.vector(gamma_hat),
+                        gamma_star = as.vector(gamma_star),
+                        batch = factor(rep(levels(batch),
+                                           each = nrow(gamma_hat)),
+                                       levels = levels(batch)))
+  df_plot <- subset(df_plot, !is.na(gamma_hat), !is.na(gamma_star))
+  p_shrinkage <- ggplot(df_plot, aes(x = gamma_hat, y = gamma_star,
+                                     color = batch)) +
     geom_point() +
     geom_abline(intercept = 0, slope = 1) +
-    theme_bw() +
-    ggtitle("Shrinkage of batch mean parameters")
+    scale_color_discrete(labels = shorten_name(levels(batch))) +
+    ggtitle("Shrinkage of batch mean parameters") +
+    theme(legend.position = c(0, 1),
+          legend.justification = c(0, 1),
+          legend.direction = "horizontal",
+          legend.background = element_blank()) +
+    xlab("Gamma") + ylab("Gamma (shrinked)")
 
-  df.ra <- as.data.frame(t(apply(feature.abd, 2, function(x) x / sum(x)))) %>%
-    dplyr::mutate(Sample = colnames(feature.abd),
-                  Adjustment = "Original")
-  df.ra.norm <- as.data.frame(t(apply(feature.abd.adj, 2, function(x) x / sum(x)))) %>%
-    dplyr::mutate(Sample = colnames(feature.abd.adj),
-                  Adjustment = "Adjusted")
-  df.plot <- rbind(df.ra, df.ra.norm) %>%
-    tidyr::gather(key = "feature",
-                  value = "relative abundance",
-                  -Sample, -Adjustment) %>%
-    dplyr::left_join(data.frame(batch = batch,
-                                Sample = df.ra$Sample,
-                                stringsAsFactors = FALSE),
-                     by = "Sample") %>%
-    dplyr::group_by(feature) %>%
-    dplyr::mutate(mean_overall = mean(`relative abundance`[Adjustment == "Original"])) %>%
-    dplyr::group_by(feature, batch, Adjustment, mean_overall) %>%
-    dplyr::summarise(mean_batch = mean(`relative abundance`)) %>%
-    dplyr::ungroup() %>%
-    dplyr::mutate(Adjustment = factor(Adjustment, levels = c("Original", "Adjusted")))
+  # Plot each feature's per-batch and overall mean relative abundances,
+  # before and after adjustment
+  # matrix for relative abundances
+  mat_ra <- normalize_features(feature_abd, "TSS")
+  mat_ra_adj <- normalize_features(feature_abd_adj, "TSS")
 
-  p.mean <- ggplot(df.plot, aes(x = mean_overall,
+  # Prepare data frame of per-batch means
+  df_mean_batch <- as.data.frame(apply(mat_ra, 1,
+                                 function(x) tapply(x, batch, mean)))
+  df_mean_batch_adj <- as.data.frame(apply(mat_ra_adj, 1,
+                                     function(x) tapply(x, batch, mean)))
+  colnames(df_mean_batch) <-
+    colnames(df_mean_batch_adj) <-
+    rownames(feature_abd)
+  df_mean_batch$Batch <-
+    df_mean_batch_adj$Batch <-
+    levels(batch)
+  df_mean_batch$Adjustment <- "Original"
+  df_mean_batch_adj$Adjustment <- "Adjusted"
+  df_batch <- rbind(df_mean_batch, df_mean_batch_adj)
+  df_batch$Adjustment <- factor(df_batch$Adjustment,
+                              levels = c("Original", "Adjusted"))
+  df_batch <- tidyr::gather(df_batch,
+                            key = "Feature",
+                            value = "mean_batch",
+                            - Adjustment, - Batch)
+
+  # Prepare data frame of overall means
+  df_mean_overall <- data.frame(mean_overall =
+                                  apply(mat_ra, 1, mean))
+  df_mean_overall_adj <- data.frame(mean_overall =
+                                      df_mean_overall$mean_overall +
+                                      max(df_mean_overall$mean_overall) /
+                                      100)
+  df_mean_overall$Feature <-
+    df_mean_overall_adj$Feature <-
+    rownames(feature_abd)
+  df_mean_overall$Adjustment <- "Original"
+  df_mean_overall_adj$Adjustment <- "Adjusted"
+  df_overall <- rbind(df_mean_overall, df_mean_overall_adj)
+  df_overall$Adjustment <- factor(df_overall$Adjustment,
+                                levels = c("Original", "Adjusted"))
+
+  # Merge data and plot
+  df_plot <- merge(df_batch, df_overall, by = c("Feature", "Adjustment"))
+  p_mean <- ggplot(df_plot, aes(x = mean_overall,
                                 y = mean_batch)) +
-    geom_point(aes(group = paste0(Adjustment, feature),
-                   color = Adjustment),
-               position = position_dodge(width = max(df.plot$mean_overall) / 100)) +
-    geom_line(aes(group = paste0(Adjustment, feature),
-                  color = Adjustment),
-              position = position_dodge(width = max(df.plot$mean_overall) / 100)) +
+    geom_point(aes(color = Adjustment)) +
+    geom_line(aes(color = Adjustment, group = paste0(Feature, Adjustment))) +
     geom_abline(intercept = 0, slope = 1) +
     scale_color_manual(values = c("Original" = "black", "Adjusted" = "red")) +
-    theme_bw() +
-    theme(legend.position=c(0, 1),
-          legend.justification=c(0, 1),
-          legend.direction="horizontal",
+    theme(legend.position = c(0, 1),
+          legend.justification = c(0, 1),
+          legend.direction = "horizontal",
           legend.background = element_blank()) +
     ggtitle("Original/adjusted mean abundance") +
     xlab("Overal mean") + ylab("Batch mean")
 
-  suppressWarnings(plot <- cowplot::plot_grid(p.shrinkage, p.mean, nrow = 1)) # Because missing values
+  # Because missing values
+  plot <- cowplot::plot_grid(p_shrinkage, p_mean, nrow = 1)
   print(plot)
   invisible(plot)
 }
@@ -168,11 +206,11 @@ diagnostics.continuous.discover <- function(mat.vali,
                                             lvl.batch) {
   df.mali <- data.frame(mat.vali, check.names = FALSE)
   df.mali$batch <- factor(lvl.batch, levels = lvl.batch)
-  df.plot <- tidyr::gather(df.mali,
+  df_plot <- tidyr::gather(df.mali,
                            key = community,
                            value = correlation,
                            -batch)
-  p <- ggplot(df.plot,
+  p <- ggplot(df_plot,
               aes(x = community,
                   y = correlation)) +
     geom_boxplot(outlier.shape = NA) +

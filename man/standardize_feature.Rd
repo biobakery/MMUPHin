@@ -2,25 +2,27 @@
 % Please edit documentation in R/helpers_adjust_batch.R
 \name{standardize_feature}
 \alias{standardize_feature}
-\title{Centralize (by design matrix) and standardize (by pooled variance across all batches)
-feature abundances for empirical Bayes fit}
+\title{Centralize (by design matrix) and standardize (by pooled variance across all
+batches) feature abundances for empirical Bayes fit}
 \usage{
-standardize_feature(y, i.design, n.batch)
+standardize_feature(y, i_design, n_batch)
 }
 \arguments{
-\item{y}{vector of non-zero abundance of a single feature (if zero-inflated is true).}
+\item{y}{vector of non-zero abundance of a single feature (if zero-inflated
+is true).}
 
-\item{i.design}{design matrix for the feature; samples with zeros are taken out
-(if zero-inflated is true).}
+\item{i_design}{design matrix for the feature; samples with zeros are taken
+out (if zero-inflated is true).}
 
-\item{n.batch}{number of batches in the data.}
+\item{n_batch}{number of batches in the data.}
 }
 \value{
-a list with component: y.stand for vector of centralized and standardized feature
-abundance, and stand.mean/varpooled for the location and scale factor (these are used
-later to back transform the batch-shrinked feature abundance).
+a list with component: y_stand for vector of centralized and
+standardized feature abundance, and stand_mean/varpooled for the location and
+scale factor (these are used later to back transform the batch-shrinked
+feature abundance).
 }
 \description{
-Centralize (by design matrix) and standardize (by pooled variance across all batches)
-feature abundances for empirical Bayes fit
+Centralize (by design matrix) and standardize (by pooled variance across all
+batches) feature abundances for empirical Bayes fit
 }
