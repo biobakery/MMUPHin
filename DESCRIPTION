@@ -21,7 +21,9 @@ Imports:
     metafor,
     fpc,
     igraph,
-    ggplot2
+    ggplot2,
+    tidyr,
+    cowplot
 Suggests: 
     testthat (>= 2.1.0),
     BiocStyle, 
