@@ -4,11 +4,13 @@
 * For detailed installation and usage help, please consult the [MMUPHin manual](https://bitbucket.org/biobakery/mmuphin/src/master/README.md)
 ---
 
-MMUPHin is an R package for meta-analysis tasks of microbiome cohorts. It has function interfaces for a) covariate-controlled batch- and cohort effect adjustment, b) meta-analysis differential abundance testing, c) meta-analysis unsupervised discrete structure (clustering) discovery, and d) meta-analysis unsupervised continuous structure discovery. 
+MMUPHin is an R package implementing meta-analysis methods for microbial community profiles. It has interfaces for a) covariate-controlled batch- and cohort effect adjustment, b) meta-analytic differential abundance testing, and meta-analytic discovery of c) discrete (cluster-based) or d) continuous unsupervised population structure.
+
+Overall, MMUPHin enables the normalization and combination of multiple microbial community studies. It can then help in identifying microbes, genes, or pathways that are differential with respect to combined phenotypes. Finally, it can find clusters or gradients of sample types that reproduce consistently among studies.
 
 ## Citing MMUPHin
 
-A manuscript describing MMUPHin, with its application in a collection of inflammatory bowel disease studies is currently in prep:
+A manuscript describing MMUPHin, with its application in a collection of inflammatory bowel disease studies is currently in preparation:
 
 |Siyuan Ma, Dmitry Shungin, Himel Mallick, Melanie Schirmer, Long Nguyen, Raivo Kolde, Eric Franzosa, Hera Vlamakis, Ramnik Xavier, Curtis Huttenhower *Population Structure Discovery in Meta-Analyzed Microbial Communities and Inflammatory Bowel Disease.*|
 |---|
