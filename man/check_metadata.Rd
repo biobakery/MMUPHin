@@ -4,7 +4,7 @@
 \alias{check_metadata}
 \title{Check that metadata data frame has all the variables and not missing}
 \usage{
-check_metadata(data, variables)
+check_metadata(data, variables, no_missing = TRUE)
 }
 \arguments{
 \item{data}{data frame of metadata.}

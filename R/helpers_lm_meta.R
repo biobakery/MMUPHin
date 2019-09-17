@@ -1,3 +1,29 @@
+check_exposure <- function(exposure, batch){
+  ind_exposure <- tapply(df_meta[[exposure]], df_batch[[batch]],
+                         function(x) length(setdiff(unique(x), NA)) > 1)
+
+}
+
+# Check for exposure variables
+if(any(!ind_exposure) & verbose)
+  message("Exposure variable is missing or has only one non-missing value",
+          " in the following batches; Maaslin2 won't be fitted on them:\n",
+          paste(lvl_batch[!ind_exposure], collapse = ", "))
+
+# Factor exposures must have common levels across batches
+lvl.exposure <- NULL
+if(is.character(data[, exposure, drop = TRUE]))
+  data[, exposure] <- factor(data[, exposure, drop = TRUE])
+if(is.factor(data[, exposure, drop = TRUE])) {
+  lvl.exposure <- levels(data[, exposure, drop = TRUE])
+  ind_exposure.cat <- tapply(data[, exposure, drop = TRUE], batch,
+                             function(x) all(lvl.exposure %in% x))
+  if(any(ind_exposure & !ind_exposure.cat))
+    stop("Exposure is categorical and does not have common levels ",
+         "in the following batches.\n",
+         paste(lvl_batch[ind_exposure & !ind_exposure.cat], collapse = ", "))
+}
+
 #' Wrapper function for Maaslin2
 #'
 #' @param feature.abd feature*sample matrix of feature abundance.

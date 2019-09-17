@@ -67,7 +67,7 @@ check_samples <- function(feature_abd, data) {
 #' @param variables name of variables (batch, covariates, etc.) to check
 #'
 #' @return data reduced to include only those specified in variables
-check_metadata <- function(data, variables) {
+check_metadata <- function(data, variables, no_missing = TRUE) {
   # If variables are NULL return NULL (as in the case of no provided covariates)
   if(is.null(variables)) return(NULL)
 
@@ -84,7 +84,7 @@ check_metadata <- function(data, variables) {
                                 any(is.na(data[[variable]]))
                               },
                               TRUE)
-  if(any(variables_missing)) {
+  if(any(variables_missing) & no_missing) {
     stop("Following variable(s) in data have missing values:\n",
          paste(variables[variables_missing], collapse = ","))
   }

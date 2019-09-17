@@ -5,9 +5,7 @@
 \title{Zero-inflated empirical Bayes adjustment of batch effect in compositional
 feature abundance data}
 \usage{
-adjust_batch(feature_abd, batch, covariates = NULL, data,
-  zero_inflation = TRUE, pseudo_count = NULL, diagnostics = FALSE,
-  verbose = TRUE, control)
+adjust_batch(feature_abd, batch, covariates = NULL, data, control)
 }
 \arguments{
 \item{feature_abd}{feature-by-sample matrix of abundances (proportions or
@@ -16,24 +14,11 @@ counts).}
 \item{batch}{name of the batch variable. This variable in data should be a
 factor variable and will be converted to so with a warning if otherwise.}
 
-\item{covariates}{name(s) of covariates to adjust for
-in the batch correction model.}
+\item{covariates}{name(s) of covariates to adjust for in the batch correction
+model.}
 
 \item{data}{data frame of metadata, columns must include batch and covariates
 (if specified).}
-
-\item{zero_inflation}{logical. Whether or not a zero-inflated model should be
-run. Default to TRUE (zero-inflated model). If set to FALSE then ComBat
-(with parametric adjustment) will be performed.}
-
-\item{pseudo_count}{numeric. Pseudo count to add feature_abd before
-log-transformation. Automatically set to half of minimal non-zero value if
-not specified.}
-
-\item{diagnostics}{logical. Whether or not diagnostic plots are generated.}
-
-\item{verbose}{logical. Whether or not verbose modelling information is
-printed.}
 
 \item{control}{list of control parameters. See details.}
 }

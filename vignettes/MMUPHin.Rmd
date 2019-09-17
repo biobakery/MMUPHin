@@ -15,6 +15,22 @@ vignette: >
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}  
 ---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(cache = TRUE)
+suppressPackageStartupMessages(library(MMUPHin))
+suppressPackageStartupMessages(library(curatedMetagenomicData))
+```
+
+# What `MMUPHin` provides
+`MMUPHin` is an R package implementing meta-analysis methods for microbial community profiles. It has interfaces for: a) covariate-controlled batch- and cohort effect adjustment, b) meta-analytic differential abundance testing, and meta-analytic discovery of c) discrete (cluster-based) or d) continuous unsupervised population structure.
+
+Overall, `MMUPHin` enables the normalization and combination of multiple microbial community studies. It can then help in identifying microbes, genes, or pathways that are differential with respect to combined phenotypes. Finally, it can find clusters or gradients of sample types that reproduce consistently among studies.
+
+```{r, message=FALSE}
+# BiocManager::install("MMUPHin")
+library(MMUPHin)
+```
 
 ```{r load data from curatedMetagenomicData}
 library(curatedMetagenomicData)
@@ -22,8 +38,8 @@ datasets <- curatedMetagenomicData(
   c("FengQ_2015.metaphlan_bugs_list.stool"  ,
     "HanniganGD_2017.metaphlan_bugs_list.stool",
     "VogtmannE_2016.metaphlan_bugs_list.stool",
-    "YuJ_2015.metaphlan_bugs_list.stool"      ,
-    "ZellerG_2014.metaphlan_bugs_list.stool"), 
+    "YuJ_2015.metaphlan_bugs_list.stool",
+    "ZellerG_2014.metaphlan_bugs_list.sto ol"), 
   dryrun = FALSE)
 eSet <- mergeData(datasets)
 mat_abd <- exprs(eSet)
@@ -34,5 +50,6 @@ df_meta <- pData(eSet)
 ```
 
 ```{r}
-test <- adjust_batch(mat_count, batch = "studyID", data = df_meta, diagnostics = TRUE)
+test <- adjust_batch(mat_count, batch = "studyID", data = df_meta,
+                     control = list(verbose = FALSE))
 ```

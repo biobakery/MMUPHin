@@ -5,43 +5,25 @@
 \title{Covariate-adjusted meta-analysis of per-feature associations in compositional data}
 \usage{
 lm_meta(feature_abd, exposure, batch, covariates = NULL,
-  covariates_random = NULL, data, normalization = "TSS",
-  transform = "AST", analysis_method = "LM", rma_method = "REML",
-  forest_plots = TRUE, output = "./MMUPHin_lm.meta/", verbose = TRUE,
-  rma_threshold = 1e-06, rma_maxiter = 1000)
+  covariates_random = NULL, data, control)
 }
 \arguments{
-\item{feature_abd}{feature*sample matrix of feature abundance (counts preferred).}
+\item{feature_abd}{feature*sample matrix of feature abundance (counts
+preferred).}
 
 \item{exposure}{name of the exposure of interest variable.}
 
 \item{batch}{name of the batch variable.}
 
-\item{covariates}{name(s) of additional covariates to adjust for in the Maaslin2 model.}
+\item{covariates}{name(s) of additional covariates to adjust for in the
+Maaslin2 model.}
 
 \item{covariates_random}{name(s) of random covariates in the Maaslin2 model.}
 
-\item{data}{data frame of metadata, must contain exposure, batch, covariates (if present),
-and covariates_random (if present).}
+\item{data}{data frame of metadata, must contain exposure, batch, covariates
+(if present), and covariates_random (if present).}
 
-\item{normalization}{normalization parameter for Maaslin2.}
-
-\item{transform}{transformation parameter for Maaslin2.}
-
-\item{analysis_method}{analysis method parameter for Maaslin2.}
-
-\item{rma_method}{method parameter for rma.}
-
-\item{forest_plots}{should the function generate forest plots for significant results?
-Deafault to TRUE.}
-
-\item{output}{output directory (for Maaslin2 output and forest plots).}
-
-\item{verbose}{should verbose modelling information should be printed? Default to TRUE.}
-
-\item{rma_threshold}{rma fit threshold control}
-
-\item{rma_maxiter}{rma fit maximum iteration control}
+\item{control}{}
 }
 \value{
 a list with component meta.results for per-feature meta-analysis results, and

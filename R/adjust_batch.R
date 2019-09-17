@@ -5,19 +5,10 @@
 #' counts).
 #' @param batch name of the batch variable. This variable in data should be a
 #' factor variable and will be converted to so with a warning if otherwise.
-#' @param covariates name(s) of covariates to adjust for
-#' in the batch correction model.
+#' @param covariates name(s) of covariates to adjust for in the batch correction
+#' model.
 #' @param data data frame of metadata, columns must include batch and covariates
 #' (if specified).
-#' @param zero_inflation logical. Whether or not a zero-inflated model should be
-#' run. Default to TRUE (zero-inflated model). If set to FALSE then ComBat
-#' (with parametric adjustment) will be performed.
-#' @param pseudo_count numeric. Pseudo count to add feature_abd before
-#' log-transformation. Automatically set to half of minimal non-zero value if
-#' not specified.
-#' @param diagnostics logical. Whether or not diagnostic plots are generated.
-#' @param verbose logical. Whether or not verbose modelling information is
-#' printed.
 #' @param control list of control parameters. See details.
 #'
 #' @return feature-by-sample matrix of adjusted feature abundance.
@@ -26,11 +17,12 @@ adjust_batch <- function(feature_abd,
                          batch,
                          covariates = NULL,
                          data,
-                         zero_inflation = TRUE,
-                         pseudo_count = NULL,
-                         diagnostics = FALSE,
-                         verbose = TRUE,
                          control) {
+  # Check and construct controls
+  control <- match_control(default = control_adjust_batch,
+                           control = control)
+  verbose <- control$verbose
+
   # Check data formats
   # Check feature abundance table
   feature_abd <- as.matrix(feature_abd)
@@ -54,10 +46,6 @@ adjust_batch <- function(feature_abd,
   if(verbose)
     message("Found ", n_batch, " batches")
 
-  # check and construct controls
-  control <- match_control(default = control_adjust_batch,
-                           control = control)
-
   # Construct batch and covariate model matrices. Check for confounding
   batchmod <- construct_design(data = df_batch)
   mod <- construct_design(data = df_covariates)
@@ -71,13 +59,13 @@ adjust_batch <- function(feature_abd,
             " covariate(s) or covariate(s) level(s)")
 
   # Transform data for ComBat fit
-  if(is.null(pseudo_count)) {
+  if(is.null(control$pseudo_count)) {
     pseudo_count <- set_pseudo(features = feature_abd)
     if(verbose)
       message("Pseudo count is not specified and set to half of minimal ",
               "non-zero value: ",
               format(pseudo_count, digits = 3, scientific = TRUE))
-  }
+  } else pseudo_count <- control$pseudo_count
   log_data <- transform_features(
     features = normalize_features(
       features = feature_abd,
@@ -89,7 +77,7 @@ adjust_batch <- function(feature_abd,
   l_ind <- construct_ind(feature_abd = feature_abd,
                          n_batch = n_batch,
                          design = design,
-                         zero_inflation = zero_inflation)
+                         zero_inflation = control$zero_inflation)
   if(verbose)
     message("Adjusting for (after filtering) ", sum(l_ind$ind_feature),
             " features")
@@ -138,14 +126,16 @@ adjust_batch <- function(feature_abd,
 
 
   # If required, generate diagnostic plots
-  if(diagnostics)
+  if(!is.null(control$diagnostics))
     diagnostics_adjust_batch(feature_abd = feature_abd,
                              feature_abd_adj = feature_abd_adj,
                              batch = df_batch[[batch]],
                              gamma_hat = params_fit$gamma_hat,
-                             gamma_star = params_shrinked$gamma_star)
+                             gamma_star = params_shrinked$gamma_star,
+                             output = control$diagnostics)
 
 
-  return(feature_abd_adj)
+  return(list(feature_abd_adj = feature_abd_adj,
+              control = control))
 }
 
