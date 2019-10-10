@@ -22,3 +22,4 @@ with covariate effects retained.
 \description{
 Add back covariate effects to batch-corrected feature abundance data
 }
+\keyword{internal}

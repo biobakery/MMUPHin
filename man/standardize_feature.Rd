@@ -26,3 +26,4 @@ feature abundance).
 Centralize (by design matrix) and standardize (by pooled variance across all
 batches) feature abundances for empirical Bayes fit
 }
+\keyword{internal}

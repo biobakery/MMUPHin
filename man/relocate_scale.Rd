@@ -27,3 +27,4 @@ feature-by-sample matrix of batch-adjusted feature abundances
 Relocate and scale feature abundances to correct for batch effects, given
 shrinked per-batch location and scale parameters
 }
+\keyword{internal}

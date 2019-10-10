@@ -21,3 +21,4 @@ longer than cutoff
 Utility for shorter names
 Useful when plotting per-feature figures where feature names could be cutoff
 }
+\keyword{internal}

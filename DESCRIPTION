@@ -2,7 +2,7 @@ Package: MMUPHin
 Type: Package
 Title: Meta-analysis Methods with Uniform Pipeline for Heterogeneity in 
     Microbiome Studies
-Version: 0.1.0
+Version: 0.99.0
 Author: Siyuan Ma
 Maintainer: Siyuan MA <siyuanma@g.harvard.edu>
 Description: MMUPHin is an R package for meta-analysis tasks of microbiome 
@@ -11,21 +11,28 @@ Description: MMUPHin is an R package for meta-analysis tasks of microbiome
     b) meta-analysis differential abundance testing, 
     c) meta-analysis unsupervised discrete structure (clustering) discovery, and 
     d) meta-analysis unsupervised continuous structure discovery.
-License: What license is it under?
+License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
 RoxygenNote: 6.1.1
 VignetteBuilder: knitr
+Depends: R (>= 3.6)
 Imports:
     Maaslin2,
     metafor,
     fpc,
     igraph,
     ggplot2,
+    dplyr,
     tidyr,
     cowplot
 Suggests: 
-    testthat (>= 2.1.0),
+    testthat,
     BiocStyle, 
     knitr, 
-    rmarkdown
+    rmarkdown,
+    magrittr,
+    vegan,
+    phyloseq,
+    curatedMetagenomicData,
+    genefilter
+biocViews: Metagenomics, Microbiome, BatchEffect, MetaAnalysis

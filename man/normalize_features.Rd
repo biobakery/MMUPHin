@@ -20,3 +20,4 @@ normalized abundance table.
 \description{
 Normalize feature abundance table (modified from Maaslin2)
 }
+\keyword{internal}

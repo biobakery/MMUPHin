@@ -27,3 +27,4 @@ list of shrinked per-batch location and scale parameters.
 A posteriori shrink per-batch location and scale parameters towards their EB
 priors
 }
+\keyword{internal}

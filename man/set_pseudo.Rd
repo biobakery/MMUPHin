@@ -18,3 +18,4 @@ the pseudo count
 Set pseudo count for an abundance matrix. Pseudo count is currently set to
 half of minimum non-zero values
 }
+\keyword{internal}

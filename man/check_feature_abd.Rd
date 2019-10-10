@@ -19,3 +19,4 @@ Given a feature abundance table, make sure that a) it has no missing values,
 b) all values are non-negative, c) it is either proportions (all no greater
 than 1) or counts (all integers).
 }
+\keyword{internal}

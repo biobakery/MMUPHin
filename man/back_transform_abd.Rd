@@ -27,3 +27,4 @@ matrix.
 Transform batch adjusted feature abundances back to the original scale in
 feature_abd
 }
+\keyword{internal}

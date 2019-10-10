@@ -18,3 +18,4 @@ and default other wise
 \description{
 Match user-specified control parameters with default, and modify if needed
 }
+\keyword{internal}

@@ -15,3 +15,4 @@ transformed vector of abundance.
 \description{
 LOG transformation (modified from Maaslin2 and is different)
 }
+\keyword{internal}

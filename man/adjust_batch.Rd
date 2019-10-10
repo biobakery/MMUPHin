@@ -20,12 +20,67 @@ model.}
 \item{data}{data frame of metadata, columns must include batch and covariates
 (if specified).}
 
-\item{control}{list of control parameters. See details.}
+\item{control}{a named list of additional control parameters. See details.}
 }
 \value{
-feature-by-sample matrix of adjusted feature abundance.
+a list, with the following components:
+\describe{
+\item{feature_abd_adj}{
+feature-by-sample matrix of batch-adjusted abundances, normalized to the 
+same per-sample total abundance as feature_abd.
+}
+\item{control}{list of additional control parameters used in the function
+call.
+}
+}
 }
 \description{
-Zero-inflated empirical Bayes adjustment of batch effect in compositional
-feature abundance data
+\code{adjust_batch} takes as input a feature-by-sample matrix of microbial
+abundances, and performs batch effect adjustment given provided batch and
+optional covariate variables. It returns the batch-adjusted abundance matrix.
+Additional options and parameters can be passed through the \code{control}
+parameter as a list (see details).
+}
+\details{
+\code{control} should be provided as a named list of the following components
+(can be a subset).
+\describe{
+\item{zero_inflation}{
+logical. Indicates whether or not a zero-inflated model should be
+run. Default to TRUE (zero-inflated model). If set to FALSE then the 
+correction will be similar to \code{ComBat} as provided in the \code{sva}
+package.
+}
+\item{pseudo_count}{
+numeric. Pseudo count to add feature_abd before the methods' log
+transformation. Default to \code{NULL}, in which case \code{adjust_batch} 
+will set the pseudo count automatically to half of minimal non-zero values in
+\code{feature_abd}.
+}
+\item{diagnostic_plot}{
+character. Name for the generated diagnostic figure file. Default to 
+\code{"adjust_batch_diagnostic.pdf"}. Can be set to \code{NULL} in which 
+case no output will be generated.}
+\item{conv}{
+numeric. Convergence threshold for the method's iterative algorithm for 
+shrinking batch effect parameters. Default to 1e-4.
+}
+\item{maxit}{
+integer. Maximum number of iterations allowed for the method's iterative
+algorithm. Default to 1000.
+}
+\item{verbose}{
+logical. Indicates whether or not verbose information will be printed.
+}
+}
+}
+\examples{
+data("CRC_abd", "CRC_meta")
+CRC_abd_adj <- adjust_batch(feature_abd = CRC_abd, 
+                            batch = "studyID", 
+                            covariates = "study_condition",
+                            data = CRC_meta)$feature_abd_adj
+}
+\author{
+Siyuan Ma, \email{siyuanma@g.harvard.edu}
 }

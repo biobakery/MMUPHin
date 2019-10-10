@@ -15,9 +15,10 @@ fill_dimnames(x, row_prefix, col_prefix)
 \item{col_prefix}{prefix for the artificial column names}
 }
 \value{
-x but with the missing dimention names filled in
+x but with the missing dimension names filled in
 }
 \description{
 Fill in artificial row/column names to a matrix or data frame, if they are
 missing
 }
+\keyword{internal}

@@ -22,3 +22,4 @@ data frame) must be matching exactly. Note that this dictates that they
 cannot be NULL because by design data (a data frame) should have non-empty
 row names.
 }
+\keyword{internal}

@@ -21,3 +21,4 @@ a list of per-feature standardization fits.
 \description{
 Fit lm and standardize all features
 }
+\keyword{internal}

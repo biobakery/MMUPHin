@@ -29,3 +29,4 @@ matrix of shrinked location and scale parameters.
 \description{
 Iteratively solve for one feature's shrinked location and scale parameters
 }
+\keyword{internal}

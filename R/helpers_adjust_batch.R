@@ -1,16 +1,21 @@
-#' Construct a non-intercept design model matrix given a metadata data frame
+#' Construct a design model matrix given a metadata data frame, with the option
+#' to exclude the intercept.
 #'
 #' @param data metadata data frame.
+#' @param with_intercept should intercept terms be included in the model
 #'
 #' @return design matrix.
-construct_design <- function(data) {
+#' @keywords internal
+construct_design <- function(data, with_intercept = TRUE) {
   # Returns NULL if data is NULL. This happens if the covariate data frame is
   # NULL (when no covariates are provided)
   if(is.null(data)) return(NULL)
-
-  # Construct the matrix using all variables in data but excluding the intercept
-  # term (because batch dummy variables encompass the intercept term)
-  model.matrix(~ . - 1, data = data)
+  
+  # Construct the matrix using all variables in data 
+  if(with_intercept)
+    model.matrix(~ ., data = data)
+  else
+    model.matrix(~ . - 1, data = data)
 }
 
 #' Check if a design matrix is full rank
@@ -18,10 +23,11 @@ construct_design <- function(data) {
 #' @param design design matrix.
 #'
 #' @return TRUE/FALSE for whether or not the design matrix is full rank.
+#' @keywords internal
 check_rank <- function(design) {
   # a zero-column matrix is full rank
   if(is.null(design)) return(TRUE)
-
+  
   qr(design)$rank == ncol(design)
 }
 
@@ -36,6 +42,7 @@ check_rank <- function(design) {
 #' @param zero_inflation zero inflation flag.
 #'
 #' @return list of indicator matrices needed by fitting in adjust_batch.
+#' @keywords internal
 construct_ind <- function(feature_abd, n_batch, design, zero_inflation) {
   # which feature table values are zero
   ind_data <- matrix(TRUE, nrow(feature_abd), ncol(feature_abd))
@@ -81,6 +88,7 @@ construct_ind <- function(feature_abd, n_batch, design, zero_inflation) {
 #'
 #' @return list of two componet: the standardized feature abundance matrix, and
 #' a list of per-feature standardization fits.
+#' @keywords internal
 fit_stand_feature <- function(s_data, design, l_ind) {
   l_stand_feature <- list()
   for(i_feature in 1:nrow(s_data)) {
@@ -118,6 +126,7 @@ fit_stand_feature <- function(s_data, design, l_ind) {
 #' standardized feature abundance, and stand_mean/varpooled for the location and
 #' scale factor (these are used later to back transform the batch-shrinked
 #' feature abundance).
+#' @keywords internal
 standardize_feature <- function(y,
                                 i_design,
                                 n_batch) {
@@ -125,7 +134,7 @@ standardize_feature <- function(y,
                     crossprod(i_design, y))
   grand_mean <- mean(i_design[, 1:n_batch] %*%
                        beta_hat[1:n_batch, ])
-
+  
   var_pooled <- var(y - (i_design %*% beta_hat)[, 1])
   stand_mean <- rep(grand_mean, length(y))
   if(ncol(i_design) > n_batch){
@@ -150,15 +159,16 @@ standardize_feature <- function(y,
 #' @param l_ind list of indicator matrices, as returned by construct_ind.
 #'
 #' @return list of parameter estimations.
+#' @keywords internal
 fit_EB <- function(s_data, l_stand_feature, batchmod, n_batch, l_ind) {
-
+  
   if(n_batch != ncol(batchmod))
     stop("n_batch does not agree with batchmod!")
-
+  
   gamma_hat <-
     delta_hat <-
     matrix(NA, nrow = nrow(s_data), ncol = n_batch)
-
+  
   # estimate per-feature per-batch location and scale parameters
   for(i_feature in 1:nrow(s_data)) {
     if(l_ind$ind_feature[i_feature]) {
@@ -184,13 +194,13 @@ fit_EB <- function(s_data, l_stand_feature, batchmod, n_batch, l_ind) {
       delta_hat[i_feature, l_ind$ind_gamma[i_feature, ]] <- i_delta
     }
   }
-
+  
   # EM hyper-parameter estimations
   gamma_bar <- apply(gamma_hat, 2, mean, na.rm = TRUE)
   t2 <- apply(gamma_hat, 2, var, na.rm = TRUE)
   a_prior <- apply(delta_hat, 2, aprior, na.rm = TRUE)
   b_prior <- apply(delta_hat, 2, bprior, na.rm = TRUE)
-
+  
   # For debugging, this shouldn't happen
   # If a batch has only one feature with valid location/scale parameters
   # Will cause problem for hyper-parameter estimation
@@ -198,7 +208,7 @@ fit_EB <- function(s_data, l_stand_feature, batchmod, n_batch, l_ind) {
   if(any(apply(!is.na(gamma_hat), 2, sum) < 2) |
      any(apply(!is.na(delta_hat), 2, sum) < 2))
     stop("One batch has only one feature with valid parameter estimate!")
-
+  
   return(list(gamma_hat = gamma_hat,
               delta_hat = delta_hat,
               gamma_bar = gamma_bar,
@@ -213,6 +223,7 @@ fit_EB <- function(s_data, l_stand_feature, batchmod, n_batch, l_ind) {
 #' @param na.rm whether or not missing values should be removed.
 #'
 #' @return shape hyper parameter
+#' @keywords internal
 aprior <- function(delta_hat, na.rm = FALSE) {
   m <- mean(delta_hat, na.rm = na.rm)
   s2 <- var(delta_hat, na.rm = na.rm)
@@ -225,6 +236,7 @@ aprior <- function(delta_hat, na.rm = FALSE) {
 #' @param na.rm whether or not missing values should be removed.
 #'
 #' @return scale hyper parameter
+#' @keywords internal
 bprior <- function(delta_hat, na.rm = FALSE){
   m <- mean(delta_hat, na.rm = na.rm)
   s2 <- var(delta_hat, na.rm = na.rm)
@@ -242,15 +254,16 @@ bprior <- function(delta_hat, na.rm = FALSE){
 #' @param control list of control parameters (passed on to it_sol)
 #'
 #' @return list of shrinked per-batch location and scale parameters.
+#' @keywords internal
 fit_shrink <- function(s_data, l_params, batchmod, n_batch, l_ind, control) {
-
+  
   if(n_batch != ncol(batchmod))
     stop("n_batch does not agree with batchmod!")
-
+  
   gamma_star <-
     delta_star <-
     matrix(NA, nrow = nrow(s_data), ncol = n_batch)
-
+  
   results <- lapply(1:n_batch, function(i_batch) {
     i_s_data <- s_data
     # set all zeros to NA
@@ -275,7 +288,7 @@ fit_shrink <- function(s_data, l_params, batchmod, n_batch, l_ind, control) {
     gamma_star[, i_batch] <- results[[i_batch]]$gamma_star
     delta_star[, i_batch] <- results[[i_batch]]$delta_star
   }
-
+  
   return(list(gamma_star = gamma_star,
               delta_star = delta_star))
 }
@@ -292,6 +305,7 @@ fit_shrink <- function(s_data, l_params, batchmod, n_batch, l_ind, control) {
 #' @param control list of control parameters
 #'
 #' @return matrix of shrinked location and scale parameters.
+#' @keywords internal
 it_sol  <- function(s_data,
                     g_hat,
                     d_hat,
@@ -345,6 +359,7 @@ postvar <- function(sum2,n,a,b){
 #' @param l_ind list of indicator matrices, as returned by construct_ind.
 #'
 #' @return feature-by-sample matrix of batch-adjusted feature abundances.
+#' @keywords internal
 adjust_EB <- function(s_data, l_params_shrink, l_stand_feature,
                       batchmod, n_batch,
                       l_ind) {
@@ -352,13 +367,13 @@ adjust_EB <- function(s_data, l_params_shrink, l_stand_feature,
     stop("n_batch does not agree with batchmod!")
   if(n_batch != ncol(l_params_shrink[[1]]))
     stop("n_batch does not agree with l_params_shrink!")
-
+  
   adj_data <- relocate_scale(s_data, l_params_shrink,
                              batchmod, n_batch,
                              l_ind)
   adj_data <- add_back_covariates(adj_data, l_stand_feature,
                                   l_ind)
-
+  
   return(adj_data)
 }
 
@@ -374,6 +389,7 @@ adjust_EB <- function(s_data, l_params_shrink, l_stand_feature,
 #'
 #' @return feature-by-sample matrix of batch-adjusted feature abundances
 #' (but without covariate effects).
+#' @keywords internal
 relocate_scale <- function(s_data, l_params_shrink,
                            batchmod, n_batch,
                            l_ind) {
@@ -390,7 +406,7 @@ relocate_scale <- function(s_data, l_params_shrink,
     if(!all(i_ind_feature == l_ind$ind_gamma[, i_batch]))
       stop("Features determined to be eligible for batch estimation do not ",
            "agree with the ones with valid per-batch shrinked parameters!")
-
+    
     for(i_feature in 1:nrow(adj_data)) {
       if(i_ind_feature[i_feature]) {
         i_ind_sample <-
@@ -404,7 +420,7 @@ relocate_scale <- function(s_data, l_params_shrink,
       }
     }
   }
-
+  
   return(adj_data)
 }
 
@@ -418,6 +434,7 @@ relocate_scale <- function(s_data, l_params_shrink,
 #'
 #' @return feature-by-sample matrix of batch-adjusted feature abundances
 #' with covariate effects retained.
+#' @keywords internal
 add_back_covariates <- function(adj_data, l_stand_feature,
                                 l_ind) {
   for(i_feature in 1:nrow(adj_data)) {
@@ -446,16 +463,17 @@ add_back_covariates <- function(adj_data, l_stand_feature,
 #' @return feature-by-sample matrix of batch-adjusted feature abundances,
 #' with covariate effects retained and scales consistent with original abundance
 #' matrix.
+#' @keywords internal
 back_transform_abd <- function(adj_data, feature_abd, type_feature_abd) {
   adj_data <- 2^adj_data
   adj_data[feature_abd == 0] <- 0
   adj_data <- normalize_features(adj_data, normalization = "TSS")
   adj_data <- t(t(adj_data) * apply(feature_abd, 2, sum))
   dimnames(adj_data) <- dimnames(feature_abd)
-
+  
   if(type_feature_abd == "counts")
     adj_data <- round(adj_data)
-
+  
   return(adj_data)
 }
 
@@ -463,35 +481,37 @@ back_transform_abd <- function(adj_data, feature_abd, type_feature_abd) {
 #'
 #' @param feature_abd original feature-by-sample matrix of abundances
 #' (proportions or counts).
-#' @param feature_abd_adj ffeature-by-sample matrix of batch-adjusted feature
+#' @param feature_abd_adj feature-by-sample matrix of batch-adjusted feature
 #' abundances, with covariate effects retained and scales consistent with
 #' original abundance matrix.
-#' @param batch the batch variable (should be a factor).
+#' @param var_batch the batch variable (should be a factor).
 #' @param gamma_hat estimated per feature-batch gamma parameters.
 #' @param gamma_star shrinked per feature-batch gamma parameters
+#' @param output output file name
 #'
 #' @return (invisbly) the ggplot2 plot object
 #' @import ggplot2
-diagnostics_adjust_batch <- function(feature_abd,
-                                     feature_abd_adj,
-                                     batch,
-                                     gamma_hat,
-                                     gamma_star,
-                                     output) {
+#' @keywords internal
+diagnostic_adjust_batch <- function(feature_abd,
+                                    feature_abd_adj,
+                                    var_batch,
+                                    gamma_hat,
+                                    gamma_star,
+                                    output) {
   feature_abd <- fill_dimnames(feature_abd, "Feature", "Sample")
   dimnames(feature_abd_adj) <- dimnames(feature_abd)
-  if(!is.factor(batch))
-    stop("batch should be a factor!")
-
+  if(!is.factor(var_batch))
+    stop("var_batch should be a factor!")
+  
   # Plot gamma (i.e. location) parameters before and after shrinkage
   df_plot <- data.frame(gamma_hat = as.vector(gamma_hat),
                         gamma_star = as.vector(gamma_star),
-                        batch = factor(rep(levels(batch),
-                                           each = nrow(gamma_hat)),
-                                       levels = levels(batch)))
+                        var_batch = factor(rep(levels(var_batch),
+                                               each = nrow(gamma_hat)),
+                                           levels = levels(var_batch)))
   df_plot <- subset(df_plot, !is.na(gamma_hat), !is.na(gamma_star))
   p_shrinkage <- ggplot(df_plot, aes(x = gamma_hat, y = gamma_star,
-                                     color = batch)) +
+                                     color = var_batch)) +
     geom_point() +
     geom_abline(intercept = 0, slope = 1) +
     ggtitle("Shrinkage of batch mean parameters") +
@@ -501,34 +521,36 @@ diagnostics_adjust_batch <- function(feature_abd,
           legend.background = element_blank(),
           legend.text = element_blank()) +
     xlab("Gamma") + ylab("Gamma (shrinked)")
-
+  
   # Plot each feature's per-batch and overall mean relative abundances,
   # before and after adjustment
   # matrix for relative abundances
   mat_ra <- normalize_features(feature_abd, "TSS")
   mat_ra_adj <- normalize_features(feature_abd_adj, "TSS")
-
+  
   # Prepare data frame of per-batch means
-  df_mean_batch <- as.data.frame(apply(mat_ra, 1,
-                                       function(x) tapply(x, batch, mean)))
-  df_mean_batch_adj <- as.data.frame(apply(mat_ra_adj, 1,
-                                           function(x) tapply(x, batch, mean)))
+  df_mean_batch <- as.data.frame(
+    apply(mat_ra, 1,
+          function(x) tapply(x, var_batch, mean)))
+  df_mean_batch_adj <- as.data.frame(
+    apply(mat_ra_adj, 1,
+          function(x) tapply(x, var_batch, mean)))
   colnames(df_mean_batch) <-
     colnames(df_mean_batch_adj) <-
     rownames(feature_abd)
-  df_mean_batch$Batch <-
-    df_mean_batch_adj$Batch <-
-    levels(batch)
+  df_mean_batch$batch <-
+    df_mean_batch_adj$batch <-
+    levels(var_batch)
   df_mean_batch$Adjustment <- "Original"
   df_mean_batch_adj$Adjustment <- "Adjusted"
   df_batch <- rbind(df_mean_batch, df_mean_batch_adj)
   df_batch$Adjustment <- factor(df_batch$Adjustment,
-                                levels = c("Original", "Adjusted"))
+                                    levels = c("Original", "Adjusted"))
   df_batch <- tidyr::gather(df_batch,
-                            key = "Feature",
-                            value = "mean_batch",
-                            - Adjustment, - Batch)
-
+                                key = "Feature",
+                                value = "mean_batch",
+                                - Adjustment, - batch)
+  
   # Prepare data frame of overall means
   df_mean_overall <- data.frame(mean_overall =
                                   apply(mat_ra, 1, mean))
@@ -544,7 +566,7 @@ diagnostics_adjust_batch <- function(feature_abd,
   df_overall <- rbind(df_mean_overall, df_mean_overall_adj)
   df_overall$Adjustment <- factor(df_overall$Adjustment,
                                   levels = c("Original", "Adjusted"))
-
+  
   # Merge data and plot
   df_plot <- merge(df_batch, df_overall, by = c("Feature", "Adjustment"))
   p_mean <- ggplot(df_plot, aes(x = mean_overall,
@@ -559,7 +581,7 @@ diagnostics_adjust_batch <- function(feature_abd,
           legend.background = element_blank()) +
     ggtitle("Original/adjusted mean abundance") +
     xlab("Overal mean") + ylab("Batch mean")
-
+  
   # Because missing values
   plot <- cowplot::plot_grid(p_shrinkage, p_mean, nrow = 1)
   ggsave(plot = plot, filename = output,

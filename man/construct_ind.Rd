@@ -24,3 +24,4 @@ list of indicator matrices needed by fitting in adjust_batch.
 Create indicator matrices for which feature/batch/samples to adjust. This is
 relevant for zero_inflation is TRUE and only non-zero values are adjusted.
 }
+\keyword{internal}

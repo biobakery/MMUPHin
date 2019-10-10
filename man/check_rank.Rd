@@ -15,3 +15,4 @@ TRUE/FALSE for whether or not the design matrix is full rank.
 \description{
 Check if a design matrix is full rank
 }
+\keyword{internal}

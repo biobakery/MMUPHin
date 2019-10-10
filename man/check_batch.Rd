@@ -7,9 +7,9 @@
 check_batch(x, min_n_batch = 2)
 }
 \arguments{
-\item{x}{batch variable}
+\item{x}{batch variable.}
 
-\item{min_n_batch}{min. number of batches (for MMUPHin functions to run)}
+\item{min_n_batch}{min. number of batches (for MMUPHin functions to run).}
 }
 \value{
 if no errors then the batch variables (factorized if not already)
@@ -17,3 +17,4 @@ if no errors then the batch variables (factorized if not already)
 \description{
 Check batch variable
 }
+\keyword{internal}

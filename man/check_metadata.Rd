@@ -17,3 +17,4 @@ data reduced to include only those specified in variables
 \description{
 Check that metadata data frame has all the variables and not missing
 }
+\keyword{internal}

@@ -2,34 +2,124 @@
 % Please edit documentation in R/lm_meta.R
 \name{lm_meta}
 \alias{lm_meta}
-\title{Covariate-adjusted meta-analysis of per-feature associations in compositional data}
+\title{Covariate adjusted meta-analytical differential abundance testing}
 \usage{
-lm_meta(feature_abd, exposure, batch, covariates = NULL,
+lm_meta(feature_abd, batch, exposure, covariates = NULL,
   covariates_random = NULL, data, control)
 }
 \arguments{
-\item{feature_abd}{feature*sample matrix of feature abundance (counts
-preferred).}
+\item{feature_abd}{feature-by-sample matrix of abundances (proportions or
+counts).}
 
-\item{exposure}{name of the exposure of interest variable.}
+\item{batch}{name of the batch variable. This variable in data should be a
+factor variable and will be converted to so with a warning if otherwise.}
 
-\item{batch}{name of the batch variable.}
+\item{exposure}{name of the exposure variable for differential abundance
+testing.}
 
-\item{covariates}{name(s) of additional covariates to adjust for in the
-Maaslin2 model.}
+\item{covariates}{names of covariates to adjust for in Maaslin2 
+differential abundance testing models.}
 
-\item{covariates_random}{name(s) of random covariates in the Maaslin2 model.}
+\item{covariates_random}{names of random effects grouping covariates to
+adjust for in Maaslin2 differential abundance testing models.}
 
-\item{data}{data frame of metadata, must contain exposure, batch, covariates
-(if present), and covariates_random (if present).}
+\item{data}{data frame of metadata, columns must include exposure, batch,
+and covariates and covariates_random (if specified).}
 
-\item{control}{}
+\item{control}{a named list of additional control parameters. See details.}
 }
 \value{
-a list with component meta.results for per-feature meta-analysis results, and
-component l.Maaslin.fit which itself is a list of results from fitting Maaslin2 in
-individual studies.
+a list, with the following components:
+\describe{
+\item{meta_fits}{
+data frame of per-feature meta-analyitical differential abundance results,
+including columns for effect sizes, p-values and q-values, heterogeneity
+statistics such as \eqn{\tau^2} and \eqn{I^2}, as well as weights for 
+individual batches. Many of these statistics are explained in detail in
+\code{\link[metafor]{rma.uni}}.
+}
+\item{maaslin_fits}{
+list of data frames, each one corresponding to the fitted results of 
+Maaslin2 in a individual batch. See \code{\link[Maaslin2]{Maaslin2}} on 
+details of these output.
+}
+\item{control}{list of additional control parameters used in the function
+call.
+}
+}
 }
 \description{
-Covariate-adjusted meta-analysis of per-feature associations in compositional data
+\code{lm_meta} runs differential abundance models on microbial profiles 
+within individual studies/batches, and aggregates per-batch effect sizes with
+a meta-analysis fixed/random effects model. It takes as input a 
+feature-by-sample microbial abundance table and the accompanying meta data 
+data frame which should includes the batch indicator variable, the main 
+exposure variable for differential abundance testing, and optional covariates
+and random covariates. The function first runs 
+\code{\link[Maaslin2]{Maaslin2}} models on the exposure with optional 
+covariates/random covariates in each batch. The per-batch effect sizes are 
+then aggregated with \code{\link[metafor]{rma.uni}} and reported as output.
+Additional parameters, including those for both 
+\code{\link[Maaslin2]{Maaslin2}} and \code{\link[metafor]{rma.uni}} can be
+provided through \code{control} (see details).
+}
+\details{
+\code{control} should be provided as a named list of the following components
+(can be a subset).
+\describe{
+\item{normalization}{
+character. \code{normalization} parameter for Maaslin2. See 
+\code{\link[Maaslin2]{Maaslin2}} for details and allowed values. Default to 
+\code{"TSS"} (total sum scaling).
+}
+\item{transform}{
+character. \code{transform} parameter for Maaslin2. See 
+\code{\link[Maaslin2]{Maaslin2}} for details and allowed values. Default to 
+\code{"LOG"} (log transformation).
+}
+\item{analysis_method}{
+character. \code{analysis_method} parameter for Maaslin2. See 
+\code{\link[Maaslin2]{Maaslin2}} for details and allowed values. Default to 
+\code{"LM"} (linear modeling).
+}
+\item{rma_method}{
+character. \code{method} parameter for rma.uni. See
+\code{\link[metafor]{rma.uni}} for details and allowed values. Default to 
+\code{"REML"} (estricted maximum-likelihood estimator).
+}
+\item{output}{
+character. Output directory for intermediate Maaslin2 output and the optional
+forest plots. Default to \code{"MMUPHin_lm_meta"}.
+}
+\item{forest_plot}{
+character. Suffix in the name for the generated forest plots visualizing
+significant meta-analyitical differential abundance effects. Default to 
+\code{"forest.pdf"}. Can be set to \code{NULL} in which case no output will 
+be generated.
+}
+\item{rma_conv}{
+numeric. Convergence threshold for rma.uni (corresponds to 
+\code{control$threshold}. See \code{\link[metafor]{rma.uni}} for details.
+Default to 1e-4.
+}
+\item{rma_maxit}{
+integer. Maximum number of iterations allowed for rma.uni (corresponds to 
+\code{control$maxiter}. See \code{\link[metafor]{rma.uni}} for details.
+Default to 1000.
+}
+\item{verbose}{
+logical. Indicates whether or not verbose information will be printed.
+}
+}
+}
+\examples{
+data("CRC_abd", "CRC_meta")
+fit_meta <- lm_meta(feature_abd = CRC_abd,
+                    exposure = "study_condition",
+                    batch = "studyID",
+                    covariates = c("gender", "age"),
+                    data = CRC_meta)$meta_fits
+}
+\author{
+Siyuan Ma, \email{siyuanma@g.harvard.edu}
 }

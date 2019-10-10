@@ -9,6 +9,7 @@
 #'
 #' @return returns an error if any of the check fails. Otherwise either "counts"
 #' or "proportions"
+#' @keywords internal
 check_feature_abd <- function(feature_abd) {
   # Errors if has missing values
   if(any(is.na(feature_abd)))
@@ -45,6 +46,7 @@ check_feature_abd <- function(feature_abd) {
 #' @param data data frame of metadata.
 #'
 #' @return matched sample names
+#' @keywords internal
 check_samples <- function(feature_abd, data) {
   # Sample numbers need to agree with each other
   if(ncol(feature_abd) != nrow(data))
@@ -67,11 +69,12 @@ check_samples <- function(feature_abd, data) {
 #' @param variables name of variables (batch, covariates, etc.) to check
 #'
 #' @return data reduced to include only those specified in variables
+#' @keywords internal
 check_metadata <- function(data, variables, no_missing = TRUE) {
   # If variables are NULL return NULL (as in the case of no provided covariates)
   if(is.null(variables)) return(NULL)
 
-  # Variables all be present in data (i.e. in the column names)
+  # Variables must all be present in data (i.e. in the column names)
   variables_absent <- setdiff(variables, colnames(data))
   if(length(variables_absent) > 0) {
     stop("Following variable(s) not present in data:\n",
@@ -94,10 +97,11 @@ check_metadata <- function(data, variables, no_missing = TRUE) {
 
 #' Check batch variable
 #'
-#' @param x batch variable
-#' @param min_n_batch min. number of batches (for MMUPHin functions to run)
+#' @param x batch variable.
+#' @param min_n_batch min. number of batches (for MMUPHin functions to run).
 #'
 #' @return if no errors then the batch variables (factorized if not already)
+#' @keywords internal
 check_batch <- function(x, min_n_batch = 2) {
   # First ensure batch variable is a factor
   if(!is.factor(x)) {
@@ -120,6 +124,7 @@ check_batch <- function(x, min_n_batch = 2) {
 #'
 #' @return list of control parameters, set to user provided values if specified
 #' and default other wise
+#' @keywords internal
 match_control <- function(default, control) {
   if (missing(control))
     control <- list()
@@ -137,6 +142,7 @@ match_control <- function(default, control) {
 #' counts).
 #'
 #' @return the pseudo count
+#' @keywords internal
 set_pseudo <- function(features) {
   type_features <- check_feature_abd(features)
   if(all(features == 0))
@@ -153,6 +159,7 @@ set_pseudo <- function(features) {
 #' @param pseudo_count pseudo count to be added to feature_abd.
 #'
 #' @return normalized abundance table.
+#' @keywords internal
 normalize_features <- function(features,
                                normalization = "NONE",
                                pseudo_count = 0) {
@@ -174,6 +181,7 @@ normalize_features <- function(features,
 #' @param pseudo_count pseudo count to be added to feature_abd..
 #'
 #' @return transformed abundance table.
+#' @keywords internal
 transform_features <- function(features,
                                transform = "NONE",
                                pseudo_count = 0) {
@@ -200,6 +208,7 @@ transform_features <- function(features,
 #' @param x vector of abundance to be normalized.
 #'
 #' @return normalized vector of abundance.
+#' @keywords internal
 TSS <- function(x) {
   if(all(x == 0)) return(x)
   return(x / sum(x))
@@ -210,6 +219,7 @@ TSS <- function(x) {
 #' @param x vector of abundance to be transformed.
 #'
 #' @return transformed vector of abundance.
+#' @keywords internal
 AST<-function(x){
   return(asin(sqrt(x)))
 }
@@ -219,6 +229,7 @@ AST<-function(x){
 #' @param x vector of abundance to be transformed.
 #'
 #' @return transformed vector of abundance.
+#' @keywords internal
 LOG<-function(x){
   return(log2(x))
 }
@@ -230,7 +241,8 @@ LOG<-function(x){
 #' @param row_prefix prefix for the artificial row names
 #' @param col_prefix prefix for the artificial column names
 #'
-#' @return x but with the missing dimention names filled in
+#' @return x but with the missing dimension names filled in
+#' @keywords internal
 fill_dimnames <- function(x, row_prefix, col_prefix) {
   if(!(is.matrix(x) | is.data.frame(x)))
     stop("x must either be a matrix or a data frame!")
@@ -253,7 +265,10 @@ fill_dimnames <- function(x, row_prefix, col_prefix) {
 #'
 #' @return vector of new names with .. replacing the middle part if name is
 #' longer than cutoff
+#' @keywords internal
 shorten_name <- function(x, cutoff = 3, replacement = "..") {
+  if(anyDuplicated(x))
+    stop("x should be unique character strings!")
   x_sub <- x
   length_x <- nchar(x_sub, type = "c")
   ind_change <- length_x > cutoff*2 + nchar(replacement, type = "c")
@@ -263,5 +278,76 @@ shorten_name <- function(x, cutoff = 3, replacement = "..") {
                               substr(x_sub[ind_change],
                                      start = length_x[ind_change] - cutoff + 1,
                                      stop = length_x[ind_change]))
-  x_sub
+  # To avoid the case where shortening makes names indistinguishable
+  if(anyDuplicated(x_sub))
+    return(x)
+  else
+    return(x_sub)
+}
+
+#' Utility for catching warning/error messages
+#'
+#' @param expr an expression to run that can generate potential errors/warnings
+#'
+#' @return a list, capturing both the return value of the expression, as well
+#' as generated erros/warnings (\code{NULL} if no errors/warnings)
+#' @keywords internal
+catchToList <- function(expr) {
+  val <- NULL
+  myWarnings <- NULL
+  wHandler <- function(w) {
+    myWarnings <<- c(myWarnings, w$message)
+    invokeRestart("muffleWarning")
+  }
+  myError <- NULL
+  eHandler <- function(e) {
+    myError <<- e$message
+    NULL
+  }
+  val <- tryCatch(withCallingHandlers(expr, warning = wHandler), 
+                  error = eHandler)
+  list(value = val, warnings = myWarnings, error=myError)
+} 
+
+#' Utility for checking options
+#'
+#' @param x the specified value
+#' @param x_name name of the specified value
+#' @param options allowed options
+#'
+#' @return error if \code{x} is not in \code{options}. Otherwise returns
+#' \code{x}.
+#' @keywords internal
+check_options <- function(x, x_name, options) {
+  if(!(x %in% options))
+    stop(x_name, "can only be one of ", paste(options, collapse = ", "))
+  return(x)
+}
+
+#' Utility for checking continuous options
+#'
+#' @param x the specified numeric value
+#' @param x_name name of the specified value
+#' @param range allowed range
+#'
+#' @return error if \code{x} is not within \code{range} (boundaries 
+#' excluded). Otherwise returns \code{x}.
+#' @keywords internal
+check_options_continuous <- function(x, x_name, range) {
+  if(!(x > range[1] & x < range[2]))
+    stop(x_name, "can only be between ", paste(range, collapse = ", "))
+  return(x)
+}
+
+#' Utility for checking pseudo count
+#'
+#' @param x the specified pseudo count
+#'
+#' @return error if pseudo count is smaller than zero. Otherwise returns 
+#' \code{x}.
+#' @keywords internal
+check_pseudo_count <- function(x) {
+  if(x < 0)
+    stop("pseudo_count must be non-negative")
+  return(x)
 }

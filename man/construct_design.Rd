@@ -2,16 +2,21 @@
 % Please edit documentation in R/helpers_adjust_batch.R
 \name{construct_design}
 \alias{construct_design}
-\title{Construct a non-intercept design model matrix given a metadata data frame}
+\title{Construct a design model matrix given a metadata data frame, with the option
+to exclude the intercept.}
 \usage{
-construct_design(data)
+construct_design(data, with_intercept = TRUE)
 }
 \arguments{
 \item{data}{metadata data frame.}
+
+\item{with_intercept}{should intercept terms be included in the model}
 }
 \value{
 design matrix.
 }
 \description{
-Construct a non-intercept design model matrix given a metadata data frame
+Construct a design model matrix given a metadata data frame, with the option
+to exclude the intercept.
 }
+\keyword{internal}

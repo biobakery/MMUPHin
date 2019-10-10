@@ -26,3 +26,4 @@ list of parameter estimations.
 Parametric estimation of per-batch location and scale parameters, and
 Empirical Bayes estimation of their priors
 }
+\keyword{internal}

@@ -17,3 +17,4 @@ shape hyper parameter
 \description{
 EB prior estimation for scale parameters
 }
+\keyword{internal}

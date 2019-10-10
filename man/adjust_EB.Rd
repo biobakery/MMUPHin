@@ -30,3 +30,4 @@ feature-by-sample matrix of batch-adjusted feature abundances.
 Perform batch adjustment on standardized feature abundances, based on EB
 shrinked per-batch location and scale parameters
 }
+\keyword{internal}

@@ -20,3 +20,4 @@ transformed abundance table.
 \description{
 Transform feature abunadnce table (modified from Maaslin2)
 }
+\keyword{internal}
