@@ -1,5 +1,5 @@
 ---
-title: "Performing meta-analyses of microbiome cohorts with MMUPHin"
+title: "Performing meta-analyses of microbiome studies with MMUPHin"
 author: 
 - name: "Siyuan Ma"
   affiliation: 
@@ -26,7 +26,7 @@ knitr::opts_chunk$set(cache = TRUE)
 
 `MMUPHin` is an R package implementing meta-analysis methods for microbial 
 community profiles. It has interfaces for: a) covariate-controlled batch and 
-cohort effect adjustment, b) meta-analytic differential abundance testing, and meta-analytic discovery of c) discrete (cluster-based) or d) continuous 
+study effect adjustment, b) meta-analytic differential abundance testing, and meta-analytic discovery of c) discrete (cluster-based) or d) continuous 
 unsupervised population structure.
 
 Overall, `MMUPHin` enables the normalization and combination of multiple 
@@ -39,7 +39,6 @@ This vignette is intended to provide working examples for all four
 functionalities of `MMUPHin`. 
 
 ```{r, message=FALSE}
-# BiocManager::install("MMUPHin")
 library(MMUPHin)
 # tidyverse packages for utilities
 library(magrittr)
@@ -55,15 +54,15 @@ command.
 ```{r Installation, eval = FALSE}
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
-
-BiocManager::install("Maaslin2")
+BiocManager::install("MMUPHin")
 ```
 
 # Input data
 
 As input, `MMUPHin` requires a properly 
-formatted collection of microbial cohorts, with both feature abundances and 
-accompanying metadata. Here we use the five published colorectal cancer (CRC) 
+formatted collection of microbial community studies, with both feature 
+abundances and accompanying metadata. Here we use the five published 
+colorectal cancer (CRC) 
 stool metagenomic studies, incorporated in @thomas2019metagenomic. 
 Data for the studies are already
 conveniently packaged and accessible through the Biocondcutor package 
@@ -97,33 +96,33 @@ CRC_meta[1, 1:5]
 # A total of five studies are included 
 table(CRC_meta$studyID)
 # The following were used to access and format the two objects
-# library(curatedMetagenomicData)
-# library(phyloseq)
-# library(genefilter)
-# datasets <- curatedMetagenomicData(
-#   c("FengQ_2015.metaphlan_bugs_list.stool"  ,
-#     "HanniganGD_2017.metaphlan_bugs_list.stool",
-#     "VogtmannE_2016.metaphlan_bugs_list.stool",
-#     "YuJ_2015.metaphlan_bugs_list.stool",
-#     "ZellerG_2014.metaphlan_bugs_list.stool"),
-#   dryrun = FALSE)
-# # Construct phyloseq object from the five datasets
-# physeq <-
-#   # Aggregate the five studies into ExpressionSet
-#   mergeData(datasets) %>%
-#   # Convert to phyloseq object
-#   ExpressionSet2phyloseq() %>%
-#   # Subset samples to only CRC and controls
-#   subset_samples(study_condition %in% c("CRC", "control")) %>%
-#   # Subset features to species
-#   subset_taxa(!is.na(Species) & is.na(Strain)) %>%
-#   # Normalize abundances to relative abundance scale
-#   transform_sample_counts(function(x) x / sum(x)) %>%
-#   # Filter features to be of at least 1e-5 relative abundance in five samples
-#   filter_taxa(kOverA(5, 1e-5), prune = TRUE)
-# CRC_abd <- otu_table(physeq)@.Data
-# CRC_meta <- data.frame(sample_data(physeq))
-# CRC_meta$studyID <- factor(CRC_meta$studyID)
+library(curatedMetagenomicData)
+library(phyloseq)
+library(genefilter)
+datasets <- curatedMetagenomicData(
+  c("FengQ_2015.metaphlan_bugs_list.stool"  ,
+    "HanniganGD_2017.metaphlan_bugs_list.stool",
+    "VogtmannE_2016.metaphlan_bugs_list.stool",
+    "YuJ_2015.metaphlan_bugs_list.stool",
+    "ZellerG_2014.metaphlan_bugs_list.stool"),
+  dryrun = FALSE)
+# Construct phyloseq object from the five datasets
+physeq <-
+  # Aggregate the five studies into ExpressionSet
+  mergeData(datasets) %>%
+  # Convert to phyloseq object
+  ExpressionSet2phyloseq() %>%
+  # Subset samples to only CRC and controls
+  subset_samples(study_condition %in% c("CRC", "control")) %>%
+  # Subset features to species
+  subset_taxa(!is.na(Species) & is.na(Strain)) %>%
+  # Normalize abundances to relative abundance scale
+  transform_sample_counts(function(x) x / sum(x)) %>%
+  # Filter features to be of at least 1e-5 relative abundance in five samples
+  filter_taxa(kOverA(5, 1e-5), prune = TRUE)
+CRC_abd <- otu_table(physeq)@.Data
+CRC_meta <- data.frame(sample_data(physeq))
+CRC_meta$studyID <- factor(CRC_meta$studyID)
 ```
 
 # Performing batch (study) effect adjustment with `adjust_batch`
@@ -237,28 +236,28 @@ discrete population subgroups [@ravel2011vaginal], but must be carried out
 carefully with validations to ensure that the identified structures are 
 consistent [@koren2013guide]. `discrete_discover` provides the functionality to 
 use prediction strength [@tibshirani2005cluster] to evaluate discrete 
-clustering structures within individual microbial cohorts, as well as a 
+clustering structures within individual microbial studies, as well as a 
 "generalized predicition strength" to evaluate their reproducibility in 
-additional cohorts. These jointly provide meta-analytical evidence for
+other studies. These jointly provide meta-analytical evidence for
 (or against) identifying discrete population structures in microbial profiles.
-Check `help(discrete_discover)` to see more details on the method, options,
-and, importantly, how to interpret the output.
+Check `help(discrete_discover)` to see more details on the method and additional
+options.
 
 The gut microbiome is known to form gradients rather than discrete clusters 
 [@koren2013guide]. Here we use `discrete_discover` to evaluate clustering 
-structures among CRC patients in the five CRC stool studies.
+structures among control samples in the five stool studies.
 
 ````{r discrete_discover}
-# First subset both feature abundance table and metadata to only CRC patients
-CRC_meta_disease <- subset(CRC_meta, study_condition == "CRC")
-CRC_abd_adj_disease <- CRC_abd_adj[, rownames(CRC_meta_disease)]
+# First subset both feature abundance table and metadata to only control samples
+control_meta <- subset(CRC_meta, study_condition == "control")
+control_abd_adj <- CRC_abd_adj[, rownames(control_meta)]
 # discrete_discover takes as input sample-by-sample dissimilarity measurements 
 # rather than abundance table. The former can be easily computed from the 
 # latter with existing R packages.
-D_disease <- vegdist(t(CRC_abd_adj_disease))
-fit_discrete <- discrete_discover(D = D_disease,
+D_control <- vegdist(t(control_abd_adj))
+fit_discrete <- discrete_discover(D = D_control,
                                   batch = "studyID",
-                                  data = CRC_meta_disease,
+                                  data = control_meta,
                                   control = list(k_max = 8,
                                                  verbose = FALSE))
 ```
@@ -270,7 +269,7 @@ batch (column) and evaluated number of clusters (row). Similarly,
 generalized prediction strenght). Evidence for existence of discrete structures
 would be a "peaking" of the mean statistics at a particular cluster number. 
 Here, for easier examination of such a pattern, we visualize the results 
-for the largest study, ZellerG_2014. Note that visualization  for all cohorts
+for the largest study, ZellerG_2014. Note that visualization  for all studies
 are by default automatically generated and saved to the output file 
 "diagnostic_discrete.pdf".
 
@@ -297,7 +296,7 @@ rbind(internal, external) %>%
   geom_line(position = position_dodge(width = 0.5)) +
   geom_errorbar(aes(ymin = statistic - se, ymax = statistic + se),
                 position = position_dodge(width = 0.5), width = 0.5) +
-  ggtitle("Evaluation of discrete structure in CRC stool microbiome (ZellerG_2014)")
+  ggtitle("Evaluation of discrete structure in control stool microbiome (ZellerG_2014)")
 ```
 
 The decreasing trend for both the internal and external statistics along with
@@ -364,7 +363,7 @@ Population structure in the microbiome can manifest as gradients rather than
 discrete clusters, such as dominant phyla trade-off or disease-associated
 dysbiosis. `continuous_discover` provide functionality to identify such
 structures as well as to validate them with meta-analysis. We again evaluate
-these continuous structures in CRC samples of the five studies.
+these continuous structures in control samples of the five studies.
 
 ```{r continuos_structre}
 # Much like adjust_batch and lm_meta, continuous_discover also takes
@@ -374,9 +373,9 @@ these continuous structures in CRC samples of the five studies.
 # at least 50% of the total variability in the batch. See 
 # help(continuosu_discover) for more details on the tuning parameters and 
 # their interpretations.
-fit_continuous <- continuous_discover(feature_abd = CRC_abd_adj_disease,
+fit_continuous <- continuous_discover(feature_abd = control_abd_adj,
                                       batch = "studyID",
-                                      data = CRC_meta_disease,
+                                      data = control_meta,
                                       control = list(var_perc_cutoff = 0.5,
                                                      verbose = FALSE))
 ```
@@ -391,7 +390,6 @@ on the first identified continuous score.
 # Examine top loadings
 loading <- data.frame(feature = rownames(fit_continuous$consensus_loadings),
                       loading1 = fit_continuous$consensus_loadings[, 1])
-
 loading %>% 
   dplyr::arrange(-abs(loading1)) %>% 
   dplyr::slice(1:20) %>% 
@@ -403,61 +401,61 @@ loading %>%
   ggtitle("Features with top loadings")
 
 # Ordinate the samples
-mds <- cmdscale(d = D_disease)
+mds <- cmdscale(d = D_control)
 colnames(mds) <- c("Axis1", "Axis2")
 as.data.frame(mds) %>% 
   dplyr::mutate(score1 = fit_continuous$consensus_scores[, 1]) %>% 
   ggplot(aes(x = Axis1, y = Axis2, color = score1)) +
   geom_point()
-# library(curatedMetagenomicData)
-# library(phyloseq)
-# library(genefilter)
-# datasets <- curatedMetagenomicData(
-#   c("FengQ_2015.metaphlan_bugs_list.stool"  ,
-#     "HanniganGD_2017.metaphlan_bugs_list.stool",
-#     "VogtmannE_2016.metaphlan_bugs_list.stool",
-#     "YuJ_2015.metaphlan_bugs_list.stool",
-#     "ZellerG_2014.metaphlan_bugs_list.stool"),
-#   dryrun = FALSE)
+library(curatedMetagenomicData)
+library(phyloseq)
+library(genefilter)
+datasets <- curatedMetagenomicData(
+  c("FengQ_2015.metaphlan_bugs_list.stool"  ,
+    "HanniganGD_2017.metaphlan_bugs_list.stool",
+    "VogtmannE_2016.metaphlan_bugs_list.stool",
+    "YuJ_2015.metaphlan_bugs_list.stool",
+    "ZellerG_2014.metaphlan_bugs_list.stool"),
+  dryrun = FALSE)
 # Construct phyloseq object from the five datasets
-# physeq <-
-#   # Aggregate the five studies into ExpressionSet
-#   mergeData(datasets) %>%
-#   # Convert to phyloseq object
-#   ExpressionSet2phyloseq() %>%
-#   # Subset samples to only CRC and controls
-#   subset_samples(study_condition %in% c("CRC", "control")) %>%
-#   # Subset features to species
-#   subset_taxa(!is.na(Species) & is.na(Strain)) %>%
-#   # Normalize abundances to relative abundance scale
-#   transform_sample_counts(function(x) x / sum(x)) %>%
-#   # Filter features to be of at least 1e-5 relative abundance in five samples
-#   filter_taxa(kOverA(5, 1e-5), prune = TRUE)
-# CRC_tax <- tax_table(physeq)@.Data
-# for(Cluster in colnames(fit_continuous$consensus_loadings)[1:3]) {
-#   loading <- data.frame(feature = rownames(fit_continuous$consensus_loadings),
-#                         loading1 = fit_continuous$consensus_loadings[, Cluster])
-#   p <- loading %>%
-#     cbind(as.data.frame(CRC_tax)) %>%
-#     dplyr::arrange(-abs(loading1)) %>%
-#     dplyr::slice(1:20) %>%
-#     dplyr::arrange(loading1) %>%
-#     dplyr::mutate(feature = factor(feature, levels = feature)) %>%
-#     ggplot(aes(x = feature, y = loading1, color = Phylum)) +
-#     geom_bar(stat = "identity", fill = "white") +
-#     coord_flip() +
-#     ggtitle("Features with top loadings") +
-#     theme(legend.position = c(0, 1), legend.justification = c(0, 1),
-#           legend.background = element_blank())
-#   p2 <- as.data.frame(mds) %>% 
-#     dplyr::mutate(score1 = fit_continuous$consensus_scores[, Cluster]) %>% 
-#     ggplot(aes(x = Axis1, y = Axis2, color = score1)) +
-#     geom_point()
-#   ggsave("~/Dropbox (Harvard University)/hutlab/Siyuan/group_meetings/10_10_smallgroup/" %>%
-#            paste0(Cluster, ".pdf"),
-#          cowplot::plot_grid(p, p2, nrow = 1),
-#          width = 10, height = 4)
-# }
+physeq <-
+  # Aggregate the five studies into ExpressionSet
+  mergeData(datasets) %>%
+  # Convert to phyloseq object
+  ExpressionSet2phyloseq() %>%
+  # Subset samples to only CRC and controls
+  subset_samples(study_condition %in% c("CRC", "control")) %>%
+  # Subset features to species
+  subset_taxa(!is.na(Species) & is.na(Strain)) %>%
+  # Normalize abundances to relative abundance scale
+  transform_sample_counts(function(x) x / sum(x)) %>%
+  # Filter features to be of at least 1e-5 relative abundance in five samples
+  filter_taxa(kOverA(5, 1e-5), prune = TRUE)
+CRC_tax <- tax_table(physeq)@.Data
+for(Cluster in colnames(fit_continuous$consensus_loadings)[1:3]) {
+  loading <- data.frame(feature = rownames(fit_continuous$consensus_loadings),
+                        loading1 = fit_continuous$consensus_loadings[, Cluster])
+  p <- loading %>%
+    cbind(as.data.frame(CRC_tax)) %>%
+    dplyr::arrange(-abs(loading1)) %>%
+    dplyr::slice(1:20) %>%
+    dplyr::arrange(loading1) %>%
+    dplyr::mutate(feature = factor(feature, levels = feature)) %>%
+    ggplot(aes(x = feature, y = loading1, color = Phylum)) +
+    geom_bar(stat = "identity", fill = "white") +
+    coord_flip() +
+    ggtitle("Features with top loadings") +
+    theme(legend.position = c(0, 1), legend.justification = c(0, 1),
+          legend.background = element_blank())
+  p2 <- as.data.frame(mds) %>%
+    dplyr::mutate(score1 = fit_continuous$consensus_scores[, Cluster]) %>%
+    ggplot(aes(x = Axis1, y = Axis2, color = score1)) +
+    geom_point()
+  ggsave("~/Dropbox (Harvard University)/hutlab/Siyuan/group_meetings/10_10_smallgroup/" %>%
+           paste0(Cluster, ".pdf"),
+         cowplot::plot_grid(p, p2, nrow = 1),
+         width = 10, height = 4)
+}
 ```
 
 # Sessioninfo
