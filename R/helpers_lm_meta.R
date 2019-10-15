@@ -42,14 +42,15 @@ check_covariates <- function(data_covariates, batch){
                            nrow = nlevels(batch), 
                            ncol = ncol(data_covariates))
   dimnames(ind_covariates) <- list(levels(batch), names(data_covariates))
-  ind_covariates[] <- sapply(
+  ind_covariates[] <- vapply(
     data_covariates, 
-    function(covariate) {
+    function(covariate)
       as.vector(tapply(
         covariate, batch, 
         function(x) {
-          length(unique(x[!is.na(x)])) > 1}))
-    })
+          length(unique(x[!is.na(x)])) > 1})),
+    rep_len(0, nlevels(batch))
+  )
   return(ind_covariates)
 }
 
@@ -66,15 +67,16 @@ check_covariates_random <- function(data_covariates, batch){
                                   nrow = nlevels(batch), 
                                   ncol = ncol(data_covariates))
   dimnames(ind_covariates_random) <- list(levels(batch), names(data_covariates))
-  ind_covariates_random[] <- sapply(
+  ind_covariates_random[] <- vapply(
     data_covariates, 
-    function(covariate) {
+    function(covariate)
       as.vector(tapply(
         covariate, batch, 
         function(x) {
           length(unique(x[!is.na(x)])) > 1 & any(table(x) > 1)
-        }))
-    })
+        })),
+    rep_len(0, nlevels(batch))
+    )
   if(all(!ind_covariates_random) & ncol(ind_covariates_random) > 0) 
     stop("Random covariates are provided,",
          " but no batch has clustered observations!")
@@ -268,15 +270,27 @@ rma_wrapper <- function(maaslin_fits,
       maaslin_fits[[2]]$value == value_exposure, 
       "feature"]))
       stop("Feature names don't match between maaslin_fits components!")
-    betas <- sapply(maaslin_fits, function(i_maaslin_fit) {
-      i_maaslin_fit[i_maaslin_fit$value == value_exposure, "coef"]
-    })
-    sds <- sapply(maaslin_fits, function(i_maaslin_fit) {
-      i_maaslin_fit[i_maaslin_fit$value == value_exposure, "stderr"]
-    })
-    pvals <- sapply(maaslin_fits, function(i_maaslin_fit) {
-      i_maaslin_fit[i_maaslin_fit$value == value_exposure, "pval"]
-    })
+    betas <- vapply(
+      maaslin_fits, 
+      function(i_maaslin_fit)
+        i_maaslin_fit[i_maaslin_fit$value == value_exposure, 
+                      "coef", drop = TRUE],
+      rep_len(0.0, sum(i_maaslin_fit$value == value_exposure))
+    )
+    sds <- vapply(
+      maaslin_fits, 
+      function(i_maaslin_fit)
+        i_maaslin_fit[i_maaslin_fit$value == value_exposure, 
+                      "stderr", drop = TRUE],
+      rep_len(0.0, sum(i_maaslin_fit$value == value_exposure))
+    )
+    pvals <- vapply(
+      maaslin_fits, 
+      function(i_maaslin_fit)
+        i_maaslin_fit[i_maaslin_fit$value == value_exposure, 
+                      "pval", drop = TRUE],
+      rep_len(0.0, sum(i_maaslin_fit$value == value_exposure))
+    )
     rownames(betas) <- rownames(sds) <- rownames(pvals) <- features
     ind_features <- !is.na(betas) & !is.na(sds) & (sds != 0)
     count_feature <- apply(ind_features, 1, sum)

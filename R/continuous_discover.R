@@ -216,8 +216,10 @@ continuous_discover <- function(feature_abd,
   ind_var_perc <- lapply(pca_all, function(dat_pca) {
     (cumsum(dat_pca$sdev^2) / sum(dat_pca$sdev^2)) > var_perc_cutoff
   })
-  n_pc_top <- min(sapply(ind_var_perc, length))
-  ind_var_perc <- sapply(ind_var_perc, function(x) x[1:n_pc_top])
+  n_pc_top <- min(vapply(ind_var_perc, length, 1))
+  ind_var_perc <- vapply(ind_var_perc, 
+                         function(x) x[1:n_pc_top], 
+                         rep_len(0.0, n_pc_top))
   ind_var_perc <- apply(ind_var_perc, 1, all)
   if(any(ind_var_perc)) {
     n_pc_top <- min((1:n_pc_top)[ind_var_perc])
@@ -274,7 +276,7 @@ continuous_discover <- function(feature_abd,
   # Generate consensus loadings
   if(verbose) message("Calculating consensus loadings...")
   mat_cons_loading <- 
-    sapply(as.integer(names(size_communities)[ind_cons_loading]),
+    vapply(as.integer(names(size_communities)[ind_cons_loading]),
            function(i) {
              # reorder the nodes in a clsuter so that the highest degree one 
              # comes first
@@ -292,14 +294,19 @@ continuous_discover <- function(feature_abd,
                                      1,
                                      mean)
              i_cons_loading / sqrt(sum(i_cons_loading^2))
-           })
+           },
+           rep_len(0.0, nrow(mat_data_loading)))
   colnames(mat_cons_loading) <- 
     paste0("Cluster_", names(size_communities)[ind_cons_loading])
   
   # Internal validation
-  mat_vali <- t(matrix(sapply(data_loadings, function(loadings) {
-    apply(abs(t(mat_cons_loading) %*% loadings), 1, max)
-  }), nrow = ncol(mat_cons_loading)))
+  mat_vali <- t(matrix(vapply(data_loadings, 
+                              function(loadings) {
+                                apply(abs(t(mat_cons_loading) %*% loadings), 
+                                      1, max)
+                              },
+                              rep_len(0.0, ncol(mat_cons_loading))), 
+                       nrow = ncol(mat_cons_loading)))
   colnames(mat_vali) <- names(size_communities)[ind_cons_loading]
   rownames(mat_vali) <- lvl_batch
   

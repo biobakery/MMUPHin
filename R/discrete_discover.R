@@ -204,18 +204,30 @@ discrete_discover <- function(D,
   }
   
   # compile results for output
-  internal_mean <- t(sapply(stats_internal,
+  internal_mean <- t(vapply(stats_internal,
                             function(k_stats)
-                              sapply(k_stats, function(i.stat) i.stat["mean"])))
-  internal_se <- t(sapply(stats_internal,
+                              vapply(k_stats, 
+                                     function(i.stat) i.stat["mean"],
+                                     0.0),
+                            rep_len(0.0, n_batch)))
+  internal_se <- t(vapply(stats_internal,
                           function(k_stats)
-                            sapply(k_stats, function(i.stat) i.stat["sd"])))
-  external_mean <- t(sapply(stats_external,
+                            vapply(k_stats, 
+                                   function(i.stat) i.stat["sd"],
+                                   0.0),
+                          rep_len(0.0, n_batch)))
+  external_mean <- t(vapply(stats_external,
                             function(k_stats)
-                              sapply(k_stats, function(i.stat) i.stat["mean"])))
-  external_se <- t(sapply(stats_external,
+                              vapply(k_stats, 
+                                     function(i.stat) i.stat["mean"],
+                                     0.0),
+                            rep_len(0.0, n_batch)))
+  external_se <- t(vapply(stats_external,
                           function(k_stats)
-                            sapply(k_stats, function(i.stat) i.stat["sd"])))
+                            vapply(k_stats, 
+                                   function(i.stat) i.stat["sd"],
+                                   0.0),
+                          rep_len(0.0, n_batch)))
   dimnames(internal_mean) <-
     dimnames(internal_se) <-
     dimnames(external_mean) <-
