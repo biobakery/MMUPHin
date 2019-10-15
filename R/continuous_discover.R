@@ -116,6 +116,7 @@
 #' call.
 #' }
 #' }
+#' @importFrom stats prcomp
 #' @export
 #' @author Siyuan Ma, \email{siyuanma@@g.harvard.edu}
 #' @examples

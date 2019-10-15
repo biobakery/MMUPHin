@@ -49,7 +49,7 @@ check_covariates <- function(data_covariates, batch){
         covariate, batch, 
         function(x) {
           length(unique(x[!is.na(x)])) > 1})),
-    rep_len(0, nlevels(batch))
+    rep_len(TRUE, nlevels(batch))
   )
   return(ind_covariates)
 }
@@ -75,7 +75,7 @@ check_covariates_random <- function(data_covariates, batch){
         function(x) {
           length(unique(x[!is.na(x)])) > 1 & any(table(x) > 1)
         })),
-    rep_len(0, nlevels(batch))
+    rep_len(TRUE, nlevels(batch))
     )
   if(all(!ind_covariates_random) & ncol(ind_covariates_random) > 0) 
     stop("Random covariates are provided,",
@@ -98,6 +98,7 @@ check_covariates_random <- function(data_covariates, batch){
 #' @return a data frame recording per-feature coefficients, p-values, etc. from 
 #' running Maaslin2.
 #' @keywords internal
+#' @importFrom utils capture.output
 Maaslin2_wrapper <- function(feature_abd,
                              data,
                              exposure,
@@ -225,6 +226,8 @@ create_table_maaslin <- function(features, exposure, lvl_exposure) {
 #' @return a data frame recording per-feature meta-analysis association results.
 #' (coefficients, p-values, etc.)
 #' @keywords internal
+#' @importFrom grDevices dev.off pdf
+#' @importFrom stats p.adjust
 rma_wrapper <- function(maaslin_fits, 
                         method = "REML",
                         output = "./",

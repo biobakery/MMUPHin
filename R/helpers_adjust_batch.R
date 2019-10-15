@@ -6,6 +6,7 @@
 #'
 #' @return design matrix.
 #' @keywords internal
+#' @importFrom stats model.matrix
 construct_design <- function(data, with_intercept = TRUE) {
   # Returns NULL if data is NULL. This happens if the covariate data frame is
   # NULL (when no covariates are provided)
@@ -160,6 +161,7 @@ standardize_feature <- function(y,
 #'
 #' @return list of parameter estimations.
 #' @keywords internal
+#' @importFrom stats sd
 fit_EB <- function(s_data, l_stand_feature, batchmod, n_batch, l_ind) {
   
   if(n_batch != ncol(batchmod))
@@ -224,6 +226,7 @@ fit_EB <- function(s_data, l_stand_feature, batchmod, n_batch, l_ind) {
 #'
 #' @return shape hyper parameter
 #' @keywords internal
+#' @importFrom stats var
 aprior <- function(delta_hat, na.rm = FALSE) {
   m <- mean(delta_hat, na.rm = na.rm)
   s2 <- var(delta_hat, na.rm = na.rm)

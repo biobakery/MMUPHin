@@ -81,6 +81,7 @@
 #' call.
 #' }
 #' }
+#' @importFrom stats as.dist
 #' @export
 #' @author Siyuan Ma, \email{siyuanma@@g.harvard.edu}
 #' @examples

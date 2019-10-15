@@ -125,6 +125,7 @@ check_batch <- function(x, min_n_batch = 2) {
 #' @return list of control parameters, set to user provided values if specified
 #' and default other wise
 #' @keywords internal
+#' @importFrom stats na.omit
 match_control <- function(default, control) {
   if (missing(control))
     control <- list()
