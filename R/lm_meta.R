@@ -183,7 +183,7 @@ lm_meta <- function(feature_abd,
   
   # Fit individual models
   maaslin_fits <- list()
-  for(i in 1:n_batch) {
+  for(i in seq_len(n_batch)) {
     i_batch <- lvl_batch[i]
     if(!ind_exposure[i_batch]) next
     if(verbose) message("Fitting Maaslin2 on batch ", i_batch, "...")

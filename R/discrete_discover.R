@@ -133,7 +133,7 @@ discrete_discover <- function(D,
     
     # Cluster each study first individually
     clusterings <- list()
-    for(i in 1:n_batch) {
+    for(i in seq_len(n_batch)) {
       i_batch <- lvl_batch[i]
       clusterings[[i]] <- control$cluster_function(
         data = as.dist(D_all[df_batch[[batch]] == i_batch, 
@@ -142,7 +142,7 @@ discrete_discover <- function(D,
     
     # Validation
     classifications <- list()
-    for(i in 1:n_batch) {
+    for(i in seq_len(n_batch)) {
       i_batch <- lvl_batch[i]
       if(verbose) message("Study is ", i_batch)
       if(verbose) message("Performing internal validation...")
@@ -172,12 +172,12 @@ discrete_discover <- function(D,
                          nnk = control$nnk)
       
       i_result_external <- matrix(NA, n_batch, k)
-      for (j in setdiff(1:n_batch, i)) {
+      for (j in setdiff(seq_len(n_batch), i)) {
         j_batch <- lvl_batch[[j]]
         ctable <- fpc::xtable(
           clusterings[[j]]$partition,
           classifications[[i]][df_batch[[batch]] == j_batch], k)
-        for (kk in 1:k) {
+        for (kk in seq_len(k)) {
           i_result_external[j, kk] <- sum(ctable[kk, ]^2 - ctable[kk,])
           cpjk <- clusterings[[j]]$partition == kk
           njk <- sum(cpjk)
@@ -187,7 +187,7 @@ discrete_discover <- function(D,
           else i_result_external[j, kk] <- 1
         }
       }
-      i_result_external <- apply(i_result_external[setdiff(1:n_batch, i), ,
+      i_result_external <- apply(i_result_external[setdiff(seq_len(n_batch), i), ,
                                                    drop = FALSE],
                                  1, min)
       stats_external[[k - 1]][[i]] <- c(mean = mean(i_result_external),

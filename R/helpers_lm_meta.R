@@ -275,21 +275,21 @@ rma_wrapper <- function(maaslin_fits,
       function(i_maaslin_fit)
         i_maaslin_fit[i_maaslin_fit$value == value_exposure, 
                       "coef", drop = TRUE],
-      rep_len(0.0, sum(i_maaslin_fit$value == value_exposure))
+      rep_len(0.0, length(features))
     )
     sds <- vapply(
       maaslin_fits, 
       function(i_maaslin_fit)
         i_maaslin_fit[i_maaslin_fit$value == value_exposure, 
                       "stderr", drop = TRUE],
-      rep_len(0.0, sum(i_maaslin_fit$value == value_exposure))
+      rep_len(0.0, length(features))
     )
     pvals <- vapply(
       maaslin_fits, 
       function(i_maaslin_fit)
         i_maaslin_fit[i_maaslin_fit$value == value_exposure, 
                       "pval", drop = TRUE],
-      rep_len(0.0, sum(i_maaslin_fit$value == value_exposure))
+      rep_len(0.0, length(features))
     )
     rownames(betas) <- rownames(sds) <- rownames(pvals) <- features
     ind_features <- !is.na(betas) & !is.na(sds) & (sds != 0)

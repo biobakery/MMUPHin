@@ -52,11 +52,11 @@ construct_ind <- function(feature_abd, n_batch, design, zero_inflation) {
   ind_mod <- rep(TRUE, ncol(design) - n_batch)
   if(zero_inflation) {
     ind_data[feature_abd == 0] <- FALSE
-    for(i_feature in 1:nrow(feature_abd)) {
+    for(i_feature in seq_len(nrow(feature_abd))) {
       # subset design to non-zero samples for i_feature
       i_design <- design[ind_data[i_feature, ], , drop = FALSE]
       # indicate whether each batch has non-zero values for i_feature
-      i_check_batch <- apply(i_design[, 1:n_batch, drop = FALSE] == 1, 2, any)
+      i_check_batch <- apply(i_design[, seq_len(n_batch), drop = FALSE] == 1, 2, any)
       i_design <- i_design[, c(i_check_batch, ind_mod), drop = FALSE]
       if(
         # should have at least two batches to adjust for
@@ -91,7 +91,7 @@ construct_ind <- function(feature_abd, n_batch, design, zero_inflation) {
 #' @keywords internal
 fit_stand_feature <- function(s_data, design, l_ind) {
   l_stand_feature <- list()
-  for(i_feature in 1:nrow(s_data)) {
+  for(i_feature in seq_len(nrow(s_data))) {
     if(l_ind$ind_feature[i_feature]) {
       i_design <- design[l_ind$ind_data[i_feature, ],
                          c(l_ind$ind_gamma[i_feature, ],
@@ -132,15 +132,15 @@ standardize_feature <- function(y,
                                 n_batch) {
   beta_hat <- solve(crossprod(i_design),
                     crossprod(i_design, y))
-  grand_mean <- mean(i_design[, 1:n_batch] %*%
-                       beta_hat[1:n_batch, ])
+  grand_mean <- mean(i_design[, seq_len(n_batch)] %*%
+                       beta_hat[seq_len(n_batch), ])
   
   var_pooled <- var(y - (i_design %*% beta_hat)[, 1])
   stand_mean <- rep(grand_mean, length(y))
   if(ncol(i_design) > n_batch){
     stand_mean <- stand_mean +
-      (i_design[, -(1:n_batch), drop = FALSE] %*%
-         beta_hat[-(1:n_batch), ])[, 1]
+      (i_design[, -seq_len(n_batch), drop = FALSE] %*%
+         beta_hat[-seq_len(n_batch), ])[, 1]
   }
   y_stand <- (y - stand_mean) / sqrt(var_pooled)
   return(list(y_stand = y_stand,
@@ -170,7 +170,7 @@ fit_EB <- function(s_data, l_stand_feature, batchmod, n_batch, l_ind) {
     matrix(NA, nrow = nrow(s_data), ncol = n_batch)
   
   # estimate per-feature per-batch location and scale parameters
-  for(i_feature in 1:nrow(s_data)) {
+  for(i_feature in seq_len(nrow(s_data))) {
     if(l_ind$ind_feature[i_feature]) {
       i_s_data_batch <- s_data[i_feature, l_ind$ind_data[i_feature, ]] *
         batchmod[l_ind$ind_data[i_feature, ], l_ind$ind_gamma[i_feature, ],
@@ -264,7 +264,7 @@ fit_shrink <- function(s_data, l_params, batchmod, n_batch, l_ind, control) {
     delta_star <-
     matrix(NA, nrow = nrow(s_data), ncol = n_batch)
   
-  results <- lapply(1:n_batch, function(i_batch) {
+  results <- lapply(seq_len(n_batch), function(i_batch) {
     i_s_data <- s_data
     # set all zeros to NA
     i_s_data[!l_ind$ind_data] <- NA
@@ -284,7 +284,7 @@ fit_shrink <- function(s_data, l_params, batchmod, n_batch, l_ind, control) {
     delta_star <- temp[2, ]
     list(gamma_star=gamma_star, delta_star=delta_star)
   })
-  for (i_batch in 1:n_batch) {
+  for (i_batch in seq_len(n_batch)) {
     gamma_star[, i_batch] <- results[[i_batch]]$gamma_star
     delta_star[, i_batch] <- results[[i_batch]]$delta_star
   }
@@ -394,7 +394,7 @@ relocate_scale <- function(s_data, l_params_shrink,
                            batchmod, n_batch,
                            l_ind) {
   adj_data <- s_data
-  for (i_batch in 1:n_batch) {
+  for (i_batch in seq_len(n_batch)) {
     i_ind_feature <-
       !is.na(l_params_shrink$gamma_star[, i_batch]) &
       !is.na(l_params_shrink$delta_star[, i_batch])
@@ -407,7 +407,7 @@ relocate_scale <- function(s_data, l_params_shrink,
       stop("Features determined to be eligible for batch estimation do not ",
            "agree with the ones with valid per-batch shrinked parameters!")
     
-    for(i_feature in 1:nrow(adj_data)) {
+    for(i_feature in seq_len(nrow(adj_data))) {
       if(i_ind_feature[i_feature]) {
         i_ind_sample <-
           l_ind$ind_data[i_feature, ] &
@@ -437,7 +437,7 @@ relocate_scale <- function(s_data, l_params_shrink,
 #' @keywords internal
 add_back_covariates <- function(adj_data, l_stand_feature,
                                 l_ind) {
-  for(i_feature in 1:nrow(adj_data)) {
+  for(i_feature in seq_len(nrow(adj_data))) {
     if(l_ind$ind_feature[i_feature]) {
       i_stand_feature <- l_stand_feature[[i_feature]]
       adj_data[i_feature, l_ind$ind_data[i_feature, ]] <-

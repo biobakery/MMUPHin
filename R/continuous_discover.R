@@ -218,11 +218,11 @@ continuous_discover <- function(feature_abd,
   })
   n_pc_top <- min(vapply(ind_var_perc, length, 1))
   ind_var_perc <- vapply(ind_var_perc, 
-                         function(x) x[1:n_pc_top], 
-                         rep_len(0.0, n_pc_top))
+                         function(x) x[seq_len(n_pc_top)], 
+                         rep_len(TRUE, n_pc_top))
   ind_var_perc <- apply(ind_var_perc, 1, all)
   if(any(ind_var_perc)) {
-    n_pc_top <- min((1:n_pc_top)[ind_var_perc])
+    n_pc_top <- min(seq_len(n_pc_top)[ind_var_perc])
     if(verbose) 
       message("Smallest number of PCs passing the specified threshold (",
               var_perc_cutoff, ") is ", n_pc_top)
@@ -234,13 +234,13 @@ continuous_discover <- function(feature_abd,
   # First n_pc_top PC loadings for each training dataset
   data_loadings <- lapply(pca_all, function(x)
   {
-    loadings <- x$rotation[,1:n_pc_top]
+    loadings <- x$rotation[,seq_len(n_pc_top)]
     return(loadings)
   })
   mat_data_loading <- Reduce("cbind", data_loadings)
   colnames(mat_data_loading) <- 
     unlist(lapply(lvl_batch, function(lvl) {
-      paste0(lvl, ", PC", 1:n_pc_top)
+      paste0(lvl, ", PC", seq_len(n_pc_top))
     }))
   
   # Calculate correlation matrix of loadings across datasets
@@ -314,7 +314,7 @@ continuous_discover <- function(feature_abd,
   if(!is.null(control$network_plot)) {
     short_names <- 
       unlist(lapply(shorten_name(lvl_batch), function(lvl) {
-        paste0(lvl, ", PC", 1:n_pc_top)
+        paste0(lvl, ", PC", seq_len(n_pc_top))
       }))
     names(short_names) <- colnames(mat_cos)
     visualize_continuous_discover(graph_pc = graph_pc,
