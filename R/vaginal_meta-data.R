@@ -1,0 +1,43 @@
+#' Sample metadata of two public vaginal studies
+#'
+#' Metadata information of vaginal samples in the two public studies provided in
+#' \code{\link[curatedMetagenomicData]{curatedMetagenomicData}}.
+#'
+#' @docType data
+#'
+#' @usage data(vaginal_meta)
+#'
+#' @format A \code{data.frame} of per-sample metadata information
+#'
+#' @references Pasolli, Edoardo, Lucas Schiffer, Paolo Manghi, Audrey Renson, 
+#' Valerie Obenchain, Duy Tin Truong, Francesco Beghini et al. "Accessible, 
+#' curated metagenomic data through ExperimentHub." Nature methods 14, no. 11 
+#' (2017): 1023.
+#'
+#' @source \code{\link[curatedMetagenomicData]{curatedMetagenomicData}}
+#'
+#' @examples
+#' data(vaginal_meta)
+#' # has vaginal samples across two studies
+#' table(vaginal_meta$studyID, vaginal_meta$body_site)
+#' # The following were used to generate the object
+#' # library(curatedMetagenomicData)
+#' # library(phyloseq)
+#' # datasets <- curatedMetagenomicData(
+#' #   "*metaphlan_bugs_list.vagina*",
+#' #   dryrun = FALSE)
+#' # Construct phyloseq object from the five datasets
+#' # physeq <-
+#'   # Aggregate the five studies into ExpressionSet
+#' #   mergeData(datasets) %>%
+#'   # Convert to phyloseq object
+#' #   ExpressionSet2phyloseq() %>%
+#'   # Subset features to species
+#' #   subset_taxa(!is.na(Species) & is.na(Strain)) %>%
+#'   # Normalize abundances to relative abundance scale
+#' #   transform_sample_counts(function(x) x / sum(x)) %>%
+#'   # Filter features to be of at least 1e-5 relative abundance in two samples
+#' #   filter_taxa(kOverA(2, 1e-5), prune = TRUE)
+#' # vaginal_meta <- data.frame(sample_data(physeq))
+#' # vaginal_meta$studyID <- factor(vaginal_meta$studyID)
+"vaginal_meta"
