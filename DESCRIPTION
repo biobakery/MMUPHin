@@ -35,4 +35,4 @@ Suggests:
     phyloseq,
     curatedMetagenomicData,
     genefilter
-biocViews: Metagenomics, Microbiome, BatchEffect, MetaAnalysis
+biocViews: Metagenomics, Microbiome, BatchEffect
