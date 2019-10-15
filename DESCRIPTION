@@ -24,7 +24,10 @@ Imports:
     ggplot2,
     dplyr,
     tidyr,
-    cowplot
+    cowplot,
+    utils,
+    stats,
+    grDevices
 Suggests: 
     testthat,
     BiocStyle, 
