@@ -19,7 +19,7 @@ bibliography: references.bib
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_chunk$set(cache = TRUE)
+knitr::opts_chunk$set(cache = FALSE)
 ```
 
 # Introduction
@@ -418,4 +418,5 @@ species) versus Firmicutes (the *Ruminococcus* species) tradeoff.
 ```{r sessioninfo}
 sessionInfo()
 ```
+
 # References

@@ -1,2 +1,5 @@
+Changes in version 0.99.1 (2019-10-15):
++ Switched reference links for igraph and fpc in Rd documents.
+
 Changes in version 0.99.0 (2019-10-15):
 + Initial submission to Bioconductor.

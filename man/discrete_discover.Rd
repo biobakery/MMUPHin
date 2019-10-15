@@ -68,7 +68,7 @@ for discrete structure evaluation. This corresponds to the
 \code{clustermethod} parameter in 
 \code{\link[fpc]{prediction.strength}}, and similarly, should also follow the
 specifications as detailed in  \code{\link[fpc]{clusterboot}}. Default to
-\code{\link[fpc]{claraCBI}}
+\code{\link[fpc:kmeansCBI]{claraCBI}}
 }
 \item{classify_method}{
 character. Classification method used to assign observations in the method's

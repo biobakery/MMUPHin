@@ -36,7 +36,7 @@ correspond to batches.
 }
 \item{network, communities, mat_cos}{
 components for the constructed PC loading network and community
-discovery results. \code{network} is a \code{\link[igraph:graph]{igraph}}
+discovery results. \code{network} is a \pkg{igraph} \code{graph}
 object for
 the constructed network of associated PC loadings. \code{communities} is a  
 \code{\link[igraph:communities]{communities}} object for the identified 
@@ -80,8 +80,8 @@ allowed. Default to \code{"AST"} (arcsine square root transformation).
 \item{pseudo_count}{
 numeric. Pseudo count to add feature_abd before the transformation. Default 
 to \code{NULL}, in which case pseudo count will be set automatically to 0 if
-\code{transform="AST"}, and half of minimal non-zero values in \
-code{feature_abd} if \code{transform="LOG"}.
+\code{transform="AST"}, and half of minimal non-zero values in 
+\code{feature_abd} if \code{transform="LOG"}.
 }
 \item{var_perc_cutoff}{
 numeric. A value between 0 and 1 that indicates the percentage variability 
