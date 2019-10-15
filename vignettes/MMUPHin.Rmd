@@ -96,33 +96,33 @@ CRC_meta[1, 1:5]
 # A total of five studies are included 
 table(CRC_meta$studyID)
 # The following were used to access and format the two objects
-library(curatedMetagenomicData)
-library(phyloseq)
-library(genefilter)
-datasets <- curatedMetagenomicData(
-  c("FengQ_2015.metaphlan_bugs_list.stool"  ,
-    "HanniganGD_2017.metaphlan_bugs_list.stool",
-    "VogtmannE_2016.metaphlan_bugs_list.stool",
-    "YuJ_2015.metaphlan_bugs_list.stool",
-    "ZellerG_2014.metaphlan_bugs_list.stool"),
-  dryrun = FALSE)
-# Construct phyloseq object from the five datasets
-physeq <-
-  # Aggregate the five studies into ExpressionSet
-  mergeData(datasets) %>%
-  # Convert to phyloseq object
-  ExpressionSet2phyloseq() %>%
-  # Subset samples to only CRC and controls
-  subset_samples(study_condition %in% c("CRC", "control")) %>%
-  # Subset features to species
-  subset_taxa(!is.na(Species) & is.na(Strain)) %>%
-  # Normalize abundances to relative abundance scale
-  transform_sample_counts(function(x) x / sum(x)) %>%
-  # Filter features to be of at least 1e-5 relative abundance in five samples
-  filter_taxa(kOverA(5, 1e-5), prune = TRUE)
-CRC_abd <- otu_table(physeq)@.Data
-CRC_meta <- data.frame(sample_data(physeq))
-CRC_meta$studyID <- factor(CRC_meta$studyID)
+# library(curatedMetagenomicData)
+# library(phyloseq)
+# library(genefilter)
+# datasets <- curatedMetagenomicData(
+#   c("FengQ_2015.metaphlan_bugs_list.stool"  ,
+#     "HanniganGD_2017.metaphlan_bugs_list.stool",
+#     "VogtmannE_2016.metaphlan_bugs_list.stool",
+#     "YuJ_2015.metaphlan_bugs_list.stool",
+#     "ZellerG_2014.metaphlan_bugs_list.stool"),
+#   dryrun = FALSE)
+# # Construct phyloseq object from the five datasets
+# physeq <-
+#   # Aggregate the five studies into ExpressionSet
+#   mergeData(datasets) %>%
+#   # Convert to phyloseq object
+#   ExpressionSet2phyloseq() %>%
+#   # Subset samples to only CRC and controls
+#   subset_samples(study_condition %in% c("CRC", "control")) %>%
+#   # Subset features to species
+#   subset_taxa(!is.na(Species) & is.na(Strain)) %>%
+#   # Normalize abundances to relative abundance scale
+#   transform_sample_counts(function(x) x / sum(x)) %>%
+#   # Filter features to be of at least 1e-5 relative abundance in five samples
+#   filter_taxa(kOverA(5, 1e-5), prune = TRUE)
+# CRC_abd <- otu_table(physeq)@.Data
+# CRC_meta <- data.frame(sample_data(physeq))
+# CRC_meta$studyID <- factor(CRC_meta$studyID)
 ```
 
 # Performing batch (study) effect adjustment with `adjust_batch`
@@ -390,24 +390,29 @@ on the first identified continuous score.
 # Examine top loadings
 loading <- data.frame(feature = rownames(fit_continuous$consensus_loadings),
                       loading1 = fit_continuous$consensus_loadings[, 1])
-loading %>% 
-  dplyr::arrange(-abs(loading1)) %>% 
-  dplyr::slice(1:20) %>% 
-  dplyr::arrange(loading1) %>% 
-  dplyr::mutate(feature = factor(feature, levels = feature)) %>% 
-  ggplot(aes(x = feature, y = loading1)) +
-  geom_bar(stat = "identity") +
-  coord_flip() +
-  ggtitle("Features with top loadings")
-
+loading %>%
+    dplyr::arrange(-abs(loading1)) %>%
+    dplyr::slice(1:20) %>%
+    dplyr::arrange(loading1) %>%
+    dplyr::mutate(feature = factor(feature, levels = feature)) %>%
+    ggplot(aes(x = feature, y = loading1)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    ggtitle("Features with top loadings")
 # Ordinate the samples
 mds <- cmdscale(d = D_control)
 colnames(mds) <- c("Axis1", "Axis2")
 as.data.frame(mds) %>% 
   dplyr::mutate(score1 = fit_continuous$consensus_scores[, 1]) %>% 
   ggplot(aes(x = Axis1, y = Axis2, color = score1)) +
-  geom_point()
+  geom_point() +
+  coord_fixed()
 ```
+
+From ordination we see that the first continuos score indeed represent strong
+variation across these stool samples. From the top loading features we can 
+see that this score strongly represents a Bacteroidetes (the *Bacteroides* 
+species) versus Firmicutes (the *Ruminococcus* species) tradeoff.
 
 # Sessioninfo
 ```{r sessioninfo}
