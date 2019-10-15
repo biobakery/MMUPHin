@@ -407,55 +407,6 @@ as.data.frame(mds) %>%
   dplyr::mutate(score1 = fit_continuous$consensus_scores[, 1]) %>% 
   ggplot(aes(x = Axis1, y = Axis2, color = score1)) +
   geom_point()
-library(curatedMetagenomicData)
-library(phyloseq)
-library(genefilter)
-datasets <- curatedMetagenomicData(
-  c("FengQ_2015.metaphlan_bugs_list.stool"  ,
-    "HanniganGD_2017.metaphlan_bugs_list.stool",
-    "VogtmannE_2016.metaphlan_bugs_list.stool",
-    "YuJ_2015.metaphlan_bugs_list.stool",
-    "ZellerG_2014.metaphlan_bugs_list.stool"),
-  dryrun = FALSE)
-# Construct phyloseq object from the five datasets
-physeq <-
-  # Aggregate the five studies into ExpressionSet
-  mergeData(datasets) %>%
-  # Convert to phyloseq object
-  ExpressionSet2phyloseq() %>%
-  # Subset samples to only CRC and controls
-  subset_samples(study_condition %in% c("CRC", "control")) %>%
-  # Subset features to species
-  subset_taxa(!is.na(Species) & is.na(Strain)) %>%
-  # Normalize abundances to relative abundance scale
-  transform_sample_counts(function(x) x / sum(x)) %>%
-  # Filter features to be of at least 1e-5 relative abundance in five samples
-  filter_taxa(kOverA(5, 1e-5), prune = TRUE)
-CRC_tax <- tax_table(physeq)@.Data
-for(Cluster in colnames(fit_continuous$consensus_loadings)[1:3]) {
-  loading <- data.frame(feature = rownames(fit_continuous$consensus_loadings),
-                        loading1 = fit_continuous$consensus_loadings[, Cluster])
-  p <- loading %>%
-    cbind(as.data.frame(CRC_tax)) %>%
-    dplyr::arrange(-abs(loading1)) %>%
-    dplyr::slice(1:20) %>%
-    dplyr::arrange(loading1) %>%
-    dplyr::mutate(feature = factor(feature, levels = feature)) %>%
-    ggplot(aes(x = feature, y = loading1, color = Phylum)) +
-    geom_bar(stat = "identity", fill = "white") +
-    coord_flip() +
-    ggtitle("Features with top loadings") +
-    theme(legend.position = c(0, 1), legend.justification = c(0, 1),
-          legend.background = element_blank())
-  p2 <- as.data.frame(mds) %>%
-    dplyr::mutate(score1 = fit_continuous$consensus_scores[, Cluster]) %>%
-    ggplot(aes(x = Axis1, y = Axis2, color = score1)) +
-    geom_point()
-  ggsave("~/Dropbox (Harvard University)/hutlab/Siyuan/group_meetings/10_10_smallgroup/" %>%
-           paste0(Cluster, ".pdf"),
-         cowplot::plot_grid(p, p2, nrow = 1),
-         width = 10, height = 4)
-}
 ```
 
 # Sessioninfo
