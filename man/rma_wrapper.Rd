@@ -4,7 +4,7 @@
 \alias{rma_wrapper}
 \title{Wrapper for fitting fixed/random effects meta-analysis model using metafor}
 \usage{
-rma_wrapper(maaslin_fits, method = "REML", output = "./",
+rma_wrapper(maaslin_fits, method = "REML", output = tempdir(),
   forest_plot = NULL, rma_conv = 1e-06, rma_maxit = 1000,
   verbose = TRUE)
 }

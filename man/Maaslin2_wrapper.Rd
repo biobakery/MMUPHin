@@ -5,8 +5,8 @@
 \title{Wrapper function for Maaslin2}
 \usage{
 Maaslin2_wrapper(feature_abd, data, exposure, covariates = NULL,
-  covariates_random = NULL, output = "./", normalization = "TSS",
-  transform = "AST", analysis_method = "LM")
+  covariates_random = NULL, output = tempdir(),
+  normalization = "TSS", transform = "AST", analysis_method = "LM")
 }
 \arguments{
 \item{feature_abd}{feature*sample matrix of feature abundance.}
