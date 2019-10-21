@@ -1,3 +1,6 @@
+Changes in version 0.99.2 (2019-10-21):
++ Changed default output of Maaslin2_wrapper and rma_wrapper to tempdir()
+
 Changes in version 0.99.1 (2019-10-15):
 + Switched reference links for igraph and fpc in Rd documents.
 

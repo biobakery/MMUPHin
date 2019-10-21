@@ -104,7 +104,7 @@ Maaslin2_wrapper <- function(feature_abd,
                              exposure,
                              covariates = NULL,
                              covariates_random = NULL,
-                             output = "./",
+                             output = tempdir(),
                              normalization = "TSS",
                              transform = "AST",
                              analysis_method = "LM") {
@@ -230,7 +230,7 @@ create_table_maaslin <- function(features, exposure, lvl_exposure) {
 #' @importFrom stats p.adjust
 rma_wrapper <- function(maaslin_fits, 
                         method = "REML",
-                        output = "./",
+                        output = tempdir(),
                         forest_plot = NULL, 
                         rma_conv = 1e-6,
                         rma_maxit = 1000,
