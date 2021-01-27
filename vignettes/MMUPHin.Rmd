@@ -9,7 +9,11 @@ author:
 package: MMUPHin
 date: "10/09/2019"
 output: 
-  BiocStyle::html_document
+  BiocStyle::html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    code_folding: show
 vignette: >
   %\VignetteIndexEntry{MMUPHin}
   %\VignetteEngine{knitr::rmarkdown}
@@ -35,17 +39,6 @@ or pathways that are differential with respect to combined phenotypes. Finally,
 it can find clusters or gradients of sample types that reproduce consistently 
 among studies.
 
-This vignette is intended to provide working examples for all four 
-functionalities of `MMUPHin`. 
-
-```{r, message=FALSE}
-library(MMUPHin)
-# tidyverse packages for utilities
-library(magrittr)
-library(dplyr)
-library(ggplot2)
-```
-
 # Installation
 
 MMUPHin is a Bioconductor package and can be installed via the following 
@@ -55,6 +48,18 @@ command.
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 BiocManager::install("MMUPHin")
+```
+
+This vignette is intended to provide working examples for all four 
+functionalities of `MMUPHin`. 
+
+MMUPHin can be loaded into R with the first `library()` command shown below. We also load some utility packages for data manipulation and visualization.
+
+```{r, message=FALSE}
+library(MMUPHin)
+library(magrittr)
+library(dplyr)
+library(ggplot2)
 ```
 
 # Input data
@@ -88,68 +93,38 @@ sample/feature subsetting, normalization, filtering, etc.
 
 ```{r load data}
 data("CRC_abd", "CRC_meta")
-# CRC_abd is the feature (species) abundance matrix. Rows are features and 
-# columns are samples.
 CRC_abd[1:5, 1, drop = FALSE]
-# CRC_meta is the metadata data frame. Columns are samples.
+
 CRC_meta[1, 1:5]
-# A total of five studies are included 
+
 table(CRC_meta$studyID)
-# The following were used to access and format the two objects
-# library(curatedMetagenomicData)
-# library(phyloseq)
-# library(genefilter)
-# datasets <- curatedMetagenomicData(
-#   c("FengQ_2015.metaphlan_bugs_list.stool"  ,
-#     "HanniganGD_2017.metaphlan_bugs_list.stool",
-#     "VogtmannE_2016.metaphlan_bugs_list.stool",
-#     "YuJ_2015.metaphlan_bugs_list.stool",
-#     "ZellerG_2014.metaphlan_bugs_list.stool"),
-#   dryrun = FALSE)
-# # Construct phyloseq object from the five datasets
-# physeq <-
-#   # Aggregate the five studies into ExpressionSet
-#   mergeData(datasets) %>%
-#   # Convert to phyloseq object
-#   ExpressionSet2phyloseq() %>%
-#   # Subset samples to only CRC and controls
-#   subset_samples(study_condition %in% c("CRC", "control")) %>%
-#   # Subset features to species
-#   subset_taxa(!is.na(Species) & is.na(Strain)) %>%
-#   # Normalize abundances to relative abundance scale
-#   transform_sample_counts(function(x) x / sum(x)) %>%
-#   # Filter features to be of at least 1e-5 relative abundance in five samples
-#   filter_taxa(kOverA(5, 1e-5), prune = TRUE)
-# CRC_abd <- otu_table(physeq)@.Data
-# CRC_meta <- data.frame(sample_data(physeq))
-# CRC_meta$studyID <- factor(CRC_meta$studyID)
+
 ```
 
 # Performing batch (study) effect adjustment with `adjust_batch`
 
 `adjust_batch` aims to correct for technical study/batch effects in microbial
 feature abundances. It takes as input the feature-by-sample abundance matrix, 
-and performs batch effect adjustment given provided batch and optional covariate variables. It returns the batch-adjusted abundance matrix. Check
-`help(adjust_batch)` for additional details and options.
+and performs batch effect adjustment given provided batch and optional covariate variables. It returns the batch-adjusted abundance matrix. Check `help(adjust_batch)` for additional details and options. This figure from the paper (figure 2b) shows the desired effect of the batch adjustment: batch effects are removed, making the effect of the biological variable of interest easier to detect.
+
+```{r echo=FALSE}
+knitr::include_graphics('../man/figures/adj_batch_example.png')
+```
 
 Here we use `adjust_batch` to correct for differences in the five studies, 
 while controlling for the effect of CRC versus control (variable 
-`study_condition` in `CRC_meta`).
+`study_condition` in `CRC_meta`). 
+
+`adjust_batch` returns a list of multiple outputs. The part we are most interested in now is the adjusted abundance table, which we assign to `CRC_abd_adj`.
 
 ```{r adjust_batch}
-# The function call indicates for adjust_batch to correct for the effect
-# of the batch variable, studyID, while controlling for the effect of the 
-# disease variable, study_condition. Many additional options are available 
-# through the control parameter, here we specify verbose=FALSE to avoid 
-# excessive messages, although they can often be helpful in practice!
+
 fit_adjust_batch <- adjust_batch(feature_abd = CRC_abd,
                                  batch = "studyID",
                                  covariates = "study_condition",
                                  data = CRC_meta,
                                  control = list(verbose = FALSE))
-# Note that adjust_batch returns a list of more than one components, and 
-# feature_abd_adj is the corrected feature abundance matrix. See 
-# help(adjust_batch) for the meaning of other components.
+
 CRC_abd_adj <- fit_adjust_batch$feature_abd_adj
 ```
 
@@ -157,15 +132,14 @@ One way to evaluate the effect of batch adjustment is to assess the total
 variability in microbial profiles attributable to study differences, before
 and after adjustment. This is commonly known as a PERMANOVA test 
 [@tang2016permanova], and can be performed with the `adonis` function in 
-`r BiocStyle::CRANpkg("vegan")`.
+`r BiocStyle::CRANpkg("vegan")`. The inputs to `adonis()` are indices of microbial compositional dissimilarity.
 
 ```{r permanova}
 library(vegan)
-# adonis requires as input sample-versus-sample dissimilarities between 
-# microbial profiles
+
 D_before <- vegdist(t(CRC_abd))
 D_after <- vegdist(t(CRC_abd_adj))
-# fix random seed as adonis runs randomized permutations
+
 set.seed(1)
 fit_adonis_before <- adonis(D_before ~ studyID, data = CRC_meta)
 fit_adonis_after <- adonis(D_after ~ studyID, data = CRC_meta)
@@ -187,33 +161,27 @@ One of the most common meta-analysis goals is to combine association effects
 across batches/studies to identify consistent overall effects. `lm_meta` 
 provides a straightforward interface to this task, by first performing 
 regression analysis in individual batches/studies using the well-validated
-`r BiocStyle::Biocpkg("Maaslin2")` packge, and then aggregating results with 
+`r BiocStyle::Biocpkg("Maaslin2")` package, and then aggregating results with 
 established fixed/mixed effect models, realized via the 
 `r BiocStyle::CRANpkg("vegan")` package. Here, we use `lm_meta` to test for
 consistently differential abundant species between CRC and control samples 
 across the five studies, while controlling for demographic covariates (gender,
-age, BMI).
+age, BMI). Again, lm_meta returns a list of more than one components.
+meta_fits provides the final meta-analytical testing results. See
+help(lm_meta) for the meaning of other components.
 
 ```{r lm_meta}
-# lm_meta runs regression and meta-analysis models to identify consistent 
-# effects of the exposure (study_condition, i.e., disease) on feature_abd
-# (microbial feature abundances). Batch variable (studyID) needs to be 
-# specified to identify different studies. Additional covariates to include in 
-# the regression model can be specified via covariates (here set to gender, 
-# age, BMI). Check help(lm_meta) for additional parameter options.
-# Note the warnings: lm_meta can tell if a covariate cannot be meaningfully fit
-# within a batch and will inform the user of such cases through warnings.
 fit_lm_meta <- lm_meta(feature_abd = CRC_abd,
                        batch = "studyID",
                        exposure = "study_condition",
                        covariates = c("gender", "age", "BMI"),
                        data = CRC_meta,
                        control = list(verbose = FALSE))
-# Again, lm_meta returns a list of more than one components. 
-# meta_fits provides the final meta-analytical testing results. See 
-# help(lm_meta) for the meaning of other components.
+
 meta_fits <- fit_lm_meta$meta_fits
 ```
+
+You'll note that this command produces a few error messages. This is because for one of the studies the specified covariates were not measured. As the message states, these covariates are not included when analyzing data from that study.
 
 We can visualize the significant (FDR q < 0.05) species associated with CRC in
 these studies/samples. Comparing them with Figure 1b of @thomas2019metagenomic, 

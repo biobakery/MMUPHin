@@ -5,3 +5,5 @@ MMUPHin.Rproj
 .DS_Store
 .Renviron
 dependencies/*
+doc
+Meta
