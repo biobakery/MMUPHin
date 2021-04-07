@@ -137,6 +137,8 @@ standardize_feature <- function(y,
                        beta_hat[seq_len(n_batch), ])
   
   var_pooled <- var(y - (i_design %*% beta_hat)[, 1])
+  if(var_pooled == 0)
+    var_pooled <- 1
   stand_mean <- rep(grand_mean, length(y))
   if(ncol(i_design) > n_batch){
     stand_mean <- stand_mean +
@@ -174,9 +176,11 @@ fit_EB <- function(s_data, l_stand_feature, batchmod, n_batch, l_ind) {
   # estimate per-feature per-batch location and scale parameters
   for(i_feature in seq_len(nrow(s_data))) {
     if(l_ind$ind_feature[i_feature]) {
+      i_batchmod <- batchmod[l_ind$ind_data[i_feature, ], l_ind$ind_gamma[i_feature, ],
+                             drop = FALSE]
+      i_batchmod[i_batchmod == 0] <- NA
       i_s_data_batch <- s_data[i_feature, l_ind$ind_data[i_feature, ]] *
-        batchmod[l_ind$ind_data[i_feature, ], l_ind$ind_gamma[i_feature, ],
-                 drop = FALSE]
+        i_batchmod
       # For debugging, this shouldn't happen
       if(
         # less than two samples are non-zero to correct for the feature
@@ -188,8 +192,8 @@ fit_EB <- function(s_data, l_stand_feature, batchmod, n_batch, l_ind) {
                       l_ind$ind_gamma[i_feature, ],
                       drop = FALSE]) <= 1)
         stop("Something wrong happened!" ) ## FIXME
-      i_gamma <- apply(i_s_data_batch, 2, mean)
-      i_delta <- apply(i_s_data_batch, 2, sd)
+      i_gamma <- apply(i_s_data_batch, 2, mean, na.rm = TRUE)
+      i_delta <- apply(i_s_data_batch, 2, sd, na.rm = TRUE)
       i_delta[is.na(i_delta)] <- 1
       i_delta[i_delta == 0] <- 1
       gamma_hat[i_feature, l_ind$ind_gamma[i_feature, ]] <- i_gamma
