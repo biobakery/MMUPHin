@@ -240,11 +240,16 @@ carefully with validations to ensure that the identified structures are
 consistent [@koren2013guide]. `discrete_discover` provides the functionality to 
 use prediction strength [@tibshirani2005cluster] to evaluate discrete 
 clustering structures within individual microbial studies, as well as a 
-"generalized predicition strength" to evaluate their reproducibility in 
+"generalized prediction strength" to evaluate their reproducibility in 
 other studies. These jointly provide meta-analytical evidence for
 (or against) identifying discrete population structures in microbial profiles.
 Check `help(discrete_discover)` to see more details on the method and additional
-options.
+options. We can contrast discrete structure (clusters) with continuous structure (which will be overviewed in the next section):
+
+```{r}
+knitr::include_graphics('../man/figures/structure_types.PNG')
+```
+
 
 The gut microbiome is known to form gradients rather than discrete clusters 
 [@koren2013guide]. Here we use `discrete_discover` to evaluate clustering 
@@ -342,7 +347,7 @@ dysbiosis. `continuous_discover` provide functionality to identify such
 structures as well as to validate them with meta-analysis. We again evaluate
 these continuous structures in control samples of the five studies.
 
-Much like adjust_batch and lm_meta, continuous_discover also takes as input feature-by-sample abundances. control offers many tuning parameters and here we set one of them, var_perc_cutoff, to 0.5, which asks the method to include top principal components within each batch that in total explain at least 50% of the total variability in the batch. See help(continuous_discover) for more details on the tuning parameters and their interpretations.
+Much like adjust_batch and lm_meta, continuous_discover also takes as input feature-by-sample abundances. The `control` argument offers many tuning parameters and here we set one of them, `var_perc_cutoff`, to 0.5, which asks the method to include top principal components within each batch that in total explain at least 50% of the total variability in the batch. See `help(continuous_discover)` for more details on the tuning parameters and their interpretations.
 
 ```{r continuos_structre}
 fit_continuous <- continuous_discover(feature_abd = control_abd_adj,
