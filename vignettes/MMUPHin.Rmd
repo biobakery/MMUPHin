@@ -16,9 +16,11 @@ output:
     code_folding: show
 vignette: >
   %\VignetteIndexEntry{MMUPHin}
-  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}  
+  %\VignetteEngine{knitr::rmarkdown}
 bibliography: references.bib
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -135,7 +137,7 @@ and after adjustment. This is commonly known as a PERMANOVA test
 `r BiocStyle::CRANpkg("vegan")`. The inputs to `adonis()` are indices of microbial compositional dissimilarity.
 
 ```{r permanova}
-library(vegan)
+library(vegan, quietly = TRUE)
 
 D_before <- vegdist(t(CRC_abd))
 D_after <- vegdist(t(CRC_abd_adj))
@@ -213,15 +215,13 @@ options.
 
 The gut microbiome is known to form gradients rather than discrete clusters 
 [@koren2013guide]. Here we use `discrete_discover` to evaluate clustering 
-structures among control samples in the five stool studies.
+structures among control samples in the five stool studies. It's worth noting that this function takes a distance/dissimilarity matrix as an input, rather than the abundance table.
 
 ````{r discrete_discover}
-# First subset both feature abundance table and metadata to only control samples
+
 control_meta <- subset(CRC_meta, study_condition == "control")
 control_abd_adj <- CRC_abd_adj[, rownames(control_meta)]
-# discrete_discover takes as input sample-by-sample dissimilarity measurements 
-# rather than abundance table. The former can be easily computed from the 
-# latter with existing R packages.
+
 D_control <- vegdist(t(control_abd_adj))
 fit_discrete <- discrete_discover(D = D_control,
                                   batch = "studyID",
@@ -242,22 +242,18 @@ are by default automatically generated and saved to the output file
 "diagnostic_discrete.pdf".
 
 ```{r visualize discrete structure}
-internal <- data.frame(
-  # By default, fit_discrete evaluates cluster numbers 2-10
-  K = 2:8,
-  statistic = 
-    fit_discrete$internal_mean[, "ZellerG_2014.metaphlan_bugs_list.stool"],
-  se = 
-    fit_discrete$internal_se[, "ZellerG_2014.metaphlan_bugs_list.stool"],
-  type = "internal")
-external <- data.frame(
-  # By default, fit_discrete evaluates cluster numbers 2-10
-  K = 2:8,
-  statistic = 
-    fit_discrete$external_mean[, "ZellerG_2014.metaphlan_bugs_list.stool"],
-  se = 
-    fit_discrete$external_se[, "ZellerG_2014.metaphlan_bugs_list.stool"],
-  type = "external")
+study_id = "ZellerG_2014.metaphlan_bugs_list.stool"
+
+internal <- data.frame(K = 2:8,
+                       statistic = fit_discrete$internal_mean[, study_id],
+                       se = fit_discrete$internal_se[, study_id],
+                       type = "internal")
+
+external <- data.frame(K = 2:8,
+                       statistic = fit_discrete$external_mean[, study_id],
+                       se = fit_discrete$external_se[, study_id],
+                       type = "external")
+
 rbind(internal, external) %>% 
   ggplot(aes(x = K, y = statistic, color = type)) +
   geom_point(position = position_dodge(width = 0.5)) + 
@@ -277,44 +273,24 @@ but you can recreate them from `r BiocStyle::Biocpkg("curatedMetagenomicData")`
 with the commented out scripts.
 
 ```{r discrete_discover vaginal}
-# library(curatedMetagenomicData)
-# library(phyloseq)
-# datasets <- curatedMetagenomicData(
-#   "*metaphlan_bugs_list.vagina*",
-#   dryrun = FALSE)
-# # Construct phyloseq object from the five datasets
-# physeq <-
-#   # Aggregate the five studies into ExpressionSet
-#   mergeData(datasets) %>%
-#   # Convert to phyloseq object
-#   ExpressionSet2phyloseq() %>%
-#   # Subset features to species
-#   subset_taxa(!is.na(Species) & is.na(Strain)) %>%
-#   # Normalize abundances to relative abundance scale
-#   transform_sample_counts(function(x) x / sum(x)) %>%
-#   # Filter features to be of at least 1e-5 relative abundance in two samples
-#   filter_taxa(kOverA(2, 1e-5), prune = TRUE)
-# vaginal_abd <- otu_table(physeq)@.Data
-# vaginal_meta <- data.frame(sample_data(physeq))
-# vaginal_meta$studyID <- factor(vaginal_meta$studyID)
 data("vaginal_abd", "vaginal_meta")
 D_vaginal <- vegdist(t(vaginal_abd))
+
 fit_discrete_vag <- discrete_discover(D = D_vaginal,
                                       batch = "studyID",
                                       data = vaginal_meta,
                                       control = list(verbose = FALSE,
                                                      k_max = 8))
-# Examine results for the larger study, HMP_2012
-data.frame(
-  # By default, fit_discrete evaluates cluster numbers 2-10
-  K = 2:8,
-  statistic = 
-    fit_discrete_vag$internal_mean[, "HMP_2012.metaphlan_bugs_list.vagina"],
-  se = 
-    fit_discrete_vag$internal_se[, "HMP_2012.metaphlan_bugs_list.vagina"]) %>% 
+
+hmp_id = "HMP_2012.metaphlan_bugs_list.vagina"
+data.frame(K = 2:8,
+           statistic = fit_discrete_vag$internal_mean[, hmp_id],
+           se = fit_discrete_vag$internal_se[, hmp_id]) %>% 
   ggplot(aes(x = K, y = statistic)) +
-  geom_point() + geom_line() +
-  geom_errorbar(aes(ymin = statistic - se, ymax = statistic + se), 
+  geom_point() +
+  geom_line() +
+  geom_errorbar(aes(ymin = statistic - se, 
+                    ymax = statistic + se), 
                 width = 0.5) +
   ggtitle("Evaluation of discrete structure in vaginal microbiome (HMP_2012)")
 ```
@@ -333,14 +309,9 @@ dysbiosis. `continuous_discover` provide functionality to identify such
 structures as well as to validate them with meta-analysis. We again evaluate
 these continuous structures in control samples of the five studies.
 
+Much like adjust_batch and lm_meta, continuous_discover also takes as input feature-by-sample abundances. control offers many tuning parameters and here we set one of them, var_perc_cutoff, to 0.5, which asks the method to include top principal components within each batch that in total explain at least 50% of the total variability in the batch. See help(continuous_discover) for more details on the tuning parameters and their interpretations.
+
 ```{r continuos_structre}
-# Much like adjust_batch and lm_meta, continuous_discover also takes
-# as input feature-by-sample abundances. control offers many tuning parameters
-# and here we set one of them, var_perc_cutoff, to 0.5, which asks the method
-# to include top principal components within each batch that in total explain
-# at least 50% of the total variability in the batch. See 
-# help(continuosu_discover) for more details on the tuning parameters and 
-# their interpretations.
 fit_continuous <- continuous_discover(feature_abd = control_abd_adj,
                                       batch = "studyID",
                                       data = control_meta,
@@ -355,23 +326,23 @@ scores with an ordination visualization. Here we perform these visualizations
 on the first identified continuous score.
 
 ```{r visualize continuous structure}
-# Examine top loadings
 loading <- data.frame(feature = rownames(fit_continuous$consensus_loadings),
                       loading1 = fit_continuous$consensus_loadings[, 1])
+
 loading %>%
-    dplyr::arrange(-abs(loading1)) %>%
-    dplyr::slice(1:20) %>%
-    dplyr::arrange(loading1) %>%
-    dplyr::mutate(feature = factor(feature, levels = feature)) %>%
+    arrange(-abs(loading1)) %>%
+    slice(1:20) %>%
+    arrange(loading1) %>%
+    mutate(feature = factor(feature, levels = feature)) %>%
     ggplot(aes(x = feature, y = loading1)) +
     geom_bar(stat = "identity") +
     coord_flip() +
     ggtitle("Features with top loadings")
-# Ordinate the samples
+
 mds <- cmdscale(d = D_control)
 colnames(mds) <- c("Axis1", "Axis2")
 as.data.frame(mds) %>% 
-  dplyr::mutate(score1 = fit_continuous$consensus_scores[, 1]) %>% 
+  mutate(score1 = fit_continuous$consensus_scores[, 1]) %>% 
   ggplot(aes(x = Axis1, y = Axis2, color = score1)) +
   geom_point() +
   coord_fixed()
