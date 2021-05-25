@@ -213,7 +213,7 @@ other studies. These jointly provide meta-analytical evidence for
 Check `help(discrete_discover)` to see more details on the method and additional
 options. We can contrast discrete structure (clusters) with continuous structure (which will be overviewed in the next section):
 
-```{r}
+```{r echo=FALSE}
 knitr::include_graphics('../man/figures/structure_types.PNG')
 ```
 
