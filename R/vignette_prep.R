@@ -47,3 +47,33 @@
 # feature_abd_adj is the corrected feature abundance matrix. See 
 # help(adjust_batch) for the meaning of other components.
 
+# First subset both feature abundance table and metadata to only control samples
+
+# discrete_discover takes as input sample-by-sample dissimilarity measurements 
+# rather than abundance table. The former can be easily computed from the 
+# latter with existing R packages.
+
+# By default, fit_discrete evaluates cluster numbers 2-10
+# By default, fit_discrete evaluates cluster numbers 2-10
+
+# library(curatedMetagenomicData)
+# library(phyloseq)
+# datasets <- curatedMetagenomicData(
+#   "*metaphlan_bugs_list.vagina*",
+#   dryrun = FALSE)
+# # Construct phyloseq object from the five datasets
+# physeq <-
+#   # Aggregate the five studies into ExpressionSet
+#   mergeData(datasets) %>%
+#   # Convert to phyloseq object
+#   ExpressionSet2phyloseq() %>%
+#   # Subset features to species
+#   subset_taxa(!is.na(Species) & is.na(Strain)) %>%
+#   # Normalize abundances to relative abundance scale
+#   transform_sample_counts(function(x) x / sum(x)) %>%
+#   # Filter features to be of at least 1e-5 relative abundance in two samples
+#   filter_taxa(kOverA(2, 1e-5), prune = TRUE)
+# vaginal_abd <- otu_table(physeq)@.Data
+# vaginal_meta <- data.frame(sample_data(physeq))
+# vaginal_meta$studyID <- factor(vaginal_meta$studyID)
+
