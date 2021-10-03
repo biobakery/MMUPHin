@@ -144,6 +144,21 @@ Maaslin2_wrapper <- function(feature_abd,
       plot_heatmap = FALSE,
       plot_scatter = FALSE)$results))
   
+  if(!is.null(log_maaslin$error)) {
+    ch_error <- log_maaslin$error
+    # switch back to original variable names
+    variables_rename <- c(exposure_rename, covariates_rename, covariates_random_rename)
+    for(i_variable in names(variables_rename)) {
+      i_pattern <- paste0("\'", variables_rename[i_variable], "\'")
+      i_pattern_replace <- paste0("\'", i_variable, "\'")
+      ch_error <- gsub(i_pattern, i_pattern_replace, x = ch_error,
+                       fixed = TRUE)
+    }
+    
+    stop("Internal Maaslin run error!\n", ch_error)
+  }
+    
+  
   res_rename <- log_maaslin$value
   
   # Read Maaslin results
