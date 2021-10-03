@@ -222,7 +222,7 @@ The gut microbiome is known to form gradients rather than discrete clusters
 [@koren2013guide]. Here we use `discrete_discover` to evaluate clustering 
 structures among control samples in the five stool studies. It's worth noting that this function takes a distance/dissimilarity matrix as an input, rather than the abundance table.
 
-````{r discrete_discover}
+```{r discrete_discover}
 
 control_meta <- subset(CRC_meta, study_condition == "control")
 control_abd_adj <- CRC_abd_adj[, rownames(control_meta)]
