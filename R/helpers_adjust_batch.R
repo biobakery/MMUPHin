@@ -234,6 +234,9 @@ fit_EB <- function(s_data, l_stand_feature, batchmod, n_batch, l_ind) {
 aprior <- function(delta_hat, na.rm = FALSE) {
   m <- mean(delta_hat, na.rm = na.rm)
   s2 <- var(delta_hat, na.rm = na.rm)
+  ## corner case
+  if(s2 == 0)
+    s2 <- 1
   (2*s2 + m^2) / s2
 }
 
@@ -247,6 +250,9 @@ aprior <- function(delta_hat, na.rm = FALSE) {
 bprior <- function(delta_hat, na.rm = FALSE){
   m <- mean(delta_hat, na.rm = na.rm)
   s2 <- var(delta_hat, na.rm = na.rm)
+  ## corner case
+  if(s2 == 0)
+    s2 <- 1
   (m*s2 + m^3) / s2
 }
 
