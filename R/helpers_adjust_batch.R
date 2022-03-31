@@ -137,7 +137,7 @@ standardize_feature <- function(y,
                        beta_hat[seq_len(n_batch), ])
   
   var_pooled <- var(y - (i_design %*% beta_hat)[, 1])
-  if(var_pooled == 0)
+  if(isTRUE(all.equal(var_pooled, 0)))
     var_pooled <- 1
   stand_mean <- rep(grand_mean, length(y))
   if(ncol(i_design) > n_batch){
