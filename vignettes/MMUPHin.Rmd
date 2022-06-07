@@ -145,8 +145,8 @@ D_after <- vegdist(t(CRC_abd_adj))
 set.seed(1)
 fit_adonis_before <- adonis(D_before ~ studyID, data = CRC_meta)
 fit_adonis_after <- adonis(D_after ~ studyID, data = CRC_meta)
-print(fit_adonis_before)
-print(fit_adonis_after)
+print(fit_adonis_before$aov.tab)
+print(fit_adonis_after$aov.tab)
 ```
 
 We can see that, before study effect adjustment, study differences can expalin
