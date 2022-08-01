@@ -144,7 +144,9 @@ lm_meta <- function(feature_abd,
   # Determine if exposure can be fitted on each batch
   # First if exposure is character change to factor
   if(is.character(df_meta[[exposure]]))
-    df_meta[[exposure]] <- as.factor(df_meta[[exposure]])
+    df_meta[[exposure]] <- 
+    factor(df_meta[[exposure]],
+           levels = stringr::str_sort(unique(df_meta[[exposure]])))
   ind_exposure <- check_exposure(df_meta[[exposure]], var_batch)
   if(any(!ind_exposure))
     warning("Exposure variable is missing or has only one non-missing value",
