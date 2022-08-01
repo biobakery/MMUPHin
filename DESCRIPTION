@@ -2,7 +2,7 @@ Package: MMUPHin
 Type: Package
 Title: Meta-analysis Methods with Uniform Pipeline for Heterogeneity in 
     Microbiome Studies
-Version: 1.11.1
+Version: 1.11.2
 Author: Siyuan Ma
 Maintainer: Siyuan MA <syma.research@gmail.com>
 Description: MMUPHin is an R package for meta-analysis tasks of microbiome 
