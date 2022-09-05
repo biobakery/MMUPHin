@@ -74,6 +74,8 @@ construct_ind <- function(feature_abd, n_batch, design, zero_inflation) {
   # Batch has to have more than one adjustable feature to make EB estimates
   ind_gamma[, apply(ind_gamma, 2, sum) < 2] <- FALSE
   ind_feature <- apply(ind_gamma, 1, any)
+  if(all(!ind_feature))
+    stop("All features are single-batch-specific; MMUPHin cannot perform correction!")
   return(list(ind_data = ind_data,
               ind_gamma = ind_gamma,
               ind_mod = ind_mod,
