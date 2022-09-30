@@ -356,8 +356,8 @@ rma_wrapper <- function(maaslin_fits,
         if(i_rma_fit$pval < 0.05 & !is.null(forest_plot))
           metafor::forest(
             i_rma_fit,
-            xlab = shorten_name(feature, cutoff = 5),
-            slab = shorten_name(lvl_batch[ind_features[feature, ]], cutoff = 3))
+            xlab = shorten_name(feature, cutoff = 15),
+            slab = shorten_name(lvl_batch[ind_features[feature, ]], cutoff = 5))
       }
       if(count_feature[feature] == 1) {
         i_ind_features <- ind_features[feature, ]
