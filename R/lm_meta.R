@@ -25,7 +25,7 @@
 #' \item{transform}{
 #' character. \code{transform} parameter for Maaslin2. See 
 #' \code{\link[Maaslin2]{Maaslin2}} for details and allowed values. Default to 
-#' \code{"LOG"} (log transformation).
+#' \code{"AST"} (arcsine square root transformation).
 #' }
 #' \item{analysis_method}{
 #' character. \code{analysis_method} parameter for Maaslin2. See 
