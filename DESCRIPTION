@@ -13,7 +13,7 @@ Description: MMUPHin is an R package for meta-analysis tasks of microbiome
     d) meta-analysis unsupervised continuous structure discovery.
 License: MIT + file LICENSE
 Encoding: UTF-8
-RoxygenNote: 6.1.1
+RoxygenNote: 7.2.1
 VignetteBuilder: knitr
 SystemRequirements:
     glpk (>= 4.57)

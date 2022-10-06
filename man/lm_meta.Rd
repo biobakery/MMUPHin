@@ -4,8 +4,15 @@
 \alias{lm_meta}
 \title{Covariate adjusted meta-analytical differential abundance testing}
 \usage{
-lm_meta(feature_abd, batch, exposure, covariates = NULL,
-  covariates_random = NULL, data, control)
+lm_meta(
+  feature_abd,
+  batch,
+  exposure,
+  covariates = NULL,
+  covariates_random = NULL,
+  data,
+  control
+)
 }
 \arguments{
 \item{feature_abd}{feature-by-sample matrix of abundances (proportions or
@@ -75,7 +82,7 @@ character. \code{normalization} parameter for Maaslin2. See
 \item{transform}{
 character. \code{transform} parameter for Maaslin2. See 
 \code{\link[Maaslin2]{Maaslin2}} for details and allowed values. Default to 
-\code{"LOG"} (log transformation).
+\code{"AST"} (arcsine square root transformation).
 }
 \item{analysis_method}{
 character. \code{analysis_method} parameter for Maaslin2. See 
