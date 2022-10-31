@@ -135,6 +135,13 @@ adjust_batch <- function(feature_abd,
                          n_batch = n_batch,
                          design = design,
                          zero_inflation = control$zero_inflation)
+  batch_no_correct <- apply(!l_ind$ind_gamma, 2, all)
+  if(any(batch_no_correct))
+    stop(paste0("The following batch(es) either have no present features,",
+                " or\nare confounded with the covariates in",
+                " features that are present.\nPlease remove them", 
+                " from the data before running batch correction:\n",
+                paste0(levels(var_batch)[batch_no_correct], collapse = ", ")))
   if(verbose)
     message("Adjusting for (after filtering) ", sum(l_ind$ind_feature),
             " features")
