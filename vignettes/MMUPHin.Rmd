@@ -78,8 +78,8 @@ though additional wranglings are needed to format input for `MMUPHin`.
 
 Importantly, `MMUPHin` asks that feature abundances be provided as a 
 feature-by-sample matrix, and the metadata be provided as a data frame. 
-The two objects shoud agree on sample IDs, that is, `rowname` of the feature 
-abundance matrix and `colname` of the metadata data frame must agree. 
+The two objects shoud agree on sample IDs, that is, `colname` of the feature 
+abundance matrix and `rowname` of the metadata data frame must agree. 
 Many popular 'omic data classes in R already enforce this standard, such as 
 `ExpressionSet` from `r BiocStyle::Biocpkg("Biobase")`, or `phyloseq` from
 `r BiocStyle::Biocpkg("phyloseq")`.
@@ -173,7 +173,7 @@ meta_fits provides the final meta-analytical testing results. See
 help(lm_meta) for the meaning of other components.
 
 ```{r lm_meta}
-fit_lm_meta <- lm_meta(feature_abd = CRC_abd,
+fit_lm_meta <- lm_meta(feature_abd = CRC_abd_adj,
                        batch = "studyID",
                        exposure = "study_condition",
                        covariates = c("gender", "age", "BMI"),
@@ -183,7 +183,8 @@ fit_lm_meta <- lm_meta(feature_abd = CRC_abd,
 meta_fits <- fit_lm_meta$meta_fits
 ```
 
-You'll note that this command produces a few error messages. This is because for one of the studies the specified covariates were not measured. As the message states, these covariates are not included when analyzing data from that study.
+You'll note that this command produces a few error messages. This is because for one of the studies the specified covariates were not measured. As the message states, these covariates are not included when analyzing data from that study. We also note that batch correction is standard but not necessary for the analysis here.
+
 
 We can visualize the significant (FDR q < 0.05) species associated with CRC in
 these studies/samples. Comparing them with Figure 1b of @thomas2019metagenomic, 
