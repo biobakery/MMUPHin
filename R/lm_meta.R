@@ -118,7 +118,7 @@ lm_meta <- function(feature_abd,
   # Check data formats
   # Check feature abundance table
   feature_abd <- as.matrix(feature_abd)
-  type_feature_abd <- check_feature_abd(feature_abd = feature_abd)
+  # type_feature_abd <- check_feature_abd(feature_abd = feature_abd)
   # Check metadata data frame
   data <- as.data.frame(data)
   samples <- check_samples(feature_abd = feature_abd,
