@@ -143,18 +143,18 @@ D_before <- vegdist(t(CRC_abd))
 D_after <- vegdist(t(CRC_abd_adj))
 
 set.seed(1)
-fit_adonis_before <- adonis(D_before ~ studyID, data = CRC_meta)
-fit_adonis_after <- adonis(D_after ~ studyID, data = CRC_meta)
-print(fit_adonis_before$aov.tab)
-print(fit_adonis_after$aov.tab)
+fit_adonis_before <- adonis2(D_before ~ studyID, data = CRC_meta)
+fit_adonis_after <- adonis2(D_after ~ studyID, data = CRC_meta)
+print(fit_adonis_before)
+print(fit_adonis_after)
 ```
 
 We can see that, before study effect adjustment, study differences can expalin
 a total of 
-`r round(fit_adonis_before$aov.tab["studyID", "R2"] * 100, digits = 2)`% of the
+`r round(fit_adonis_before["studyID", "R2"] * 100, digits = 2)`% of the
 variability in microbial abundance profiles, whereas after adjustment this was
 reduced to 
-`r round(fit_adonis_after$aov.tab["studyID", "R2"] * 100, digits = 2)`%, though
+`r round(fit_adonis_after["studyID", "R2"] * 100, digits = 2)`%, though
 the effect of study is significant in both cases.
 
 # Meta-analytical differential abundance testing with `lm_meta`
