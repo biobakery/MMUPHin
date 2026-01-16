@@ -3,9 +3,8 @@ title: "Performing meta-analyses of microbiome studies with MMUPHin"
 author: 
 - name: "Siyuan Ma"
   affiliation: 
-  - Harvard T.H. Chan School of Public Health
-  - Broad Institute
-  email: siyuanma@g.harvard.edu
+  - Vanderbilt University Medical Center
+  email: syma.research@gmail.com
 package: MMUPHin
 date: "10/09/2019"
 output: 
@@ -157,41 +156,52 @@ reduced to
 `r round(fit_adonis_after["studyID", "R2"] * 100, digits = 2)`%, though
 the effect of study is significant in both cases.
 
-# Meta-analytical differential abundance testing with `lm_meta`
+# Meta-analytical differential abundance testing with `maaslin_meta`
 
 One of the most common meta-analysis goals is to combine association effects 
-across batches/studies to identify consistent overall effects. `lm_meta` 
+across batches/studies to identify consistent overall effects. `maaslin_meta` 
 provides a straightforward interface to this task, by first performing 
-regression analysis in individual batches/studies using the well-validated
-`r BiocStyle::Biocpkg("Maaslin2")` package, and then aggregating results with 
+regression analysis in individual batches/studies using the 
+`r BiocStyle::Biocpkg("maaslin3")` package, and then aggregating results with 
 established fixed/mixed effect models, realized via the 
-`r BiocStyle::CRANpkg("vegan")` package. Here, we use `lm_meta` to test for
-consistently differential abundant species between CRC and control samples 
+`r BiocStyle::CRANpkg("vegan")` package. Here, we use `maaslin_meta` to test for
+consistently differential abundant and prevalent species between CRC and control samples 
 across the five studies, while controlling for demographic covariates (gender,
-age, BMI). Again, lm_meta returns a list of more than one components.
-meta_fits provides the final meta-analytical testing results. See
-help(lm_meta) for the meaning of other components.
+age, BMI). Again, maaslin_meta returns a list of more than one components.
+`meta_fits_abundance` and `meta_fits_prevalence`  provides the final meta-analytical 
+testing results for either abundance or prevalence testing, respectively. See
+help(maaslin_meta) for the meaning of other components.
 
-```{r lm_meta}
-fit_lm_meta <- lm_meta(feature_abd = CRC_abd_adj,
+```{r maaslin_meta}
+fit_maaslin_meta <- maaslin_meta(feature_abd = CRC_abd_adj,
                        batch = "studyID",
                        exposure = "study_condition",
                        covariates = c("gender", "age", "BMI"),
                        data = CRC_meta,
                        control = list(verbose = FALSE))
 
-meta_fits <- fit_lm_meta$meta_fits
+meta_fits_abundance <- fit_maaslin_meta$meta_fits_abundance
+meta_fits_prevalence <- fit_maaslin_meta$meta_fits_prevalence
 ```
 
 You'll note that this command produces a few error messages. This is because for one of the studies the specified covariates were not measured. As the message states, these covariates are not included when analyzing data from that study. We also note that batch correction is standard but not necessary for the analysis here.
 
-
 We can visualize the significant (FDR q < 0.05) species associated with CRC in
-these studies/samples. Comparing them with Figure 1b of @thomas2019metagenomic, 
+these studies/samples. Similar to maaslin3, MMUPHin generates meta-analyzed species
+that are differentially abundant or prevalent in CRC. 
+Comparing them with Figure 1b of @thomas2019metagenomic, 
 we can see that many of the significant species do agree.
 
-```{r significant differential abundant species}
-meta_fits %>% 
+```{r significant differential abundant and prevalent species}
+meta_fits_abundance %>% 
+  filter(qval.fdr < 0.05) %>% 
+  arrange(coef) %>% 
+  mutate(feature = factor(feature, levels = feature)) %>% 
+  ggplot(aes(y = coef, x = feature)) +
+  geom_bar(stat = "identity") +
+  coord_flip()
+
+meta_fits_prevalence %>% 
   filter(qval.fdr < 0.05) %>% 
   arrange(coef) %>% 
   mutate(feature = factor(feature, levels = feature)) %>% 
@@ -315,7 +325,7 @@ dysbiosis. `continuous_discover` provide functionality to identify such
 structures as well as to validate them with meta-analysis. We again evaluate
 these continuous structures in control samples of the five studies.
 
-Much like adjust_batch and lm_meta, continuous_discover also takes as input feature-by-sample abundances. The `control` argument offers many tuning parameters and here we set one of them, `var_perc_cutoff`, to 0.5, which asks the method to include top principal components within each batch that in total explain at least 50% of the total variability in the batch. See `help(continuous_discover)` for more details on the tuning parameters and their interpretations.
+Much like adjust_batch and maaslin_meta, continuous_discover also takes as input feature-by-sample abundances. The `control` argument offers many tuning parameters and here we set one of them, `var_perc_cutoff`, to 0.5, which asks the method to include top principal components within each batch that in total explain at least 50% of the total variability in the batch. See `help(continuous_discover)` for more details on the tuning parameters and their interpretations.
 
 ```{r continuos_structre}
 fit_continuous <- continuous_discover(feature_abd = control_abd_adj,
