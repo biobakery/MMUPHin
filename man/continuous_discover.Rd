@@ -138,5 +138,5 @@ fit_continuous <- continuous_discover(feature_abd = CRC_abd,
                                       data = CRC_meta)
 }
 \author{
-Siyuan Ma, \email{siyuanma@g.harvard.edu}
+Siyuan Ma, \email{syma.research@gmail.com}
 }

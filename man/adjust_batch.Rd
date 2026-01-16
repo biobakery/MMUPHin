@@ -82,5 +82,5 @@ CRC_abd_adj <- adjust_batch(feature_abd = CRC_abd,
                             data = CRC_meta)$feature_abd_adj
 }
 \author{
-Siyuan Ma, \email{siyuanma@g.harvard.edu}
+Siyuan Ma, \email{syma.research@gmail.com}
 }

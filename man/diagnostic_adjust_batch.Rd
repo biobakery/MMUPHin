@@ -4,8 +4,14 @@
 \alias{diagnostic_adjust_batch}
 \title{Diagnostic visualization for adj_batch function}
 \usage{
-diagnostic_adjust_batch(feature_abd, feature_abd_adj, var_batch, gamma_hat,
-  gamma_star, output)
+diagnostic_adjust_batch(
+  feature_abd,
+  feature_abd_adj,
+  var_batch,
+  gamma_hat,
+  gamma_star,
+  output
+)
 }
 \arguments{
 \item{feature_abd}{original feature-by-sample matrix of abundances

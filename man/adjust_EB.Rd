@@ -5,8 +5,7 @@
 \title{Perform batch adjustment on standardized feature abundances, based on EB
 shrinked per-batch location and scale parameters}
 \usage{
-adjust_EB(s_data, l_params_shrink, l_stand_feature, batchmod, n_batch,
-  l_ind)
+adjust_EB(s_data, l_params_shrink, l_stand_feature, batchmod, n_batch, l_ind)
 }
 \arguments{
 \item{s_data}{feature-by-sample matrix of standardized abundances.}

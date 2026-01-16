@@ -15,24 +15,26 @@ control_adjust_batch <- list(
   verbose = TRUE
 )
 
-control_lm_meta <- list(
-  # character. Normalization parameter for Maaslin2.
-  normalization = "TSS",
-  # character. Transformation parameter for Maaslin2.
-  transform = "AST",
-  # character. Analysis method parameter for Maaslin2.
-  analysis_method = "LM",
-  # character. Method parameter for rma.
-  rma_method = "REML",
-  rma_conv = 1e-4,
-  rma_maxit = 1000,
-  # character. Output directory for Maaslin2 output and forest plots.
-  output = "MMUPHin_lm_meta/",
-  # character (or null). Suffix of forest plot file.
-  forest_plot = "forest.pdf",
-  # logical. Whether or not verbose modeling information is printed.
-  verbose = TRUE
-)
+control_maaslin_meta <- 
+  list(
+    # character. Normalization parameter for Maaslin3.
+    normalization = "TSS", 
+    # character. Transformation parameter for Maaslin3.
+    transform = "LOG", 
+    # character. Method parameter for rma.
+    rma_method = "REML", 
+    rma_conv = 1e-4, 
+    rma_maxit = 1000, 
+    # character. Output directory for Maaslin2 output and forest plots.
+    output = "MMUPHin_maaslin_meta", 
+    # character (or null). Suffix of forest plot file.
+    forest_plot = "forest.pdf", 
+    min_abundance = 0, 
+    min_prevalence = 0, 
+    augment = TRUE, 
+    # logical. Whether or not verbose modeling information is printed.
+    verbose = FALSE, 
+    cores = 1)
 
 control_discrete_discover <- list(
   # integer. Maximum number of clusters to perform/evaluate on.

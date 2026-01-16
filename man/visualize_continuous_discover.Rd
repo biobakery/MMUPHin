@@ -4,8 +4,14 @@
 \alias{visualize_continuous_discover}
 \title{Visualization of the clustered network for the continuous.discover function}
 \usage{
-visualize_continuous_discover(graph_pc, membership_loading,
-  size_communities, plot_size_cutoff, short_names, output)
+visualize_continuous_discover(
+  graph_pc,
+  membership_loading,
+  size_communities,
+  plot_size_cutoff,
+  short_names,
+  output
+)
 }
 \arguments{
 \item{graph_pc}{the full pc network constructed from correlated PCs}

@@ -106,5 +106,5 @@ fit_discrete <- discrete_discover(D = D,
                                   data = CRC_meta)
 }
 \author{
-Siyuan Ma, \email{siyuanma@g.harvard.edu}
+Siyuan Ma, \email{syma.research@gmail.com}
 }

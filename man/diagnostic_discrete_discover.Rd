@@ -4,8 +4,7 @@
 \alias{diagnostic_discrete_discover}
 \title{Diagnostic visualization for discrete.discover function}
 \usage{
-diagnostic_discrete_discover(stats_internal, stats_external, lvl_batch,
-  output)
+diagnostic_discrete_discover(stats_internal, stats_external, lvl_batch, output)
 }
 \arguments{
 \item{stats_internal}{list of internal evaluation summary statistics}

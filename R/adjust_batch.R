@@ -59,7 +59,7 @@
 #' }
 #' }
 #' @export
-#' @author Siyuan Ma, \email{siyuanma@@g.harvard.edu}
+#' @author Siyuan Ma, \email{syma.research@gmail.com}
 #' @examples
 #' data("CRC_abd", "CRC_meta")
 #' CRC_abd_adj <- adjust_batch(feature_abd = CRC_abd, 

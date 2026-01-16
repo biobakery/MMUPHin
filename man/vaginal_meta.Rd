@@ -4,7 +4,9 @@
 \name{vaginal_meta}
 \alias{vaginal_meta}
 \title{Sample metadata of two public vaginal studies}
-\format{A \code{data.frame} of per-sample metadata information}
+\format{
+A \code{data.frame} of per-sample metadata information
+}
 \source{
 \code{\link[curatedMetagenomicData]{curatedMetagenomicData}}
 }

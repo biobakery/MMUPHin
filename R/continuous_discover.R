@@ -118,7 +118,7 @@
 #' }
 #' @importFrom stats prcomp
 #' @export
-#' @author Siyuan Ma, \email{siyuanma@@g.harvard.edu}
+#' @author Siyuan Ma, \email{syma.research@gmail.com}
 #' @examples
 #' data("CRC_abd", "CRC_meta")
 #' fit_continuous <- continuous_discover(feature_abd = CRC_abd,

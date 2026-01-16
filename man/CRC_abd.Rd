@@ -4,7 +4,9 @@
 \name{CRC_abd}
 \alias{CRC_abd}
 \title{Species level feature abundance data of five public CRC studies}
-\format{A feature-by-sample \code{matrix} of species-level profiles}
+\format{
+A feature-by-sample \code{matrix} of species-level profiles
+}
 \source{
 \code{\link[curatedMetagenomicData]{curatedMetagenomicData}}
 }

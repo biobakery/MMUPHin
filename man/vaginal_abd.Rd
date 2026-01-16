@@ -4,7 +4,9 @@
 \name{vaginal_abd}
 \alias{vaginal_abd}
 \title{Species level feature abundance data of two public vaginal studies}
-\format{A feature-by-sample \code{matrix} of species-level profiles}
+\format{
+A feature-by-sample \code{matrix} of species-level profiles
+}
 \source{
 \code{\link[curatedMetagenomicData]{curatedMetagenomicData}}
 }

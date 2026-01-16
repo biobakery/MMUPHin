@@ -4,7 +4,9 @@
 \name{CRC_meta}
 \alias{CRC_meta}
 \title{Sample metadata of five public CRC studies}
-\format{A \code{data.frame} of per-sample metadata information}
+\format{
+A \code{data.frame} of per-sample metadata information
+}
 \source{
 \code{\link[curatedMetagenomicData]{curatedMetagenomicData}}
 }

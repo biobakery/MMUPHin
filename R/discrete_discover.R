@@ -83,7 +83,7 @@
 #' }
 #' @importFrom stats as.dist
 #' @export
-#' @author Siyuan Ma, \email{siyuanma@@g.harvard.edu}
+#' @author Siyuan Ma, \email{syma.research@gmail.com}
 #' @examples
 #' data("CRC_abd", "CRC_meta")
 #' # Calculate Bray-Curtis dissimilarity between the samples
