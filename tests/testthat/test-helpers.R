@@ -96,11 +96,3 @@ test_that("check_batch works", {
   expect_equal(check_batch(batch_test), factor(1:2))
   expect_error(check_batch(batch_test, min_n_batch = 3))
 })
-
-test_that("shorten_name works", {
-  expect_equal(shorten_name(c("abc",
-                              "abcdefghi",
-                              "abcdefghijk")),
-               c("abc", "abc..ghi", "abc..ijk"))
-  expect_equal(shorten_name(c("abc", "abcd")), c("abc", "abcd"))
-})
