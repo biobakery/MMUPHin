@@ -109,7 +109,7 @@ logical. Indicates whether or not verbose information will be printed.
 }
 }
 \examples{
-# Assuming CRC_abd and CRC_meta are available
+data("CRC_abd", "CRC_meta")
 fit_meta <- maaslin_meta(feature_abd = CRC_abd,
                          exposure = "study_condition",
                          batch = "studyID",

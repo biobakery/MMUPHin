@@ -86,7 +86,7 @@
 #' @export
 #' @author Siyuan Ma, \email{syma.research@@gmail.com}
 #' @examples
-#' # Assuming CRC_abd and CRC_meta are available
+#' data("CRC_abd", "CRC_meta")
 #' fit_meta <- maaslin_meta(feature_abd = CRC_abd,
 #'                          exposure = "study_condition",
 #'                          batch = "studyID",
